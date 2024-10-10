@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct  8 10:07:25 2024
+
+@author: katyrr
+
+
+run from Outputs directory in terminal, with command: python3 ../../../Executables/write_inputs.py
+
+"""
+
+
+
+
+import numpy as np                                                              # for np.arange(start, end, step)
+import subprocess                                                               # for calling shell scripts to run 
+
+config_file_name = "../Inputs/config.txt"
+                                                                 
+
+
+
+
+
+
+
+''' OPEN AND READ CONFIG FILE '''
+# ignores empty lines, and lines beginning with * (to mark a comment)
+# counts and outputs the number of non-empty and non-comment lines (should be equal to the number of variables input in the config file)
+# expects each line to have the format:    var_name value
+# outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
+# tests whether eps has been input as a range or as a single value, and creates a list of values to test (which may contain just one value), for easy input to a for loop later
+# similarly for gamma
+
+
+config_file = open(config_file_name, 'r')
+print("reading from config file...\n")
+
+
+line_count = 0                                                                  # start a counter for lines
+bad_lines = []                                                                  # create an empty list to store indices of bad lines
+
+input_settings = {}                                                             # create an empty dictionary to hold settings for input
+
+
+for line in config_file:
+    
+    line_string = line.strip()                                                  # extract text from line
+    if line_string == "" : continue                                             # skip blank rows
+    if line_string[0] == "*" : continue                                         # skip comment lines
+    
+    split_string = line_string.split(" ")                                       # split into name and value
+        
+    line_count += 1                                                             # increase line count now so that lines will be indexed from 1
+    
+    
+    if len(split_string)>2 :                                                    # check whether the line has been formatted asa expected
+        print("Line "+str(line_count)+ ''' has too many words! 
+              Check var name contains no spaces, and don't seperate list 
+              values with spaces. Ignoring extra words.\n''')
+        bad_lines.append(line_count)
+        
+    elif len(split_string)<2 :
+        print("Line "+str(line_count)+''' is missing either 
+              variable name or value. Check they are both present 
+              and seperated with a space. Skipping this line.\n''')
+        bad_lines.append(line_count)
+        
+    input_settings[split_string[0]] = split_string[1]                           # store in dictionary
+
+
+input_settings["eps"] = input_settings["eps"].split(",") 
+if len(input_settings["eps"]) > 1 :                                             # then a range of eps values has been input
+    eps_to_test = np.arange(float(input_settings["eps"][0]),                    # create a list of eps values to be tested
+                            float(input_settings["eps"][1]), 
+                            float(input_settings["eps"][2]))
+
+else : eps_to_test = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
+
+
+input_settings["gamma"] = input_settings["gamma"].split(",")                    # same for gamma
+if len(input_settings["gamma"]) > 1 :                                             
+    gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
+                            float(input_settings["gamma"][1]), 
+                            float(input_settings["gamma"][2]))
+
+else : gamma_to_test = [float(input_settings["gamma"][0])]       
+
+
+
+print(input_settings)
+print("\n\nFinished reading lines: "+str(line_count))
+print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+''' WRITE .DAT FILES USING DICT '''
+# checks which mode to run (MO or WS)
+# sets up a for loop through the list of eps values to test, nested inside a similar loop over gamma 
+# each iteration:
+#   creates a tag referencing the code being run, the nucleus being tested, and the value of eps being tested in this iteration
+#   creates/overwrites a .DAT file in the Inputs directory folder, named using a tag
+#   uses string formatting with the dictionary to write the .DAT file 
+#   (currently uses the provided example as a base, and changes as few settings as possible!)
+# if anything went wrong, the existing .DAT file won't be overwritten 
+
+
+write_count = 0                                                                 # start counting how many files get written
+written_file_tags = []                                                          # create a list to record which files were written
+
+if (input_settings["mode"] == "MO") :
+    
+    for gamma in gamma_to_test:
+        input_settings["current_gamma"] = gamma
+
+        for eps in eps_to_test :
+            input_settings["current_eps"] = eps                                     # store eps in the dict for ease of use when string formatting below
+    
+            file_tag = "GAM_%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
+            try:                                                                    # only overwrite the existing input file if this code is successful
+                new_input_text =     '''
+        
+'for002.dat' 'for016.dat' 'for017.dat'     file2, file16, file17
+1,0,1                          ISTRCH,ICORR,irec
+9,1                            NKAMY,NNEUPR
+0.120,0.00,0.120,0.00
+0.120,0.00,0.120,0.00
+0.105,0.00,0.105,0.00
+0.090,0.30,0.090,0.25
+0.065,0.57,0.070,0.39
+0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
+0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0
+0.054,0.69,0.062,0.26
+0,1,1,0                       NUU,IPKT,NOYES,ITRANS
+%(emin)s,%(emax)s
++11 16 17 18 19 20 21 22 23 24 25 26                  IPARP, NORBITP, LEVELP
++ 7 23 24 25 26 27 29 32 28 29 30 31 32 33 34         IPARN, NORBITN, LEVELN
+%(Z)s,%(A)s                                                Z,A
+%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
+(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
+        
+                ''' % input_settings
+                
+            except KeyError:
+                print("Could not write "+file_tag+" because an input is missing."+
+                      " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+                raise
+                
+            else: 
+                gampn_dat_file_path = "../Inputs/"+file_tag+".DAT" 
+                gampn_dat_file = open(gampn_dat_file_path, 'w')
+                gampn_dat_file.write(new_input_text)
+                gampn_dat_file.close()     
+        
+            write_count += 1
+            written_file_tags.append(file_tag)
+
+print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_to_test[0], eps_to_test[-1], gamma_to_test[0], gamma_to_test[-1]))
+
+
+
+
+
+
+
+
+
+
+
+''' WRITE AND RUN BASH SCRIPT '''
+# writes a bash shell script to run each of the GAMPN .DAT files written above
+# after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
+# so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
+
+
+shell_script_file_path = "../Inputs/RunGAMPN.sh"                                # this is where the shell script will be created
+
+
+new_shell_script_text = "echo running GAMPN"
+
+for file in written_file_tags :
+    
+    new_gampn_out_file_name = file+".OUT"
+    
+    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/"+file+".DAT")
+    new_shell_script_text += ("\ncp GAMPN.out "+new_gampn_out_file_name)        # copy GAMPN.out to a new txt file with a more descriptive name
+
+new_shell_script_text += "\n\necho done"
+
+shell_script_file = open(shell_script_file_path, 'w')
+shell_script_file.write(new_shell_script_text)
+shell_script_file.close()                                                       
+
+subprocess.call(["sh", "./../Inputs/RunGAMPN.sh"])
+
+
+
+
+
+
+
+
+
+
+
+

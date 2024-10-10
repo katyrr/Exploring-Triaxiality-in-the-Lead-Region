@@ -1,0 +1,5 @@
+ $INTDAT  IFONLY=1 IAUTO=1 $END
+ $DYNAMC BETA2=0.31, BETA4=0.05, GAMM=-120., IZ=37, IN=60 $END
+
+ INPUT FILE FOR SWGAMMA  ("Rb97SWG.DAT")
+ ************************************************************

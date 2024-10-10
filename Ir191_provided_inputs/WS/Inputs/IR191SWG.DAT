@@ -1,0 +1,5 @@
+ $INTDAT  IFONLY=2 IAUTO=1 $END
+ $DYNAMC BETA2=0.15, BETA4=-0.055, GAMM=-100, IZ=77, IN=114 $END
+
+ INPUT FILE FOR SWGAMMA, FOR 191Ir  ("IR191SWG.DAT")
+ ************************************************************

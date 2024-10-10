@@ -1,0 +1,7 @@
+'WSD17.DAT', 'ASY18.DAT'          FILE17, FILE18
+   1    0                        ipkt,iskip
+  77  191                        z,aa
+5000. 1.0  0.35                  CUTOFF,GSFAC,GR
+
+ SAMPLE INPUT FILE FOR PROBAWS  (IR191PR.DAT)
+*******************************************************
