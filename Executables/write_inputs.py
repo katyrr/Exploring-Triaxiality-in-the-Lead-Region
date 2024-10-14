@@ -6,9 +6,14 @@ Created on Tue Oct  8 10:07:25 2024
 @author: katyrr
 
 
-run from Outputs directory in terminal, with command: python3 ../../../Executables/write_inputs.py
+run from Outputs directory in terminal, with command: 
+    python3 ../../../Executables/write_inputs.py
 
-or run from console with runfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/Ir191_test_new_inputs/MO/Outputs')
+or run from console with: 
+    runfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/Ir191_test_new_inputs/MO/Outputs')
+
+to debug (use breakpoints) run from console with: 
+    debugfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/Ir191_test_new_inputs/MO/Outputs')
 
 """
 
@@ -18,6 +23,8 @@ or run from console with runfile('/Users/katyrr/Downloads/MSci Project/Code/Exec
 import numpy as np                                                              # for np.arange(start, end, step)
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
+
+import time
 
 config_file_name = "../Inputs/config.txt"
                                                                  
@@ -210,7 +217,10 @@ shell_script_file.close()
 
 subprocess.call(["sh", "./../Inputs/RunGAMPN.sh"])
 
-
+'''
+print("waiting 5 seconds for gampn to finish running...")
+time.sleep(5)
+'''
 
 
 
@@ -234,20 +244,78 @@ input_settings["N"] = input_settings["A"]-input_settings["Z"]                   
 if input_settings["A"]%2 == 0:
     print("A is even, but this program applies to odd-A nuclei. Check inputs! Proceeding with calculation for protons...")
     input_settings["P_or_N"] = "P"
+    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level
     
 elif input_settings["Z"]%2  == 1:    
     print("Z is odd; calculating for protons...")
     input_settings["P_or_N"] = "P"
-    
+    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
 else:
     print("N is odd; calculating for neutrons...")
     input_settings["P_or_N"] = "N"
+    input_settings["fermi_level"] = math.ceil(input_settings["N"]/2)
 
                                                        
-input_settings["fermi_level_p"] = math.ceil(input_settings["Z"]/2)              # calculate fermi levels
-input_settings["fermi_level_n"] = math.ceil(input_settings["N"]/2)
 
 
+
+
+
+
+
+
+
+
+''' READ GAMPN.OUT FILE '''
+# work out the line number of the fermi level orbital in the GAMPN.OUT file
+# read that line from GAMPN.OUT and get the parity, and orbital index restricted to that parity
+# determine ipar,nu,level(j),j=1,nu
+
+print("reading GAMPN...")
+
+asyrmo_inputs      = []                                                         # an empty array to store inputs for asyrmo.dat
+
+for file in written_file_tags :
+    
+    gampn_out_file_name = file+".OUT"
+    gampn_out_file = open(gampn_out_file_name, 'r')
+    
+    lines = gampn_out_file.readlines()
+    header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
+    
+    fermi_level_line = input_settings["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
+    if input_settings["fermi_level"] > 40:
+        fermi_level_line -= 40
+        whole_line = lines[fermi_level_line]
+        half_line = whole_line[60:-1].strip()                                   # get only the second half of the line
+        
+    else:
+        whole_line = lines[fermi_level_line]
+        half_line = whole_line[0:60].strip()                                    # get only the first half of the line
+    
+    
+    hash_index = half_line.index("#")                                           # use the index of # as a reference point 
+    ipar = half_line[hash_index-2]
+    single_parity_index = half_line[hash_index+1 : hash_index+3]
+    
+    if single_parity_index[1] == ")":                                          # in case the index is only a single digit
+        single_parity_index = single_parity_index[0]
+    
+    nu = int(input_settings["nu"])
+    
+    first_index = int(single_parity_index) - nu//2
+    last_index = int(single_parity_index) + nu//2
+    if nu%2 == 1:
+        last_index += 1
+    orbitals = np.r_[first_index:last_index]
+    
+    orbitals_string = ipar + input_settings["nu"]
+    for l in orbitals:
+        orbitals_string += " "
+        orbitals_string += str(l)
+    
+    asyrmo_inputs.append(orbitals_string)
+    
 
 
 
