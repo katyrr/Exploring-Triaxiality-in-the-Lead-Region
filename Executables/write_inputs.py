@@ -8,6 +8,8 @@ Created on Tue Oct  8 10:07:25 2024
 
 run from Outputs directory in terminal, with command: python3 ../../../Executables/write_inputs.py
 
+or run from console with runfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/Ir191_test_new_inputs/MO/Outputs')
+
 """
 
 
@@ -15,6 +17,7 @@ run from Outputs directory in terminal, with command: python3 ../../../Executabl
 
 import numpy as np                                                              # for np.arange(start, end, step)
 import subprocess                                                               # for calling shell scripts to run 
+import math                                                                     # for ceil(num)
 
 config_file_name = "../Inputs/config.txt"
                                                                  
@@ -190,7 +193,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 shell_script_file_path = "../Inputs/RunGAMPN.sh"                                # this is where the shell script will be created
 
 
-new_shell_script_text = "echo running GAMPN"
+new_shell_script_text = "echo running GAMPN ..."
 
 for file in written_file_tags :
     
@@ -211,6 +214,38 @@ subprocess.call(["sh", "./../Inputs/RunGAMPN.sh"])
 
 
 
+
+
+
+
+
+
+
+''' CALCULATE FERMI LEVEL '''
+# using input A and Z
+# work out which is odd
+# half and ceiling for the overall index of the fermi level orbital
+
+
+input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
+input_settings["Z"] = int(input_settings["Z"])
+input_settings["N"] = input_settings["A"]-input_settings["Z"]                   # calculate N = A - Z
+
+if input_settings["A"]%2 == 0:
+    print("A is even, but this program applies to odd-A nuclei. Check inputs! Proceeding with calculation for protons...")
+    input_settings["P_or_N"] = "P"
+    
+elif input_settings["Z"]%2  == 1:    
+    print("Z is odd; calculating for protons...")
+    input_settings["P_or_N"] = "P"
+    
+else:
+    print("N is odd; calculating for neutrons...")
+    input_settings["P_or_N"] = "N"
+
+                                                       
+input_settings["fermi_level_p"] = math.ceil(input_settings["Z"]/2)              # calculate fermi levels
+input_settings["fermi_level_n"] = math.ceil(input_settings["N"]/2)
 
 
 
