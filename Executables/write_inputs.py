@@ -376,9 +376,9 @@ print("finished writing ASY.DAT files")
 
 
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
-# writes a bash shell script to run each of the GAMPN .DAT files written above
-# after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
-# so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
+# writes a bash shell script to run each of the ASYRMO .DAT files written above
+# after each one is run, the output file ASYRMO.out is copied to a new text file with a more descriptive name (based on file tag),
+# so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
 
 shell_script_file_path = "../Inputs/RunASYRMO.sh"                                # this is where the shell script will be created
@@ -390,7 +390,7 @@ for file in written_file_tags :
     
     new_gampn_out_file_name = "ASY_"+file+".OUT"
     
-    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
+    new_shell_script_text += ("\n./../../../Executables/MO/asyrmo < ../Inputs/ASY_"+file+".DAT")
     new_shell_script_text += ("\ncp ASYRMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
 
 new_shell_script_text += "\n\necho done"
@@ -400,5 +400,88 @@ shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
 subprocess.call(["sh", "./../Inputs/RunASYRMO.sh"])
+
+
+
+
+
+
+
+
+
+
+
+
+''' WRITING PROBAMO.DAT FILE '''
+# for each deformation, writes a .DAT file for PROBAMO, using the file tag to name, and the provided example as a base
+
+for file in written_file_tags:
+
+    try:                                                                        # only overwrite the existing input file if this code is successful
+        new_input_text =     '''
+
+'FOR017.DAT' 'FOR018.DAT'              FILE17,FILE18
+1,0                               ipkt,iskip
+1                                 isrtch
+%(Z)s,%(A)s                           Z,AA
+0,1500.,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
+0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
+
+    ''' % input_settings
+    
+    except KeyError:
+        print("Could not write PROB_"+file+".DAT because an input is missing."+
+              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+        raise
+        
+    else: 
+        asyrmo_dat_file_path = "../Inputs/PROB_"+file+".DAT" 
+        asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
+        asyrmo_dat_file.write(new_input_text)
+        asyrmo_dat_file.close()     
+    
+
+print("finished writing PROB.DAT files")
+
+
+
+
+
+
+
+
+
+
+''' WRITE AND RUN BASH SCRIPT TO EXECUTE PROBAMO '''
+# writes a bash shell script to run each of the PROBAMO .DAT files written above
+# after each one is run, the output file PROBAMO.out is copied to a new text file with a more descriptive name (based on file tag),
+# so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
+
+
+shell_script_file_path = "../Inputs/RunPROBAMO.sh"                                # this is where the shell script will be created
+
+
+new_shell_script_text = "echo running PROBAMO ..."
+
+for file in written_file_tags :
+    
+    new_gampn_out_file_name = "PROB_"+file+".OUT"
+    
+    new_shell_script_text += ("\n./../../../Executables/MO/probamo < ../Inputs/PROB_"+file+".DAT")
+    new_shell_script_text += ("\ncp PROBAMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
+
+new_shell_script_text += "\n\necho done"
+
+shell_script_file = open(shell_script_file_path, 'w')
+shell_script_file.write(new_shell_script_text)
+shell_script_file.close()                                                       
+
+subprocess.call(["sh", "./../Inputs/RunPROBAMO.sh"])
+
+
+
+
+
+
 
 

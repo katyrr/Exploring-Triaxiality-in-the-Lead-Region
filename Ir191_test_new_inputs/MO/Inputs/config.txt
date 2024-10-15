@@ -37,6 +37,6 @@ ispin 13
 
 nu 4
 
-kmax = 13
+kmax 13
 
 
