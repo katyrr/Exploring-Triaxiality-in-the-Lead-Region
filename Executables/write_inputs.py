@@ -136,12 +136,18 @@ if (input_settings["mode"] == "MO") :
 
         for eps in eps_to_test :
             input_settings["current_eps"] = eps                                     # store eps in the dict for ease of use when string formatting below
-    
-            file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
+            
+            #file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
+            file_tag = "e%.3f_g%d" % (eps, gamma)
+            
+            input_settings["current_f002"] = "f002_"+file_tag+".dat"
+            input_settings["current_f016"] = "f016_"+file_tag+".dat"
+            input_settings["current_f017"] = "f017_"+file_tag+".dat"
+            
             try:                                                                    # only overwrite the existing input file if this code is successful
                 new_input_text =     '''
         
-'for002.dat' 'for016.dat' 'for017.dat'     file2, file16, file17
+'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
 1,0,1                          ISTRCH,ICORR,irec
 9,1                            NKAMY,NNEUPR
 0.120,0.00,0.120,0.00
@@ -204,10 +210,10 @@ new_shell_script_text = "echo running GAMPN ..."
 
 for file in written_file_tags :
     
-    new_gampn_out_file_name = "GAM_"+file+".OUT"
     
     new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
-    new_shell_script_text += ("\ncp GAMPN.out "+new_gampn_out_file_name)        # copy GAMPN.out to a new txt file with a more descriptive name
+    new_shell_script_text += ("\ncp GAMPN.out GAM_"+file+".OUT")                # copy GAMPN.out to a new txt file with a more descriptive name
+
 
 new_shell_script_text += "\n\necho done"
 
@@ -336,10 +342,14 @@ for file in written_file_tags:
     input_settings["current_orbitals"] = asyrmo_inputs[count]
     count += 1
     
+    input_settings["current_f016"] = "f016_"+file+".dat"
+    input_settings["current_f017"] = "f017_"+file+".dat"
+    input_settings["current_f018"] = "f018_"+file+".dat"
+    
     try:                                                                    # only overwrite the existing input file if this code is successful
         new_input_text =     '''
 
-'FOR016.DAT' 'FOR017.DAT' 'FOR018.DAT' FILE16,FILE17,FILE18
+'%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
 1,1                                        ISTRCH,IREC
 0,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
@@ -416,11 +426,14 @@ subprocess.call(["sh", "./../Inputs/RunASYRMO.sh"])
 # for each deformation, writes a .DAT file for PROBAMO, using the file tag to name, and the provided example as a base
 
 for file in written_file_tags:
+    
+    input_settings["current_f017"] = "f017_"+file+".dat"
+    input_settings["current_f018"] = "f018_"+file+".dat"
 
     try:                                                                        # only overwrite the existing input file if this code is successful
         new_input_text =     '''
 
-'FOR017.DAT' 'FOR018.DAT'              FILE17,FILE18
+'%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
 1,0                               ipkt,iskip
 1                                 isrtch
 %(Z)s,%(A)s                           Z,AA
