@@ -191,7 +191,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 
 
 
-''' WRITE AND RUN BASH SCRIPT '''
+''' WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN '''
 # writes a bash shell script to run each of the GAMPN .DAT files written above
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
@@ -369,5 +369,36 @@ print("finished writing ASY.DAT files")
 
 
 
+
+
+
+
+
+
+''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
+# writes a bash shell script to run each of the GAMPN .DAT files written above
+# after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
+# so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
+
+
+shell_script_file_path = "../Inputs/RunASYRMO.sh"                                # this is where the shell script will be created
+
+
+new_shell_script_text = "echo running ASYRMO ..."
+
+for file in written_file_tags :
+    
+    new_gampn_out_file_name = "ASY_"+file+".OUT"
+    
+    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
+    new_shell_script_text += ("\ncp ASYRMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
+
+new_shell_script_text += "\n\necho done"
+
+shell_script_file = open(shell_script_file_path, 'w')
+shell_script_file.write(new_shell_script_text)
+shell_script_file.close()                                                       
+
+subprocess.call(["sh", "./../Inputs/RunASYRMO.sh"])
 
 
