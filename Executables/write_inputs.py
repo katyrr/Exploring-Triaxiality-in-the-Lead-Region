@@ -24,7 +24,6 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 
-import time
 
 config_file_name = "../Inputs/config.txt"
                                                                  
@@ -115,16 +114,17 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
 
 
-''' WRITE .DAT FILES USING DICT '''
+''' WRITE GAMPN.DAT FILES USING DICT '''
 # checks which mode to run (MO or WS)
 # sets up a for loop through the list of eps values to test, nested inside a similar loop over gamma 
 # each iteration:
 #   creates a tag referencing the code being run, the nucleus being tested, and the value of eps being tested in this iteration
-#   creates/overwrites a .DAT file in the Inputs directory folder, named using a tag
+#   creates/overwrites a .DAT file in the Inputs directory folder, named using the tag
 #   uses string formatting with the dictionary to write the .DAT file 
 #   (currently uses the provided example as a base, and changes as few settings as possible!)
 # if anything went wrong, the existing .DAT file won't be overwritten 
 
+print("writing GAMPN.DAT files...")
 
 write_count = 0                                                                 # start counting how many files get written
 written_file_tags = []                                                          # create a list to record which files were written
@@ -137,7 +137,7 @@ if (input_settings["mode"] == "MO") :
         for eps in eps_to_test :
             input_settings["current_eps"] = eps                                     # store eps in the dict for ease of use when string formatting below
     
-            file_tag = "GAM_%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
+            file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
             try:                                                                    # only overwrite the existing input file if this code is successful
                 new_input_text =     '''
         
@@ -166,12 +166,12 @@ if (input_settings["mode"] == "MO") :
                 ''' % input_settings
                 
             except KeyError:
-                print("Could not write "+file_tag+" because an input is missing."+
+                print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
                       " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
                 raise
                 
             else: 
-                gampn_dat_file_path = "../Inputs/"+file_tag+".DAT" 
+                gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
                 gampn_dat_file = open(gampn_dat_file_path, 'w')
                 gampn_dat_file.write(new_input_text)
                 gampn_dat_file.close()     
@@ -204,9 +204,9 @@ new_shell_script_text = "echo running GAMPN ..."
 
 for file in written_file_tags :
     
-    new_gampn_out_file_name = file+".OUT"
+    new_gampn_out_file_name = "GAM_"+file+".OUT"
     
-    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/"+file+".DAT")
+    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
     new_shell_script_text += ("\ncp GAMPN.out "+new_gampn_out_file_name)        # copy GAMPN.out to a new txt file with a more descriptive name
 
 new_shell_script_text += "\n\necho done"
@@ -267,17 +267,18 @@ else:
 
 
 ''' READ GAMPN.OUT FILE '''
-# work out the line number of the fermi level orbital in the GAMPN.OUT file
-# read that line from GAMPN.OUT and get the parity, and orbital index restricted to that parity
-# determine ipar,nu,level(j),j=1,nu
+# for each deformation (i.e. each GAMPN.OUT file):
+#   work out the line number of the fermi level orbital in the GAMPN.OUT file
+#   read that line from GAMPN.OUT and get the parity, and orbital index restricted to that parity
+#   construct a string for ipar,nu,[level(j),j=1,nu]
 
-print("reading GAMPN...")
+print("\nreading GAMPN.OUT files...")
 
 asyrmo_inputs      = []                                                         # an empty array to store inputs for asyrmo.dat
 
 for file in written_file_tags :
     
-    gampn_out_file_name = file+".OUT"
+    gampn_out_file_name = "GAM_"+file+".OUT"
     gampn_out_file = open(gampn_out_file_name, 'r')
     
     lines = gampn_out_file.readlines()
@@ -298,24 +299,73 @@ for file in written_file_tags :
     ipar = half_line[hash_index-2]
     single_parity_index = half_line[hash_index+1 : hash_index+3]
     
-    if single_parity_index[1] == ")":                                          # in case the index is only a single digit
+    if single_parity_index[1] == ")":                                           # in case the index is only a single digit
         single_parity_index = single_parity_index[0]
     
     nu = int(input_settings["nu"])
     
     first_index = int(single_parity_index) - nu//2
     last_index = int(single_parity_index) + nu//2
-    if nu%2 == 1:
+    if nu%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
         last_index += 1
     orbitals = np.r_[first_index:last_index]
     
-    orbitals_string = ipar + input_settings["nu"]
+    orbitals_string = ipar + input_settings["nu"]                               # e.g. orbitals_string = "+4 19 20 21 22"
     for l in orbitals:
         orbitals_string += " "
         orbitals_string += str(l)
     
     asyrmo_inputs.append(orbitals_string)
     
+
+print("finished reading %d files\n" % len(asyrmo_inputs))
+
+
+
+
+
+
+
+
+''' WRITING ASYRMO.DAT FILE '''
+# for each deformation, writes a .DAT file for ASYRMO using the file tag to name, and the provided example as a base
+
+count = 0
+for file in written_file_tags:
+    
+    input_settings["current_orbitals"] = asyrmo_inputs[count]
+    count += 1
+    
+    try:                                                                    # only overwrite the existing input file if this code is successful
+        new_input_text =     '''
+
+'FOR016.DAT' 'FOR017.DAT' 'FOR018.DAT' FILE16,FILE17,FILE18
+1,0                                        IPKT,ISKIP
+1,1                                        ISTRCH,IREC
+0,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
+%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,0.210,0.0                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
+19.2,7.4,15,0.0,1.0                     GN0,GN1,IPAIR,CHSI,ETA
+%(current_orbitals)s  
+  3  3  3  3  3  3  3  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  2  2  2  2  2  2  2  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  1  1  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
+
+    ''' % input_settings
+    
+    except KeyError:
+        print("Could not write ASY_"+file+".DAT because an input is missing."+
+              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+        raise
+        
+    else: 
+        asyrmo_dat_file_path = "../Inputs/ASY_"+file+".DAT" 
+        asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
+        asyrmo_dat_file.write(new_input_text)
+        asyrmo_dat_file.close()     
+    
+
+print("finished writing ASY.DAT files")
+
 
 
 
