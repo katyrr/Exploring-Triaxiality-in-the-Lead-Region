@@ -13,9 +13,9 @@ A 207
 
 ************** deformation parameters - range to run over **************
 
-* can set each to a single values or a range (first, last+1, step)
-eps -0.3 *,0.4,0.2
-gamma 0 *,35,5
+* can set each to a single values or a range (first,last+1,step)
+eps -0.3 ***  ,0.4,0.2
+gamma 0 ***   ,35,5
 
 
 
@@ -31,6 +31,14 @@ mode MO
 
 emin 0
 emax 7
+
+iparp + ***    the parity of proton orbitals 
+norbitp 11 *** the number of proton orbitals 
+forbitp 16 *** the first proton orbital 
+
+iparn + ***    the parity of neutron orbitals 
+norbitn 7 ***  the number of neutron orbitals 
+forbitn 23 *** the first neutron orbital
 
 
 

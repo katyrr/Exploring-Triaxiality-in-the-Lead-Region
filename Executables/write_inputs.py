@@ -66,7 +66,8 @@ for line in config_file:
     for n in range(len(split_string)):
         word = split_string[n]
         if word[0] == '*':
-            del split_string[n:]                                                # remove comments that start at the end of the line
+            del split_string[n:]
+            break                                                # remove comments that start at the end of the line
     
     if len(split_string)>2 :                                                    # check whether the line has been formatted asa expected
         print("Line "+str(line_count)+ ''' has too many words! 
@@ -135,6 +136,20 @@ written_file_tags = []                                                          
 
 if (input_settings["mode"] == "MO") :
     
+    porbs = ""
+    porb_index = int(input_settings["forbitp"])
+    for o in range(int(input_settings["norbitp"])):
+        porbs += (" " + str(porb_index))
+        porb_index += 1
+    input_settings["porbs"] = porbs
+    
+    norbs = ""
+    norb_index = int(input_settings["forbitn"])
+    for o in range(int(input_settings["norbitn"])):
+        norbs += (" " + str(norb_index))
+        norb_index += 1
+    input_settings["norbs"] = norbs
+    
     for gamma in gamma_to_test:
         input_settings["current_gamma"] = gamma
 
@@ -167,8 +182,8 @@ if (input_settings["mode"] == "MO") :
 0.054,0.69,0.062,0.26
 0,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
-+11 16 17 18 19 20 21 22 23 24 25 26                  IPARP, NORBITP, LEVELP
-+ 7 23 24 25 26 27 29 32 28 29 30 31 32 33 34         IPARN, NORBITN, LEVELN
+%(iparp)s%(norbitp)s%(porbs)s                  IPARP, NORBITP, LEVELP
+%(iparn)s%(norbitn)s%(norbs)s                  IPARN, NORBITN, LEVELN
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
