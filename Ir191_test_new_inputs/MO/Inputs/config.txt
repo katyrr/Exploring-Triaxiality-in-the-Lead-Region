@@ -16,7 +16,7 @@ A 191
 mode MO
 
 eps -0.3,0.4,0.2
-gamma 30
+gamma 0,35,5
 
 
 

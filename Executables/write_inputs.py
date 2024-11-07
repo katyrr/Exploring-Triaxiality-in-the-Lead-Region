@@ -59,10 +59,14 @@ for line in config_file:
     if line_string == "" : continue                                             # skip blank rows
     if line_string[0] == "*" : continue                                         # skip comment lines
     
-    split_string = line_string.split(" ")                                       # split into name and value
+    split_string = line_string.split(" ")                                       # split into name and value (and potentially comments starting with *)
         
     line_count += 1                                                             # increase line count now so that lines will be indexed from 1
     
+    for n in range(len(split_string)):
+        word = split_string[n]
+        if word[0] == '*':
+            del split_string[n:]                                                # remove comments that start at the end of the line
     
     if len(split_string)>2 :                                                    # check whether the line has been formatted asa expected
         print("Line "+str(line_count)+ ''' has too many words! 
@@ -203,7 +207,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
 
 
-shell_script_file_path = "../Inputs/RunGAMPN.sh"                                # this is where the shell script will be created
+shell_script_file_path = "../RunGAMPN.sh"                                # this is where the shell script will be created
 
 
 new_shell_script_text = "echo running GAMPN ..."
@@ -221,7 +225,7 @@ shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../Inputs/RunGAMPN.sh"])
+subprocess.call(["sh", "./../RunGAMPN.sh"])
 
 '''
 print("waiting 5 seconds for gampn to finish running...")
@@ -299,7 +303,6 @@ for file in written_file_tags :
     else:
         whole_line = lines[fermi_level_line]
         half_line = whole_line[0:60].strip()                                    # get only the first half of the line
-    
     
     hash_index = half_line.index("#")                                           # use the index of # as a reference point 
     ipar = half_line[hash_index-2]
@@ -391,7 +394,7 @@ print("finished writing ASY.DAT files")
 # so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
 
-shell_script_file_path = "../Inputs/RunASYRMO.sh"                                # this is where the shell script will be created
+shell_script_file_path = "../RunASYRMO.sh"                                # this is where the shell script will be created
 
 
 new_shell_script_text = "echo running ASYRMO ..."
@@ -409,7 +412,7 @@ shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../Inputs/RunASYRMO.sh"])
+subprocess.call(["sh", "./../RunASYRMO.sh"])
 
 
 
@@ -471,7 +474,7 @@ print("finished writing PROB.DAT files")
 # so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
 
 
-shell_script_file_path = "../Inputs/RunPROBAMO.sh"                                # this is where the shell script will be created
+shell_script_file_path = "../RunPROBAMO.sh"                                # this is where the shell script will be created
 
 
 new_shell_script_text = "echo running PROBAMO ..."
@@ -489,7 +492,7 @@ shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../Inputs/RunPROBAMO.sh"])
+subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 
 

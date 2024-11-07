@@ -1,0 +1,47 @@
+********** config file ******* 07/11/24 ******* Test run on Tl207 ***********
+
+
+**************** nucleus info ******************
+
+nucleus Tl207
+Z 81
+A 207
+* therefore N = 126 (magic)
+* and Z is magic 80 + 1 single particle
+
+
+
+************** deformation parameters - range to run over **************
+
+* can set each to a single values or a range (first, last+1, step)
+eps -0.3 *,0.4,0.2
+gamma 0 *,35,5
+
+
+
+
+******* program settings *********
+
+
+mode MO 
+
+
+
+* for gampn *
+
+emin 0
+emax 7
+
+
+
+
+* for asyrmo *
+
+imin 1
+ispin 13
+
+nu 4
+
+kmax 13
+
+
