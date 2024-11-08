@@ -23,7 +23,8 @@ to debug (use breakpoints) run from console with:
 import numpy as np                                                              # for np.arange(start, end, step)
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
-
+import matplotlib.pyplot as plt                                                 # for plotting graphs
+#from mpl_toolkits.axes_grid1 import make_axes_locatable                         # for adjusting the position of the colour bar on the plots
 
 config_file_name = "../Inputs/config.txt"
                                                                  
@@ -213,9 +214,6 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 
 
 
-
-
-
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN '''
 # writes a bash shell script to run each of the GAMPN .DAT files written above
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
@@ -294,12 +292,13 @@ else:
 ''' READ GAMPN.OUT FILE '''
 # for each deformation (i.e. each GAMPN.OUT file):
 #   work out the line number of the fermi level orbital in the GAMPN.OUT file
-#   read that line from GAMPN.OUT and get the parity, and orbital index restricted to that parity
+#   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
 #   construct a string for ipar,nu,[level(j),j=1,nu]
 
 print("\nreading GAMPN.OUT files...")
 
 asyrmo_inputs      = []                                                         # an empty array to store inputs for asyrmo.dat
+fermi_energies     = []                                                         # an empty array to store the fermi energy at each deformation
 
 for file in written_file_tags :
     
@@ -322,6 +321,8 @@ for file in written_file_tags :
     hash_index = half_line.index("#")                                           # use the index of # as a reference point 
     ipar = half_line[hash_index-2]
     single_parity_index = half_line[hash_index+1 : hash_index+3]
+    fermi_energy = half_line[hash_index-10 : hash_index-4]
+    fermi_energies.append(fermi_energy)
     
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit
         single_parity_index = single_parity_index[0]
@@ -511,6 +512,123 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 
 
+
+
+
+
+
+''' READ ASYRMO.OUT FILE '''
+# for each deformation (i.e. each GAMPN.OUT file):
+#   work out the line number of the fermi level orbital in the GAMPN.OUT file
+#   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
+#   construct a string for ipar,nu,[level(j),j=1,nu]
+
+print("\nreading PROBAMO.OUT files...")
+
+mag_moments     = []                                                            # an empty array to store the magnetic dipole moment at each deformation
+
+for file in written_file_tags :
+    
+    probamo_out_file_name = "PROB_"+file+".OUT"
+    probamo_out_file = open(probamo_out_file_name, 'r')
+    
+    lines = probamo_out_file.readlines()
+    header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
+    
+    spin1_line_index = header+3                                                 # calculate the line number of the spin 1/2 state internal transition
+    spin1_line = lines[spin1_line_index]
+    mag_moments.append(spin1_line[52:60].strip())                               # get only the first half of the line
+    
+
+    
+
+print("finished reading %d files\n" % len(asyrmo_inputs))
+
+
+
+
+
+
+''' PLOT GRAPHS'''
+# plots variation in magnetic dipole moment with distortion
+#     converts oblate input values (with gamma between 0-30º and eps<0) to the equivalent parameterisation: 
+#     eps -> -eps (now positive) and gamma -> 60º-gamma (now in range 30-60º)
+#     which allows all of the values to be plotted in polar coordinates.
+#     
+#     additionally plots the positions of the data points as white x marks.
+
+
+
+print("\nplotting graph of magnetic dipole moment variation...")
+'''
+gamma_to_test = np.array(gamma_to_test)
+eps_to_test = np.array(eps_to_test)
+gamma_to_plot, eps_to_plot = np.meshgrid(gamma_to_test, eps_to_test)
+
+fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+
+ax.set_thetamin(0)   # Start angle in degrees
+ax.set_thetamax(60)  # End angle in degrees
+
+theta_ticks = np.arange(0, 70, 10)      # Create tick locations in degrees
+ax.set_xticks(np.radians(theta_ticks))  # Convert to radians and set_xticks
+
+# (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
+for r in range(len(gamma_to_test)):
+    for c in range(len(eps_to_test)):
+        if(eps_to_plot[c][r]<0):
+            eps_to_plot[c][r] *= -1
+            gamma_to_plot[c][r] *= np.pi/180
+        plt.polar(gamma_to_plot[c][r], eps_to_plot[c][r], 'wx')
+            
+fermi_energies = [float(n) for n in fermi_energies]
+fermi_energies_to_plot = np.array(fermi_energies).reshape((len(eps_to_test),len(gamma_to_test)))
+cax = ax.contourf(gamma_to_plot, eps_to_plot, fermi_energies_to_plot, 10)
+
+#mag_moments = [float(n) for n in mag_moments]
+#mag_moments_to_plot = np.array(mag_moments).reshape((len(eps_to_test),len(gamma_to_test)))
+#cax = ax.contourf(gamma_to_plot, eps_to_plot, mag_moments_to_plot, 10)
+
+
+plt.colorbar(cax)
+plt.show()
+'''
+
+gamma_to_test = np.array(gamma_to_test)
+eps_to_test = np.array(eps_to_test)
+#fermi_energies = [float(n) for n in fermi_energies]
+mag_moments = [float(n) for n in mag_moments]
+
+
+gamma_to_plot, eps_to_plot = np.meshgrid(gamma_to_test, eps_to_test)
+
+fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+
+ax.set_thetamin(0)   # Start angle in degrees
+ax.set_thetamax(60)  # End angle in degrees
+
+theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
+ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
+
+# (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
+for r in range(len(gamma_to_test)):
+    for c in range(len(eps_to_test)):
+        if(eps_to_plot[c][r]<0):
+            eps_to_plot[c][r] *= -1
+            gamma_to_plot[c][r] = 60-gamma_to_plot[c][r]
+        gamma_to_plot[c][r] *= np.pi/180
+        plt.polar(gamma_to_plot[c][r], eps_to_plot[c][r], 'wx')
+            
+#fermi_energies_to_plot = np.array(fermi_energies).reshape((len(eps_to_test),len(gamma_to_test)))
+mag_moments_to_plot = np.array(mag_moments).reshape((len(eps_to_test),len(gamma_to_test)))
+
+#cax = ax.contourf(gamma_to_plot, eps_to_plot, fermi_energies_to_plot, 10)
+cax = ax.contourf(gamma_to_plot, eps_to_plot, mag_moments_to_plot, 10)
+
+# Add color bar to the right of the plot
+plt.colorbar(cax)
+
+plt.show()
 
 
 
