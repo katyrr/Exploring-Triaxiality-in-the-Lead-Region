@@ -90,21 +90,24 @@ if len(input_settings["eps"]) > 1 :                                             
     eps_to_test = np.linspace(float(input_settings["eps"][0]),                  # create a list of 13 eps values to be tested
                               float(input_settings["eps"][1]), 
                               13)  
+    # !!! need to convert eps to positive here, before arranging gamma in a wedge shape
+    
+    eps_points = []
+    gamma_points = []                                                              # arrange a set of gamma values such that the eps/gamma plane is covered with an even distribution of 91 grid points
+    for l in range(len(eps_to_test)):
+        for p in range(l+1):
+            eps = eps_to_test[l]
+            eps_points.append(eps)
+            if l==0:
+                gamma = 0
+            else:
+                gamma = p*(60/l)*np.pi/180
+            gamma_points.append(gamma)
 
-else : eps_to_test = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
+else : 
+    eps_points = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
+    gamma_points = [float(input_settings["gamma"][0])]    
 
-eps_points = []
-gamma_points = []                                                              # arrange a set of gamma values such that the eps/gamma plane is covered with an even distribution of 91 grid points
-for l in range(len(eps_to_test)):
-    for p in range(l+1):
-        eps = eps_to_test[l]
-        eps_points.append(eps)
-        if l==0:
-            gamma = 0
-        else:
-            gamma = p*(60/l)*np.pi/180
-        gamma_points.append(gamma)
-        
 
 
 
@@ -155,21 +158,19 @@ if (input_settings["mode"] == "MO") :
         norb_index += 1
     input_settings["norbs"] = norbs
     
-    for gamma in gamma_points:
-        input_settings["current_gamma"] = gamma
-
-        for eps in eps_points :
-            input_settings["current_eps"] = eps                                     # store eps in the dict for ease of use when string formatting below
-            
-            #file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
-            file_tag = "e%.3f_g%d" % (eps, gamma)
-            
-            input_settings["current_f002"] = "f002_"+file_tag+".dat"
-            input_settings["current_f016"] = "f016_"+file_tag+".dat"
-            input_settings["current_f017"] = "f017_"+file_tag+".dat"
-            
-            try:                                                                    # only overwrite the existing input file if this code is successful
-                new_input_text =     '''
+    for p in range(len(gamma_points)):
+        input_settings["current_gamma"] = gamma_points[p]
+        input_settings["current_eps"] = eps_points[p]                                   # store eps in the dict for ease of use when string formatting below
+        
+        #file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
+        file_tag = "e%.3f_g%d" % (eps, gamma)
+        
+        input_settings["current_f002"] = "f002_"+file_tag+".dat"
+        input_settings["current_f016"] = "f016_"+file_tag+".dat"
+        input_settings["current_f017"] = "f017_"+file_tag+".dat"
+        
+        try:                                                                    # only overwrite the existing input file if this code is successful
+            new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
 1,0,1                          ISTRCH,ICORR,irec
@@ -192,22 +193,22 @@ if (input_settings["mode"] == "MO") :
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
-        
-                ''' % input_settings
-                
-            except KeyError:
-                print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
-                      " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-                raise
-                
-            else: 
-                gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
-                gampn_dat_file = open(gampn_dat_file_path, 'w')
-                gampn_dat_file.write(new_input_text)
-                gampn_dat_file.close()     
-        
-            write_count += 1
-            written_file_tags.append(file_tag)
+    
+            ''' % input_settings
+            
+        except KeyError:
+            print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
+                  " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+            raise
+            
+        else: 
+            gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
+            gampn_dat_file = open(gampn_dat_file_path, 'w')
+            gampn_dat_file.write(new_input_text)
+            gampn_dat_file.close()     
+    
+        write_count += 1
+        written_file_tags.append(file_tag)
 
 print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
