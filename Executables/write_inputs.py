@@ -87,20 +87,24 @@ for line in config_file:
 
 input_settings["eps"] = input_settings["eps"].split(",") 
 if len(input_settings["eps"]) > 1 :                                             # then a range of eps values has been input
-    eps_to_test = np.arange(float(input_settings["eps"][0]),                    # create a list of eps values to be tested
-                            float(input_settings["eps"][1]), 
-                            float(input_settings["eps"][2]))
+    eps_to_test = np.linspace(float(input_settings["eps"][0]),                  # create a list of 13 eps values to be tested
+                              float(input_settings["eps"][1]), 
+                              13)  
 
 else : eps_to_test = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
 
-
-input_settings["gamma"] = input_settings["gamma"].split(",")                    # same for gamma
-if len(input_settings["gamma"]) > 1 :                                             
-    gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
-                            float(input_settings["gamma"][1]), 
-                            float(input_settings["gamma"][2]))
-
-else : gamma_to_test = [float(input_settings["gamma"][0])]       
+eps_points = []
+gamma_points = []                                                              # arrange a set of gamma values such that the eps/gamma plane is covered with an even distribution of 91 grid points
+for l in range(len(eps_to_test)):
+    for p in range(l+1):
+        eps = eps_to_test[l]
+        eps_points.append(eps)
+        if l==0:
+            gamma = 0
+        else:
+            gamma = p*(60/l)*np.pi/180
+        gamma_points.append(gamma)
+        
 
 
 
@@ -151,10 +155,10 @@ if (input_settings["mode"] == "MO") :
         norb_index += 1
     input_settings["norbs"] = norbs
     
-    for gamma in gamma_to_test:
+    for gamma in gamma_points:
         input_settings["current_gamma"] = gamma
 
-        for eps in eps_to_test :
+        for eps in eps_points :
             input_settings["current_eps"] = eps                                     # store eps in the dict for ease of use when string formatting below
             
             #file_tag = "%s_eps_%.3f_gamma_%d" % (input_settings["nucleus"], eps, gamma)
@@ -205,7 +209,7 @@ if (input_settings["mode"] == "MO") :
             write_count += 1
             written_file_tags.append(file_tag)
 
-print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_to_test[0], eps_to_test[-1], gamma_to_test[0], gamma_to_test[-1]))
+print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
 
 
@@ -560,47 +564,15 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 
 print("\nplotting graph of magnetic dipole moment variation...")
-'''
-gamma_to_test = np.array(gamma_to_test)
-eps_to_test = np.array(eps_to_test)
-gamma_to_plot, eps_to_plot = np.meshgrid(gamma_to_test, eps_to_test)
-
-fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-
-ax.set_thetamin(0)   # Start angle in degrees
-ax.set_thetamax(60)  # End angle in degrees
-
-theta_ticks = np.arange(0, 70, 10)      # Create tick locations in degrees
-ax.set_xticks(np.radians(theta_ticks))  # Convert to radians and set_xticks
-
-# (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
-for r in range(len(gamma_to_test)):
-    for c in range(len(eps_to_test)):
-        if(eps_to_plot[c][r]<0):
-            eps_to_plot[c][r] *= -1
-            gamma_to_plot[c][r] *= np.pi/180
-        plt.polar(gamma_to_plot[c][r], eps_to_plot[c][r], 'wx')
-            
-fermi_energies = [float(n) for n in fermi_energies]
-fermi_energies_to_plot = np.array(fermi_energies).reshape((len(eps_to_test),len(gamma_to_test)))
-cax = ax.contourf(gamma_to_plot, eps_to_plot, fermi_energies_to_plot, 10)
-
-#mag_moments = [float(n) for n in mag_moments]
-#mag_moments_to_plot = np.array(mag_moments).reshape((len(eps_to_test),len(gamma_to_test)))
-#cax = ax.contourf(gamma_to_plot, eps_to_plot, mag_moments_to_plot, 10)
 
 
-plt.colorbar(cax)
-plt.show()
-'''
-
-gamma_to_test = np.array(gamma_to_test)
-eps_to_test = np.array(eps_to_test)
+gamma_points = np.array(gamma_points)
+eps_points = np.array(eps_points)
 #fermi_energies = [float(n) for n in fermi_energies]
 mag_moments = [float(n) for n in mag_moments]
 
 
-gamma_to_plot, eps_to_plot = np.meshgrid(gamma_to_test, eps_to_test)
+gamma_to_plot, eps_to_plot = np.meshgrid(gamma_points, eps_points)
 
 fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
 
@@ -610,6 +582,7 @@ ax.set_thetamax(60)  # End angle in degrees
 theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
 ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
 
+'''
 # (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
 for r in range(len(gamma_to_test)):
     for c in range(len(eps_to_test)):
@@ -629,7 +602,7 @@ cax = ax.contourf(gamma_to_plot, eps_to_plot, mag_moments_to_plot, 10)
 plt.colorbar(cax)
 
 plt.show()
-
+'''
 
 
 
