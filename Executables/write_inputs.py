@@ -24,7 +24,8 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 import matplotlib.pyplot as plt                                                 # for plotting graphs
-#from mpl_toolkits.axes_grid1 import make_axes_locatable                         # for adjusting the position of the colour bar on the plots
+
+plt.rcParams['figure.dpi'] = 150
 
 config_file_name = "../Inputs/config.txt"
                                                                  
@@ -133,10 +134,10 @@ if "eps" in input_settings and "gamma" in input_settings:
     gamma_points = []
     for l in range(len(eps_to_test)):
         for p in range(len(gamma_to_test)):
-            eps = np.round(eps_to_test[l], 3)
+            eps = np.round(eps_to_test[l], )
             eps_points.append(eps)
             
-            gamma = int(np.round(gamma_to_test[p]))  #*np.pi/180 #!!!don't convert to radians yet 
+            gamma = int(np.round(gamma_to_test[p]))
             gamma_points.append(gamma)
             
     
@@ -153,7 +154,7 @@ if "eps" in input_settings and "gamma" in input_settings:
 elif "eps_max" in input_settings:                                               # then arrange a mesh of 91 evenly distributed (eps,gamma) points to test over
     
     input_settings["eps_max"] = float(input_settings["eps_max"])                # convert from string to float
-    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=6)          # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=16)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
     
     eps_points = []
     gamma_points = []
@@ -164,7 +165,7 @@ elif "eps_max" in input_settings:                                               
             if l==0:
                 gamma = 0
             else:
-                gamma = np.round(p*(60/l))  #*np.pi/180 #!!!don't convert to radians yet 
+                gamma = np.round(p*(60/l)) 
             gamma_points.append(gamma)
             
     print(input_settings)
@@ -629,7 +630,7 @@ if "eps_max" in input_settings:
     
     gamma_points = np.array(gamma_points)
     eps_points = np.array(eps_points)
-    #fermi_energies = [float(n) for n in fermi_energies]
+    fermi_energies = [float(n) for n in fermi_energies]
     mag_moments = [float(n) for n in mag_moments]
     
     
@@ -649,9 +650,15 @@ if "eps_max" in input_settings:
         plt.polar(gamma_points[r], eps_points[r], 'wx')
             
     
-    cax = ax.tricontourf(gamma_points, eps_points, mag_moments, levels=10)
+    cax = ax.tricontourf(gamma_points, eps_points, mag_moments, levels=10, vmin=-0.8, vmax=6.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+    ax.set_title(r'Magnetic Dipole Moment of the Spin I=1/2 State of $^{207}Tl$', va='bottom', y=1.1)  # Adjust y value as needed
 
-    plt.colorbar(cax)
+    plt.xlabel("ε")
+   
+    ax.text(50*np.pi/180, ax.get_rmax() * 1.2, "γ / º", ha='center', va='center')
+
+
+    plt.colorbar(cax, pad=0.1, label=r'μ / $μ_{n}$') #!!! units??
     plt.show()
 
     
