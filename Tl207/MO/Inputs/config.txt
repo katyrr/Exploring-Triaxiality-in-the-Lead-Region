@@ -1,10 +1,10 @@
-********** config file ******* 07/11/24 ******* Test run on Tl207 ***********
+********** config file ******* 10/11/24 ******* Test run on Tl207 ***********
 
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
 * the first word is the variable name
 * the second word is the variable value
-* the third word and beyond are ignored
+* the third word and beyond are ignored (except the deformation parameters)
 
 
 
@@ -21,15 +21,44 @@ A 207
 
 
 ************** deformation parameters - range to run over **************
+*
+* format: type eps gamma   
+* 
+* if type="single", specify one eps and one gamma 
+*					e.g. single 0.3 20
+*					eps<0 for oblate, eps>0 for prolate, 0<gamma<30
+*
+* if type="eps", specify eps range and step, and single gamma
+*				  	 e.g. eps -0.2,0.3,0.1 20 
+*                    * this will cover eps=[-0.2,-0.1,0.0,0.1,0.2,0.3] with gamma=20
+*					 (range is inclusive)
+*					 eps<0 for oblate, eps>0 for prolate, 0<gamma<30
+*
+* if type="gamma", specify single eps and gamma range
+*				  	 e.g. gamma 0.3 0,30,5
+*					 * this will cover gamma=[0,5,10,15,20,25,30] with eps=0.3
+*					 (range is inclusive)
+*					 eps<0 for oblate, eps>0 for prolate, 0<gamma<30
+*
+* if type="mesh", specify the maximum |eps| to reach (inclusive)
+*				  (will cover the full range of gamma)
+*				  uses the parameterisation eps>0, 0<gamma<60, where gamma>30 is oblate
+*				  since (-eps, gamma) is equivalent to (eps, 60-gamma)
+*			      e.g. mesh 1.2
+*                 * this will cover gamma between 0,60 and eps between 0,1.2 
+*                   with an evenly distributed mesh of 91 points 
+*
+*************************************************************************
 
-* can set each to a single values or a range (first,last+1,step)
-eps -1.1,1.2,0.2
-gamma 0,35,5
+
+* single 0.214 0
+* gamma 0.481 0,60,30
+mesh 1.2
 
 
 
 
-******* program settings *********
+*************** program settings *******************
 
 
 mode MO 
