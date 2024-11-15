@@ -634,8 +634,11 @@ if "eps_max" in input_settings:
     data_matrix = [mag_moments, fermi_energies]
     cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / keV']
     
-    gamma_points = np.array(gamma_points)
     eps_points = np.array(eps_points)
+    gamma_points = np.array(gamma_points)
+    for r in range(len(gamma_points)):
+        gamma_points[r] *= np.pi/180
+    
     
     for g in range(len(graphs_to_print)):
         
@@ -652,8 +655,6 @@ if "eps_max" in input_settings:
         
         # (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
         for r in range(len(gamma_points)):
-    
-            gamma_points[r] *= np.pi/180
             plt.polar(gamma_points[r], eps_points[r], 'wx')
                 
         

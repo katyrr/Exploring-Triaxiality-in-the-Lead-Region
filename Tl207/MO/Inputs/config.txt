@@ -52,9 +52,9 @@ A 207
 *********************************************************************************
 
 
-single 0.001 0
+* single 0.001 0
 * gamma 0.481 0,60,30
-* mesh 1.0
+mesh 1.0
 
 
 
@@ -72,7 +72,7 @@ emax 7
 
 iparp + ****** the parity of proton orbitals 
 norbitp 11 *** the number of proton orbitals 
-forbitp 18 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
+forbitp 16 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
 
 iparn + ****** the parity of neutron orbitals 
 norbitn 7 **** the number of neutron orbitals 
