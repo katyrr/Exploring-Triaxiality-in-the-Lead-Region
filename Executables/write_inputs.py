@@ -17,7 +17,7 @@ to debug (use breakpoints) run from console with:
 
 """
 
-
+#%%
 
 
 import numpy as np                                                              # for np.arange(start, end, step)
@@ -32,7 +32,7 @@ config_file_name = "../Inputs/config.txt"
 
 
 
-
+#%%
 
 
 
@@ -134,7 +134,7 @@ if "eps" in input_settings and "gamma" in input_settings:
     gamma_points = []
     for l in range(len(eps_to_test)):
         for p in range(len(gamma_to_test)):
-            eps = np.round(eps_to_test[l], )
+            eps = np.round(eps_to_test[l], 3)
             eps_points.append(eps)
             
             gamma = int(np.round(gamma_to_test[p]))
@@ -154,7 +154,7 @@ if "eps" in input_settings and "gamma" in input_settings:
 elif "eps_max" in input_settings:                                               # then arrange a mesh of 91 evenly distributed (eps,gamma) points to test over
     
     input_settings["eps_max"] = float(input_settings["eps_max"])                # convert from string to float
-    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=16)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=20)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
     
     eps_points = []
     gamma_points = []
@@ -177,7 +177,7 @@ elif "eps_max" in input_settings:                                               
     
     
     
-    
+    #%%
     
     
     
@@ -228,8 +228,8 @@ if (input_settings["mode"] == "MO") :
             new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
-1,0,1                          ISTRCH,ICORR,irec
-9,1                            NKAMY,NNEUPR
+%(istrch)s,0,%(irec)s                          ISTRCH,ICORR,irec
+9,%(nneupr)s                            NKAMY,NNEUPR
 0.120,0.00,0.120,0.00
 0.120,0.00,0.120,0.00
 0.105,0.00,0.105,0.00
@@ -279,7 +279,7 @@ else :
 
 
 
-
+#%%
 
 
 
@@ -317,7 +317,7 @@ subprocess.call(["sh", "./../RunGAMPN.sh"])
 
 
 
-
+#%%
 
 
 ''' CALCULATE FERMI LEVEL '''
@@ -325,6 +325,7 @@ subprocess.call(["sh", "./../RunGAMPN.sh"])
 # work out which is odd
 # half and ceiling for the overall index of the fermi level orbital
 
+print("calcualting fermi level...")
 
 input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
 input_settings["Z"] = int(input_settings["Z"])
@@ -344,13 +345,14 @@ else:
     input_settings["P_or_N"] = "N"
     input_settings["fermi_level"] = math.ceil(input_settings["N"]/2)
 
+print("fermi level = " + str(input_settings["fermi_level"]))
                                                        
 
 
 
 
 
-
+#%%
 
 
 
@@ -414,8 +416,7 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 
 
-
-
+#%%
 
 
 ''' WRITING ASYRMO.DAT FILE '''
@@ -436,10 +437,10 @@ for file in written_file_tags:
 
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
-1,1                                        ISTRCH,IREC
+%(istrch)s,%(irec)s                                        ISTRCH,IREC
 0,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
 %(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,0.210,0.0                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
-19.2,7.4,15,0.0,1.0                     GN0,GN1,IPAIR,CHSI,ETA
+19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
 %(current_orbitals)s  
   3  3  3  3  3  3  3  0  0  0  0  0  0  0  0  0  0  0  0  0  0
   2  2  2  2  2  2  2  0  0  0  0  0  0  0  0  0  0  0  0  0  0
@@ -464,7 +465,7 @@ print("finished writing ASY.DAT files")
 
 
 
-
+#%%
 
 
 
@@ -502,7 +503,7 @@ subprocess.call(["sh", "./../RunASYRMO.sh"])
 
 
 
-
+#%%
 
 
 
@@ -520,9 +521,9 @@ for file in written_file_tags:
 
 '%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
 1,0                               ipkt,iskip
-1                                 isrtch
+%(istrch)s                                 isrtch
 %(Z)s,%(A)s                           Z,AA
-0,1500.,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
+0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
 0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
 
     ''' % input_settings
@@ -546,7 +547,7 @@ print("finished writing PROB.DAT files")
 
 
 
-
+#%%
 
 
 
@@ -581,7 +582,7 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 
 
-
+#%%
 
 ''' READ ASYRMO.OUT FILE '''
 # for each deformation (i.e. each GAMPN.OUT file):
@@ -613,7 +614,7 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 
 
-
+#%%
 
 ''' PLOT GRAPHS'''
 # plots variation in magnetic dipole moment with distortion (only if distortion was input as a mesh)
@@ -623,46 +624,52 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 #     
 #     additionally plots the positions of the data points as white x marks.
 
-if "eps_max" in input_settings:    
-
-    print("\nplotting graph of magnetic dipole moment variation...")
+if "eps_max" in input_settings:   
     
+    graphs_to_print = ["Magnetic Dipole Moment of the Spin I=1/2 state", "Fermi Energy"]#, "Ground State Spin", "First Excitation Energy"]
+    # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
+    
+    fermi_energies = [float(n) for n in fermi_energies]
+    mag_moments = [float(n) for n in mag_moments]
+    data_matrix = [mag_moments, fermi_energies]
+    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / keV']
     
     gamma_points = np.array(gamma_points)
     eps_points = np.array(eps_points)
-    fermi_energies = [float(n) for n in fermi_energies]
-    mag_moments = [float(n) for n in mag_moments]
+    
+    for g in range(len(graphs_to_print)):
+        
+        input_settings["current_graph"] = graphs_to_print[g]
+        print("\nplotting graph of %(current_graph)s variation..." % input_settings)
+        
+        fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+        
+        ax.set_thetamin(0)   # Start angle in degrees
+        ax.set_thetamax(60)  # End angle in degrees
+        
+        theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
+        ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
+        
+        # (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
+        for r in range(len(gamma_points)):
+    
+            gamma_points[r] *= np.pi/180
+            plt.polar(gamma_points[r], eps_points[r], 'wx')
+                
+        
+        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=15)#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+        ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
+    
+        plt.xlabel("ε")
+       
+        ax.text(65*np.pi/180, ax.get_rmax()*1.1, "γ", ha='center', va='center')
     
     
-    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+        plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+        plt.show()
     
-    ax.set_thetamin(0)   # Start angle in degrees
-    ax.set_thetamax(60)  # End angle in degrees
-    
-    theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
-    ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
-    
-    
-    # (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
-    for r in range(len(gamma_points)):
-
-        gamma_points[r] *= np.pi/180
-        plt.polar(gamma_points[r], eps_points[r], 'wx')
-            
-    
-    cax = ax.tricontourf(gamma_points, eps_points, mag_moments, levels=10, vmin=-0.8, vmax=6.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
-    ax.set_title(r'Magnetic Dipole Moment of the Spin I=1/2 State of $^{207}Tl$', va='bottom', y=1.1)  # Adjust y value as needed
-
-    plt.xlabel("ε")
-   
-    ax.text(50*np.pi/180, ax.get_rmax() * 1.2, "γ / º", ha='center', va='center')
-
-
-    plt.colorbar(cax, pad=0.1, label=r'μ / $μ_{n}$') #!!! units??
-    plt.show()
-
-    
-    
-    
-    
-    
+        
+        
+        
+        
+        

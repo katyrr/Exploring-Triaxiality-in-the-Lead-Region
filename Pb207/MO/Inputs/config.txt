@@ -1,4 +1,4 @@
-********** config file ******* 12/11/24 ******* Test run on Tl207 *************
+********** config file ******* 14/11/24 ******* Test run on Pb207 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -12,11 +12,12 @@
 
 **************** nucleus info *************************************************
 
-nucleus Tl207
-Z 81
+nucleus Pb207
+Z 82
 A 207
-*** therefore N = 126 (magic)
-*** and Z is magic 82 - 1 single particle
+*** therefore N = 125 (magic 126 - 1, a hole)
+*** and Z is magic 82
+
 
 
 
@@ -52,7 +53,7 @@ A 207
 *********************************************************************************
 
 
-single 0.001 0
+single -0.058 0
 * gamma 0.481 0,60,30
 * mesh 1.0
 
@@ -74,14 +75,14 @@ iparp + ****** the parity of proton orbitals
 norbitp 11 *** the number of proton orbitals 
 forbitp 18 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
 
-iparn + ****** the parity of neutron orbitals 
-norbitn 7 **** the number of neutron orbitals 
-forbitn 23 *** the first neutron orbital
+iparn - ****** the parity of neutron orbitals 
+norbitn 11 **** the number of neutron orbitals 
+forbitn 18 *** the first neutron orbital
 
-nneupr 1 *** protons (1) neutrons (-1) or both (2)
+nneupr -1 *** protons (1) neutrons (-1) or both (2)
 istrch 1 *** use spherical (0) or stretched (1) coordinates
 
-irec 0 ***** apply 2-body treatment of recoil terms in asy (1) or not (0)
+irec 1 ***** apply 2-body treatment of recoil terms in asy (1) or not (0)
 
 
 ** parameters that are currently still fixed: 
@@ -91,8 +92,7 @@ irec 0 ***** apply 2-body treatment of recoil terms in asy (1) or not (0)
 ** the above may be different for each program?
 
 * icorr 0 **** correct for J+/-/z ?
-* nuu 0 ****** number of coupled oscillator shells (standard 4 
-*** but redundant for istrch=1 and eps4=eps6=omrot=0 since N-shells are pure)
+* nuu 0 ****** number of coupled oscillator shells
 * noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0)
 * omrot 0 **** rotation frequency (0 for PR calculations)
 
@@ -115,7 +115,7 @@ kmax 13 **** max 29, set kmax=ispin if no truncation required
 
 nu 5 ******* the number of orbitals to consider
 
-chsi 1.0 ******* coriolis attenuation (1 for no attenuation)
+chsi 0.0 ******* coriolis attenuation (1 for no attenuation)
 eta 1.0 ******** coriolis attenuation (1 for no attenuation)
 
 
@@ -143,7 +143,7 @@ eta 1.0 ******** coriolis attenuation (1 for no attenuation)
 
 * probamo *
 
-cutoff 2500.0 *** energy cutoff in keV for trans probability and elec/mag moments
+cutoff 1500.0 *** energy cutoff in keV for trans probability and elec/mag moments
 
 
 ** parameters that are currently still fixed: 
