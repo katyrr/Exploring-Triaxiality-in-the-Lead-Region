@@ -1,8 +1,0 @@
- 'SWG10.DAT', 'WSD17.DAT'   FILE3, FILE17
- 1  0                       IPKT, ISKIP
- 0                          IREC
-+11 15 16 17 18 19 20 21 22 23 24 25 ipar,nu,level(j),j=1,nu
--11.      +0.5                 emin,emax                  (for WSDCUPT)
-
- input file for WSDCUP   (IR191WSD.DAT)
-**************************************************************
