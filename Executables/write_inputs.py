@@ -134,7 +134,7 @@ if "eps" in input_settings and "gamma" in input_settings:
     gamma_points = []
     for l in range(len(eps_to_test)):
         for p in range(len(gamma_to_test)):
-            eps = np.round(eps_to_test[l], 3)
+            eps = eps_to_test[l]
             eps_points.append(eps)
             
             gamma = int(np.round(gamma_to_test[p]))
@@ -228,7 +228,7 @@ if (input_settings["mode"] == "MO") :
             new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
-%(istrch)s,0,%(irec)s                          ISTRCH,ICORR,irec
+%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
 9,%(nneupr)s                            NKAMY,NNEUPR
 0.120,0.00,0.120,0.00
 0.120,0.00,0.120,0.00
@@ -366,7 +366,9 @@ print("fermi level = " + str(input_settings["fermi_level"]))
 print("\nreading GAMPN.OUT files...")
 
 asyrmo_inputs      = []                                                         # an empty array to store inputs for asyrmo.dat
-fermi_energies     = []                                                         # an empty array to store the fermi energy at each deformation
+fermi_energies     = []                                                         # for the fermi energy at each deformation
+fermi_indices      = []                                                         # for the index and parity of the fermi level
+fermi_parities     = [] 
 
 for file in written_file_tags :
     
@@ -374,8 +376,11 @@ for file in written_file_tags :
     gampn_out_file = open(gampn_out_file_name, 'r')
     
     lines = gampn_out_file.readlines()
+    
     header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
     
+        
+        
     fermi_level_line = input_settings["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
     if input_settings["fermi_level"] > 40:
         fermi_level_line -= 40
@@ -387,10 +392,14 @@ for file in written_file_tags :
         half_line = whole_line[0:60].strip()                                    # get only the first half of the line
     
     hash_index = half_line.index("#")                                           # use the index of # as a reference point 
-    ipar = half_line[hash_index-2]
+    ipar = half_line[hash_index-2]                                              #!!! rather than reading the parity out like this, just set it as a parameter? 
     single_parity_index = half_line[hash_index+1 : hash_index+3]
     fermi_energy = half_line[hash_index-10 : hash_index-4]
     fermi_energies.append(fermi_energy)
+    fermi_index = int(single_parity_index)
+    #if (ipar=="-"): fermi_index *= 1
+    fermi_parities.append(ipar)
+    fermi_indices.append(fermi_index)
     
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit
         single_parity_index = single_parity_index[0]
@@ -584,8 +593,8 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 #%%
 
-''' READ ASYRMO.OUT FILE '''
-# for each deformation (i.e. each GAMPN.OUT file):
+''' READ PROBAMO.OUT FILE '''
+# for each deformation (i.e. each PROBAMO.OUT file):
 #   work out the line number of the fermi level orbital in the GAMPN.OUT file
 #   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
 #   construct a string for ipar,nu,[level(j),j=1,nu]
@@ -600,8 +609,11 @@ for file in written_file_tags :
     probamo_out_file = open(probamo_out_file_name, 'r')
     
     lines = probamo_out_file.readlines()
-    header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
-    
+    try:
+        header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
+    except ValueError: #!!! need to actually implement this
+        print("Could not read probamo output at deformation " +file +"\nProbably because File18 was not generated from asyrmo, so probamo could not be run.\nTypically caused by incorrect input of orbitals into gampn. Checking error message in asyrmo.out and rerunning from gampn accordingly...")
+        raise
     spin1_line_index = header+3                                                 # calculate the line number of the spin 1/2 state internal transition
     spin1_line = lines[spin1_line_index]
     mag_moments.append(spin1_line[52:60].strip())                               # get only the first half of the line
@@ -626,13 +638,15 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 if "eps_max" in input_settings:   
     
-    graphs_to_print = ["Magnetic Dipole Moment of the Spin I=1/2 state", "Fermi Energy"]#, "Ground State Spin", "First Excitation Energy"]
+    graphs_to_print = ["Magnetic Dipole Moment of the Spin I=1/2 state", "Fermi Energy"] #, "Fermi Level Parity And Index"]#, "Ground State Spin", "First Excitation Energy"]
     # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
     
     fermi_energies = [float(n) for n in fermi_energies]
     mag_moments = [float(n) for n in mag_moments]
-    data_matrix = [mag_moments, fermi_energies]
-    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / keV']
+    data_matrix = [mag_moments, fermi_energies] #, fermi_indices]
+    
+    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$'] #, 'fermi level parity and index']
+    contour_levels = [15, 10] #, [19, 20, 21, 22]] # [-22.5, -21.5, -20.5, -19.5, -18.5 -0.5, 0.5, 18.5, 19.5, 20.5, 21.5, 22.5]]
     
     eps_points = np.array(eps_points)
     gamma_points = np.array(gamma_points)
@@ -653,24 +667,53 @@ if "eps_max" in input_settings:
         theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
         ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
         
-        # (eps,gamma) and (-eps,60-gamma) correspnod to the same shape - covert to positive eps so that it can be plotted in polar coordinates
         for r in range(len(gamma_points)):
             plt.polar(gamma_points[r], eps_points[r], 'wx')
                 
+        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
         
-        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=15)#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
         ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
-    
         plt.xlabel("ε")
-       
-        ax.text(65*np.pi/180, ax.get_rmax()*1.1, "γ", ha='center', va='center')
-    
-    
+        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
         plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
         plt.show()
+
+#%%
+    # Generate example scattered data
+    theta = gamma_points #np.random.uniform(0, 2 * np.pi, 100)  # Angular positions
+    r =  eps_points #np.random.uniform(0, 1, 100)  # Radial positions
+    values = fermi_indices #np.sin(3 * theta) * r  # Example values to plot
     
-        
-        
-        
-        
-        
+    # Create a polar plot
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    
+    ax.set_thetamin(0)   # Start angle in degrees
+    ax.set_thetamax(60)  # End angle in degrees
+    
+    theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
+    ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
+    
+    # Use tripcolor to plot the data
+    # trip = ax.tripcolor(theta, r, values, shading='flat', cmap='viridis')
+    c_level_boundaries = [18.5, 19.5,  20.5, 21.5, 22.5]#[-22.5, -21.5, -21.4, -20.5, -20.4, -19.5, -0.1, 0.1, 19.5, 20.4, 20.5, 21.4, 21.5, 22.5]
+    cax = ax.tricontourf(gamma_points, eps_points, fermi_indices, levels=c_level_boundaries)#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+    
+    
+    for r in range(len(gamma_points)):
+        if fermi_parities[r] == "-":
+            plt.polar(gamma_points[r], eps_points[r], 'w.')
+        else: 
+            plt.polar(gamma_points[r], eps_points[r], 'w+')
+    
+    ax.set_title('Fermi Level Index and Parity of 207Tl', va='bottom', y=1.1)  # Adjust y value as needed
+    plt.xlabel("ε")
+    ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
+    cbar = plt.colorbar(cax, pad=0.1, label='Fermi Level Index and Parity')
+    
+    ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
+    cbar.set_ticks(ticks)
+    cbar.set_ticklabels([19, 20, 21, 22])#['22-', '21-', '', '20-', '', '19-', '', '19+', '', '20+', '', '21+', '22+'])
+
+    plt.show()
+    
+  

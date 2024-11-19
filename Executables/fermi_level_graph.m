@@ -1,0 +1,178 @@
+fermi_levels = [22 NaN NaN NaN NaN     NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                22 22 NaN NaN NaN      NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                22 22 22 NaN NaN       NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                22 22 20 20 NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 21 20 20 20         NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 20 20 20 21         21 NaN NaN NaN NaN         NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                20 20 20 20 20         21 21 NaN NaN NaN          NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 20 20 21 21         21 21 21 NaN NaN           NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 21 20 20 21         21 21 21 21 NaN            NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 21 21 20 21         21 21 21 21 21             NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                21 21 21 21 20         21 21 21 21 21             21 NaN NaN NaN NaN         NaN NaN NaN NaN NaN;
+                21 21 21 21 21         20 20 21 21 21             21 20 NaN NaN NaN          NaN NaN NaN NaN NaN;
+                20 20 20 21 21         21 21 21 21 21             21 21 21 NaN NaN           NaN NaN NaN NaN NaN;
+                20 20 20 20 21         21 21 21 20 21             21 21 20 20 NaN            NaN NaN NaN NaN NaN;
+                19 19 22 22 22         21 20 20 22 21             21 21 21 20 20             NaN NaN NaN NaN NaN;
+                19 19 22 22 22         20 21 21 21 21             21 21 21 21 20             20 NaN NaN NaN NaN;
+                22 22 20 21 21         21 21 21 21 21             21 21 21 21 22             22 20 NaN NaN NaN;
+                22 20 20 20 20         21 21 21 21 21             20 20 21 21 21             20 20 20 NaN NaN;
+                21 21 21 21 21         21 21 20 21 21             20 20 21 21 21             21 21 21 21 NaN;
+                22 22 20 20 21         20 20 21 21 21             21 20 20 20 21             20 21 21 21 21];
+
+fermi_energies =   [6.0187 NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.0561 6.0908 NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.1074 6.1654 6.1922 NaN    NaN       NaN    NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.1647 6.2312 6.2263 6.2235 NaN       NaN    NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.2070 6.1493 6.1442 6.1447 6.1451    NaN    NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.1786 6.1599 6.1700 6.1276 6.0990    6.0956 NaN    NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.0885 6.0795 6.0774 6.0967 6.1288    6.1199 6.1454 NaN    NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.0673 6.0808 6.0599 6.0271 6.0856    6.1460 6.0914 6.1013 NaN    NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.1284 6.1158 6.0713 6.0674 6.0648    6.1013 6.1241 6.0486 6.0470 NaN        NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    6.0517 6.0555 6.0654 6.0609 6.0984    6.0571 6.0318 6.0589 6.0266 5.9991     NaN    NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    5.9713 5.9733 5.9855 6.0589 6.0554    6.0550 6.0674 6.0315 5.9870 5.9905     5.9554 NaN    NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    5.8955 5.9247 5.9628 5.9821 5.9858    5.9913 5.9944 6.0076 6.0146 6.0078     5.9410 5.9202 NaN    NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    5.8064 5.8081 5.8169 5.8336 5.8994    5.9602 5.9183 5.8965 5.8896 5.8945     5.9034 5.9049 5.9094 NaN    NaN       NaN    NaN    NaN    NaN    NaN;
+                    5.7705 5.7637 5.7677 5.7779 5.8140    5.8041 5.8769 5.8927 5.8947 5.8686     5.9180 5.9470 5.9120 5.9410 NaN       NaN    NaN    NaN    NaN    NaN;
+                    5.7603 5.7388 5.7197 5.7469 5.7857    5.8220 5.8695 5.8952 5.8734 5.8787     5.8699 5.8760 5.8997 5.9052 5.9128    NaN    NaN    NaN    NaN    NaN;
+                    5.7639 5.7499 5.7044 5.7204 5.7912    5.8360 5.8385 5.8678 5.8646 5.8282     5.8368 5.8277 5.8361 5.8404 5.8390    5.8507 NaN    NaN    NaN    NaN;
+                    5.6460 5.6567 5.6940 5.6721 5.6339    5.6929 5.7558 5.7446 5.7338 5.7668     5.7943 5.7930 5.7888 5.7996 5.8214    5.8663 5.8807 NaN    NaN    NaN;
+                    5.6186 5.6524 5.6331 5.6228 5.5956    5.6228 5.6661 5.7049 5.6988 5.5846     5.6203 5.7166 5.7031 5.7511 5.7594    5.7405 5.7481 5.7518 NaN    NaN;
+                    5.5765 5.5552 5.5273 5.5191 5.5217    5.5520 5.5619 5.6013 5.6300 5.6358     5.6111 5.6029 5.6518 5.6659 5.6645    5.7085 5.6275 5.6767 5.6869 NaN;
+                    5.5029 5.5122 5.4913 5.4366 5.4187    5.4760 5.4812 5.4855 5.5113 5.5616     5.5576 5.5646 5.6124 5.5841 5.6263    5.6126 5.6174 5.6064 5.6440 5.6556];
+
+
+eps_points =   [0.001 NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.054 0.054 NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.106 0.106 0.106 NaN   NaN       NaN   NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.159 0.159 0.159 0.159 NaN       NaN   NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.211 0.211 0.211 0.211 0.211     NaN   NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.264 0.264 0.264 0.264 0.264     0.264 NaN   NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.316 0.316 0.316 0.316 0.316     0.316 0.316 NaN   NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.369 0.369 0.369 0.369 0.369     0.369 0.369 0.369 NaN   NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.422 0.422 0.422 0.422 0.422     0.422 0.422 0.422 0.422 NaN        NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.474 0.474 0.474 0.474 0.474     0.474 0.474 0.474 0.474 0.474      NaN   NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.527 0.527 0.527 0.527 0.527     0.527 0.527 0.527 0.527 0.527      0.527 NaN   NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.579 0.579 0.579 0.579 0.579     0.579 0.579 0.579 0.579 0.579      0.579 0.579 NaN   NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.632 0.632 0.632 0.632 0.632     0.632 0.632 0.632 0.632 0.632      0.632 0.632 0.632 NaN   NaN       NaN   NaN   NaN   NaN   NaN;
+                0.685 0.685 0.685 0.685 0.685     0.685 0.685 0.685 0.685 0.685      0.685 0.685 0.685 0.685 NaN       NaN   NaN   NaN   NaN   NaN;
+                0.737 0.737 0.737 0.737 0.737     0.737 0.737 0.737 0.737 0.737      0.737 0.737 0.737 0.737 0.737     NaN   NaN   NaN   NaN   NaN;
+                0.79 0.79 0.79 0.79 0.79          0.79 0.79 0.79 0.79 0.79           0.79 0.79 0.79 0.79 0.79          0.79  NaN   NaN   NaN   NaN;
+                0.842 0.842 0.842 0.842 0.842     0.842 0.842 0.842 0.842 0.842      0.842 0.842 0.842 0.842 0.842     0.842 0.842 NaN   NaN   NaN;
+                0.895 0.895 0.895 0.895 0.895     0.895 0.895 0.895 0.895 0.895      0.895 0.895 0.895 0.895 0.895     0.895 0.895 0.895 NaN   NaN;
+                0.947 0.947 0.947 0.947 0.947     0.947 0.947 0.947 0.947 0.947      0.947 0.947 0.947 0.947 0.947     0.947 0.947 0.947 0.947 NaN;
+                1.0 1.0 1.0 1.0 1.0               1.0 1.0 1.0 1.0 1.0                1.0 1.0 1.0 1.0 1.0               1.0 1.0 1.0 1.0 1.0];
+
+
+gamma_points = [0 NaN NaN NaN NaN       NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 60  NaN NaN NaN       NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 30  60  NaN NaN       NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 20  40  60  NaN       NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 15  30  45  60        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 12  24  36  48        60  NaN NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 10  20  30  40        50  60  NaN NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 9   17  26  34        43  51  60  NaN NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 8   15  22  30        28  45  52  60  NaN        NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 7   13  20  27        33  40  47  53  60         NaN NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 6   12  18  24        30  36  42  48  54         60  NaN NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 5   11  16  22        27  33  38  44  49         55  60  NaN NaN NaN        NaN NaN NaN NaN NaN;
+                0 5   10  15  20        25  30  35  40  45         50  55  60  NaN NaN        NaN NaN NaN NaN NaN;
+                0 5   9   14  18        23  28  32  27  42         46  51  55  60  NaN        NaN NaN NaN NaN NaN;
+                0 4   9   13  17        21  26  30  34  39         43  47  51  56  60         NaN NaN NaN NaN NaN;
+                0 4   8   12  16        20  24  28  32  36         40  44  48  52  56         60  NaN NaN NaN NaN;
+                0 4   8   11  15        19  22  26  30  34         38  41  45  49  52         56  60  NaN NaN NaN;
+                0 4   7   11  14        18  21  25  28  32         35  39  42  46  49         53  56  60  NaN NaN;
+                0 3   7   10  13        17  20  23  27  30         33  37  40  43  47         50  53  57  60  NaN;
+                0 3   6   9   13        16  19  22  25  28         32  35  38  41  44         47  51  54  57  60];
+
+
+fermi_parities =   [1   NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   1   NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   -1  -1  NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   -1  -1  -1     NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   -1  -1  -1  1      1   NaN NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    -1  -1  -1  -1  -1     1   1   NaN NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   -1  -1  1   1      1   -1  -1  NaN NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   -1  -1  1      1   1   -1  -1  NaN    NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   1   -1  1      1   1   1   -1 -1      NaN NaN NaN NaN NaN    NaN NaN NaN NaN NaN;   
+                    1   1   1   1   -1     1   -1  1   1   -1     -1  NaN NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   1   -1  -1     -1  -1  -1  -1  1      -1  1   NaN NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   1   -1  1      1   1   1   -1  -1     -1  -1  -1  NaN NaN    NaN NaN NaN NaN NaN;
+                    1   1   1   1   1      1   1   1   -1  1      -1  -1  1   1   NaN    NaN NaN NaN NaN NaN;
+                    1   1   -1  -1  -1     1   -1  -1  1   1      -1  -1  -1  1   1      NaN NaN NaN NaN NaN;
+                    1   1   -1  -1  -1     1   -1  1   -1  1      -1  -1  -1  -1  1      1   NaN NaN NaN NaN;
+                    -1  -1  1   -1  -1     -1  -1  1   1   1      1   -1  -1  -1  -1     -1  1   NaN NaN NaN;
+                    -1  1   1   1   1      -1  1   1   1   1      -1  -1  1   -1  -1     1   1   1   NaN NaN;
+                    1   1   1   1   1      1   1   -1  -1  1      -1  -1  1   -1  1      1   -1  -1  -1  NaN;
+                    1   1   -1  -1  1      -1  -1  1   1   1      1   -1  -1  -1  1      -1  1   -1  -1  -1];
+
+
+my_cmap = [1 0 1; %22 mag
+           1 0 0; %21 red
+           1 1 0; %20 yellow
+           1 1 1; %19 white
+           0.999 1 0.999; %18
+           0.998 1 0.998; %17
+           0.997 1 0.997; %16 
+           0.996 1 0.996; %15
+           0.995 1 0.995; %14
+           0.994 1 0.994; %13
+           0.993 1 0.993; %12
+           0.992 1 0.992; %11
+           0.991 1 0.991; %10
+           0.999 1 0.999; %9
+           0.998 1 0.998; %8
+           0.997 1 0.997; %7
+           0.996 1 0.996; %6
+           0.995 1 0.995; %5
+           0.994 1 0.994; %4
+           0.993 1 0.993; %3
+           0.992 1 0.992; %2
+           0.991 1 0.991; %1
+           0.999 1 0.999; %0
+           0.998 1 0.998; %-1
+           0.997 1 0.997; %-2 
+           0.996 1 0.996; %-3
+           0.995 1 0.995; %-4
+           0.994 1 0.994; %-5
+           0.993 1 0.993; %-6
+           0.992 1 0.992; %-7
+           0.991 1 0.991; %-8
+           0.999 1 0.999; %-9
+           0.998 1 0.998; %-10
+           0.997 1 0.997; %-11 
+           0.996 1 0.996; %-12
+           0.995 1 0.995; %-13
+           0.994 1 0.994; %-14
+           0.993 1 0.993; %-15
+           0.992 1 0.992; %-16
+           0.991 1 0.991; %-17
+           0.990 1 0.990; %-18
+           0 1 0; %-19 green
+           0 1 1; %-20 cyan
+           0 0 1; %-21 blue
+           0 0 0]; %-22 black
+        
+
+f_fl = figure;
+ax_fl = axes;
+surf(ax_fl, eps_points.*cos(deg2rad(gamma_points)), eps_points.*sin(deg2rad(gamma_points)), fermi_energies, fermi_levels.*fermi_parities)
+title(ax_fl, "fermi levels of 207Tl");
+xlabel(ax_fl, "epsilon*cos(gamma)");
+ylabel(ax_fl, "epsilon*sin(gamma)");
+zlabel(ax_fl, "fermi level energy / hω");
+colormap(ax_fl, my_cmap);
+cb = colorbar(ax_fl);
+set(get(cb, 'Label'), 'String', "fermi level index and parity");
+cb.Ticks = [-22, -21, -20, 19, 20, 21 22];
+%ax_fe = axes;
+
+%surf(ax_fl, eps_points.*cos(deg2rad(gamma_points)), eps_points.*sin(deg2rad(gamma_points)), fermi_levels)
+
+
+%plot3(eps_points'.*cos(deg2rad(gamma_points')), eps_points'.*sin(deg2rad(gamma_points')), fermi_energies', '-x')
+%plot3(eps_points', gamma_points', fermi_energies')
+
+%plot3(eps_points'.*cos(deg2rad(gamma_points')), eps_points'.*sin(deg2rad(gamma_points')), fermi_levels', '-x')
+
+%title(ax_fe, "fermi energy surface of 207Tl")
