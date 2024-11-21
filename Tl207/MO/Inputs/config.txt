@@ -70,13 +70,15 @@ mode MO
 emin 0
 emax 7
 
-iparp + ****** the parity of proton orbitals 
-norbitp 11 *** the number of proton orbitals 
-forbitp 16 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
+par + ******* the parity calculated in gampn and displayed in probamo
 
-iparn + ****** the parity of neutron orbitals 
-norbitn 7 **** the number of neutron orbitals 
-forbitn 28 *** the first neutron orbital
+** removed the following paragraph - now calculating inputs in code
+*iparp + ****** the parity of proton orbitals 
+*norbitp 11 *** the number of proton orbitals 
+*forbitp 16 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
+*iparn + ****** the parity of neutron orbitals 
+*norbitn 7 **** the number of neutron orbitals 
+*forbitn 28 *** the first neutron orbital
 
 nneupr 1 *** protons (1) neutrons (-1) or both (2)
 istrch 1 *** use spherical (0) or stretched (1) coordinates

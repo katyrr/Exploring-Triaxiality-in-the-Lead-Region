@@ -1,4 +1,4 @@
-********** config file ******* 14/11/24 ******* Test run on Pb207 *************
+********** config file ******* 21/11/24 ******* Test run on Pb208 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -12,10 +12,10 @@
 
 **************** nucleus info *************************************************
 
-nucleus Pb207
+nucleus Pb208
 Z 82
-A 207
-*** therefore N = 125 (magic 126 - 1, a hole)
+A 208
+*** therefore N is magic 126
 *** and Z is magic 82
 
 
@@ -69,8 +69,8 @@ mode MO **** either MO or WS (not yet implemented WS)
 istrch 1 **** use spherical (0) or stretched (1) coordinates
 ************* also used in asyrmo
 
-nneupr -1 *** protons (1) neutrons (-1) or both (2)
-par + ******* the parity calculated in gampn and displayed in probamo
+nneupr 1 *** protons (1) neutrons (-1) or both (2)
+par - ******* the parity calculated in gampn and displayed in probamo
 
 irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
 ************* also used in asyrmo
@@ -96,7 +96,7 @@ eta 1.0 **** coriolis attenuation (1 for no attenuation)
 
 * ipout ********** number of core states to print
 
-e2plus 0.9 ***** for calculating MoI (fixes value of the first E(2+))
+e2plus 0.4085 ***** for calculating MoI (fixes value of the first E(2+))
 e2plur 0.0 ******* for calculating MoI (fixes value of the second E(2+), not recommended)
 * gn0 19.2 ******* for calculating pairing strength (19.2 standard for N, Z > 60)
 * gn1 7.4 ******** for calculating pairing strength (7.4 standard for N, Z > 60)

@@ -174,7 +174,64 @@ elif "eps_max" in input_settings:                                               
     
             
     
+
+
+
+#%%
+
+
+''' CALCULATE FERMI LEVEL '''
+# using input A and Z
+# work out which is odd
+# half and ceiling for the overall index of the fermi level orbital
+
+print("calcualting fermi level...")
+
+input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
+input_settings["Z"] = int(input_settings["Z"])
+input_settings["N"] = input_settings["A"]-input_settings["Z"]                   # calculate N = A - Z
+
+if input_settings["nneupr"] == "1":
+    print("calculating for odd protons...")
+    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level
+    if input_settings["Z"]%2 == 0:
+        print("this nucleus has even Z; check inputs (the code will treat this as the core and assume an odd proton on top)")
     
+elif input_settings["nneupr"]  == "-1":    
+    print("calculating for odd neutrons...")
+    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
+    if input_settings["Z"]%2 == 0:
+        print("this nucleus has even N; check inputs (the code will treat this as the core and assume an odd neutron on top)")
+    
+
+else:
+    print("missing nneupr input")
+    raise ValueError
+
+
+print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
+
+
+
+
+num_to_calc = 11
+
+first_index = input_settings["fermi_level"]//2 - num_to_calc//2
+last_index = input_settings["fermi_level"]//2 + num_to_calc//2
+if num_to_calc%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
+    last_index += 1
+orbitals = np.r_[first_index:last_index]
+
+gampn_orbitals = str(num_to_calc)                                             # e.g. orbitals_string = "4 19 20 21 22" (set the parity later)
+for l in orbitals:
+    gampn_orbitals += " "
+    gampn_orbitals += str(l)
+    
+input_settings["gampn_orbitals"] = gampn_orbitals
+
+
+
+
     
     
     #%%
@@ -198,6 +255,7 @@ written_file_tags = []                                                          
 
 if (input_settings["mode"] == "MO") :
     
+    '''
     porbs = ""
     porb_index = int(input_settings["forbitp"])
     for o in range(int(input_settings["norbitp"])):
@@ -211,6 +269,9 @@ if (input_settings["mode"] == "MO") :
         norbs += (" " + str(norb_index))
         norb_index += 1
     input_settings["norbs"] = norbs
+    '''
+   # %(iparp)s%(norbitp)s%(porbs)s                  IPARP, NORBITP, LEVELP
+   # %(iparn)s%(norbitn)s%(norbs)s                  IPARN, NORBITN, LEVELN
     
     
     for p in range(len(gamma_points)):
@@ -243,8 +304,8 @@ if (input_settings["mode"] == "MO") :
 0.054,0.69,0.062,0.26
 0,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
-%(iparp)s%(norbitp)s%(porbs)s                  IPARP, NORBITP, LEVELP
-%(iparn)s%(norbitn)s%(norbs)s                  IPARN, NORBITN, LEVELN
+%(par)s%(gampn_orbitals)s                 IPARP, NORBITP, LEVELP
+%(par)s%(gampn_orbitals)s                  IPARN, NORBITN, LEVELN
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
@@ -315,37 +376,6 @@ subprocess.call(["sh", "./../RunGAMPN.sh"])
 
 
 
-
-
-#%%
-
-
-''' CALCULATE FERMI LEVEL '''
-# using input A and Z
-# work out which is odd
-# half and ceiling for the overall index of the fermi level orbital
-
-print("calcualting fermi level...")
-
-input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
-input_settings["Z"] = int(input_settings["Z"])
-input_settings["N"] = input_settings["A"]-input_settings["Z"]                   # calculate N = A - Z
-
-if input_settings["A"]%2 == 0:
-    print("A is even, but this program applies to odd-A nuclei. Check inputs! Proceeding with calculation for protons...")
-    input_settings["P_or_N"] = "P"
-    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level
-    
-elif input_settings["Z"]%2  == 1:    
-    print("Z is odd; calculating for protons...")
-    input_settings["P_or_N"] = "P"
-    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
-else:
-    print("N is odd; calculating for neutrons...")
-    input_settings["P_or_N"] = "N"
-    input_settings["fermi_level"] = math.ceil(input_settings["N"]/2)
-
-print("fermi level = " + str(input_settings["fermi_level"]))
                                                        
 
 
@@ -401,7 +431,7 @@ for file in written_file_tags :
     fermi_parities.append(ipar)
     fermi_indices.append(fermi_index)
     
-    if single_parity_index[1] == ")":                                           # in case the index is only a single digit
+    if single_parity_index[1] == ")":                                           # in case the index is only a single digit, ignore the ")" that will have been caught
         single_parity_index = single_parity_index[0]
     
     nu = int(input_settings["nu"])
@@ -447,13 +477,13 @@ for file in written_file_tags:
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
 %(istrch)s,%(irec)s                                        ISTRCH,IREC
-0,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
-%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,0.210,0.0                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
+%(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
+%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
 19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
 %(current_orbitals)s  
-  3  3  3  3  3  3  3  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  2  2  2  2  2  2  2  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  1  1  1  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
+  5  5  5  5  3  3  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  3  3  3  3  2  2  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  2  3  1  1  1  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
 
     ''' % input_settings
     
