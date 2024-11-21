@@ -461,6 +461,10 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 ''' WRITING ASYRMO.DAT FILE '''
 # for each deformation, writes a .DAT file for ASYRMO using the file tag to name, and the provided example as a base
 
+input_settings["nantj"] = input_settings["nantj"].replace(",", " ")
+input_settings["noutj"] = input_settings["noutj"].replace(",", " ")
+input_settings["ipout"] = input_settings["ipout"].replace(",", " ")
+
 count = 0
 for file in written_file_tags:
     
@@ -481,9 +485,9 @@ for file in written_file_tags:
 %(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
 19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
 %(current_orbitals)s  
-  5  5  5  5  3  3  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  3  3  3  3  2  2  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  2  3  1  1  1  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
+  %(nantj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
 
     ''' % input_settings
     
