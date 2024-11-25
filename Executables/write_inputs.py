@@ -626,6 +626,7 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 
 
+input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
 
 #%%
 
@@ -640,6 +641,8 @@ print("\nreading PROBAMO.OUT files...")
 #mag_moments     = []                                                            # an empty array to store the magnetic dipole moment at each deformation
 gs_mag_mom = []
 gs_spins = []
+fx_energies = []
+
 
 for file in written_file_tags :
     
@@ -659,13 +662,26 @@ for file in written_file_tags :
     mag_moments.append(spin1_line[52:60].strip())                               # get the magnetic moment
     '''
     
+    fx_energy = 10000 # initialise to a large value so that the first comparison with a read value will be true
     for l in range(len(lines)):
         this_line = lines[l].strip()
         if this_line[0:3] == "0.0":
-            gs_line_index = l
-            break
-    gs_mag_mom.append(this_line[-8:].strip())                             # get the magnetic moment
-    gs_spins.append(this_line[4:10].strip())
+            gs_line = this_line
+        elif input_settings["fx_spin"] in this_line[4:10]:
+            this_energy = float(this_line[0:5].strip())
+            if this_energy < fx_energy:
+                fx_energy = this_energy
+                fx_line = this_line
+    gs_mag_mom.append(gs_line[-8:].strip())                             # get the magnetic moment
+    gs_spins.append(gs_line[4:10].strip())
+    
+    
+    try:
+        fx_energies.append(float(fx_line[0:5].strip()))
+    except NameError:
+        print("could not find the first excited state (no states of the appropriate spin)")
+        raise
+        
 
 
 print("finished reading %d files\n" % len(asyrmo_inputs))
@@ -681,7 +697,7 @@ for r in range(len(gamma_points)):
 fermi_energies = [float(n) for n in fermi_energies]
 gs_mag_mom = [float(n) for n in gs_mag_mom]
 gs_spins = [float(n[0])/2 for n in gs_spins]
-data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins]
+data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins, fx_energies]
 
 fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
 gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
@@ -691,12 +707,12 @@ fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
 gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
 gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
 
-graphs_to_print = ["Magnetic Dipole Moment the Ground State", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin"] #, "First Excitation Energy"]
+graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin", "First Excitation Energy"]
 # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
-data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I']
+data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I', "First Excitation Energy / keV"]
 
 
-    
+experimental_data = [float(input_settings["gs_mu"]), [], [], float(input_settings["gs_spin"]), float(input_settings["fx_energy"])]
 
 #%%
 
@@ -712,11 +728,12 @@ if "eps_max" in input_settings:
     
     
     
-    contour_levels = [15, 10, fermi_index_colour_levels, gs_spin_colour_levels]
-    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks]
+    contour_levels = [8, 10, fermi_index_colour_levels, gs_spin_colour_levels, 10]
+    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks,0]
     
-    dc = ['c','c','d','d'] # record whether each data set is continuous or discrete
+    dc = ['c','c','d','d','c'] # record whether each data set is continuous or discrete
     
+    agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
     
     for g in range(len(graphs_to_print)):
         
@@ -725,28 +742,45 @@ if "eps_max" in input_settings:
         
         fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
         
-        ax.set_thetamin(0)   # Start angle in degrees
-        ax.set_thetamax(60)  # End angle in degrees
+        ax.set_thetamin(0)   
+        ax.set_thetamax(60)  
         ax.set_rmax(1.0)
         
-        theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
-        ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
+        theta_ticks = np.arange(0, 70, 10)  
+        ax.set_xticks(np.radians(theta_ticks))  
         
         for r in range(len(gamma_points)):
-            if fermi_parities[r] == "-":
+            if experimental_data[g]:
+                error = abs(data_matrix[g][r] - experimental_data[g])
+                if error/experimental_data[g] < 0.1:                            # if they agree within 5%, plot the data point in red rather than white
+                    if g==0:
+                        agreed_points.append(r)
+                    if fermi_parities[r] == "-":
+                        dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-)")
+                    elif fermi_parities[r] == "+":
+                        plus_hit, = plt.polar(gamma_points[r], eps_points[r], 'r+', label="parity (+)")
+                else:
+                    if r in agreed_points:
+                         # this point is no longer in agreement, so remove it from the list
+                        del agreed_points[agreed_points.index(r)]
+                    if fermi_parities[r] == "-":
+                        dot, = plt.polar(gamma_points[r], eps_points[r], 'w.', label="parity (-)")
+                    else: # fermi_parities[r] == "+":
+                        plus, = plt.polar(gamma_points[r], eps_points[r], 'w+', label="parity (+)")
+            elif fermi_parities[r] == "-":
                 dot, = plt.polar(gamma_points[r], eps_points[r], 'k.', label="parity (-)")
-            elif fermi_parities[r] == "+":
+            else: # fermi_parities[r] == "+":
                 plus, = plt.polar(gamma_points[r], eps_points[r], 'k+', label="parity (+)")
         
         
-        legend = ax.legend(handles=[dot, plus], loc="upper left", bbox_to_anchor=(-0.1, 1.0))
+        legend = ax.legend(handles=[dot_hit, plus_hit], loc="upper left", bbox_to_anchor=(-0.1, 1.05))
         legend.set_title("data points")
         
-        handles, labels = ax.get_legend_handles_labels()
+        '''handles, labels = ax.get_legend_handles_labels()
         for h in handles:
             h.set_markerfacecolor('white')  # Set marker color to white on the graph, but don't update the legend afterwards (so that the legend markers remain black for visibility)
             h.set_markeredgecolor('white')
-                
+        '''     
         if dc[g] == 'c':
             cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
             plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
@@ -774,6 +808,9 @@ if "eps_max" in input_settings:
         ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
        
         plt.show()
+        
+        print("number of points that agreed with experimental data:" + str(len(agreed_points)))
+        
 
 elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)
     
@@ -784,27 +821,29 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
         input_settings["current_graph"] = graphs_to_print[g]
         print("\nplotting graph of %(current_graph)s variation..." % input_settings)
         
-        data = np.array(data_matrix[g])
         fig, ax = plt.subplots()
         
+        ax.set_title('Variation of %(current_graph)s With %(line)s in %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
+        plt.xlabel("%(line)s" % input_settings)
+        plt.ylabel(data_axis_labels[g])
         
         if input_settings["line"] == "eps":
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
             print("plotting line graph of variation with eps...")
-            plt.plot(eps_to_test, data, '-x', label=gamma_to_test)
+            if len(experimental_data[g])>0:
+                plt.plot(eps_to_test, np.full(len(eps_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+            plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma)
             
         else: # input_settings["line"] == "gamma":
             input_settings["line"] = "γ / º"
             input_settings["fixed"] = "ε"
             print("plotting line graph of variation with gamma...")
-            plt.plot(gamma_to_test, data, '-x', label=eps_to_test)
-        
-        ax.set_title('variation of %(current_graph)s with %(line)s in %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
-        plt.xlabel("%(line)s" % input_settings)
-        plt.ylabel(data_axis_labels[g])
+            if len(experimental_data[g])>0:
+                plt.plot(gamma_to_test, np.full(len(gamma_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+            plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps)
         
         legend = ax.legend()
-        legend.set_title("%(fixed)s" % input_settings)
+        #legend.set_title("%(fixed)s" % input_settings)
        
         plt.show()

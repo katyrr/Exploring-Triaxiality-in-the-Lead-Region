@@ -18,6 +18,11 @@ A 191
 *** therefore N is 114
 
 
+*** experimental results: ******* ground state and first excited state
+gs_mu 0.1502 ******** mu_N
+gs_spin 1.5 
+fx_energy 82.4 ****** keV
+fx_spin 0.5 
 
 
 
@@ -51,9 +56,9 @@ A 191
 
 
 * single 0.170 25 ***** eps gamma
-gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
+* gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
-* mesh 1.0 ************ max_eps
+mesh 1.0 ************ max_eps
 
 
 
