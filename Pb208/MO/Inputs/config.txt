@@ -1,4 +1,4 @@
-********** config file ******* 21/11/24 ******* Test run on Pb208 *************
+********** onfig file ******* 21/11/24 ******* Test run on Pb208 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -87,7 +87,7 @@ imin 1 ***** min spin I
 ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-e2plus 0.4085 ***** for calculating MoI (fixes value of the first E(2+))
+e2plus 4.085 ***** for calculating MoI (fixes value of the first E(2+))
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 chsi 1.0 *** coriolis attenuation (1 for no attenuation)
@@ -109,7 +109,7 @@ ipout 3,2,2,2,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 3000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+cutoff 8000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 
 
 ** parameters that are currently still fixed: 

@@ -635,7 +635,9 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 print("\nreading PROBAMO.OUT files...")
 
-mag_moments     = []                                                            # an empty array to store the magnetic dipole moment at each deformation
+#mag_moments     = []                                                            # an empty array to store the magnetic dipole moment at each deformation
+gs_mag_mom = []
+gs_spins = []
 
 for file in written_file_tags :
     
@@ -643,22 +645,49 @@ for file in written_file_tags :
     probamo_out_file = open(probamo_out_file_name, 'r')
     
     lines = probamo_out_file.readlines()
+    
+    ''' # this is assuming that the ground state will be spin 1/2!
     try:
         header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
-    except ValueError: #!!! need to actually implement this
-        print("Could not read probamo output at deformation " +file +"\nProbably because File18 was not generated from asyrmo, so probamo could not be run.\nTypically caused by incorrect input of orbitals into gampn. Checking error message in asyrmo.out and rerunning from gampn accordingly...")
+    except ValueError: #!!! need to actually implement a backup plan for this - read error message and return to gampn with a new input
+        print("Could not read probamo output at deformation " +file +"\nProbably because File18 was not generated from asyrmo, so probamo could not be run.\nTypically caused by incorrect input of orbitals into gampn.")
         raise
     spin1_line_index = header+3                                                 # calculate the line number of the spin 1/2 state internal transition
     spin1_line = lines[spin1_line_index]
-    mag_moments.append(spin1_line[52:60].strip())                               # get only the first half of the line
+    mag_moments.append(spin1_line[52:60].strip())                               # get the magnetic moment
+    '''
     
+    for l in range(len(lines)):
+        this_line = lines[l].strip()
+        if this_line[0:3] == "0.0":
+            gs_line_index = l
+            break
+    gs_mag_mom.append(this_line[-8:].strip())                             # get the magnetic moment
+    gs_spins.append(this_line[4:10].strip())
 
-    
 
 print("finished reading %d files\n" % len(asyrmo_inputs))
 
+#%%
 
+eps_points = np.array(eps_points)
+gamma_points = np.array(gamma_points)
+for r in range(len(gamma_points)):
+    gamma_points[r] *= np.pi/180
 
+fermi_energies = [float(n) for n in fermi_energies]
+gs_mag_mom = [float(n) for n in gs_mag_mom]
+gs_spins = [float(n[0])/2 for n in gs_spins]
+data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins]
+
+fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
+gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
+
+fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
+fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
+gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
+gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
+    
 
 #%%
 
@@ -672,20 +701,19 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 if "eps_max" in input_settings:   
     
-    graphs_to_print = ["Magnetic Dipole Moment of the Spin I=1/2 state", "Fermi Energy"] #, "Fermi Level Parity And Index"]#, "Ground State Spin", "First Excitation Energy"]
+    graphs_to_print = ["Magnetic Dipole Moment the Ground State", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin"] #, "First Excitation Energy"]
     # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
     
-    fermi_energies = [float(n) for n in fermi_energies]
-    mag_moments = [float(n) for n in mag_moments]
-    data_matrix = [mag_moments, fermi_energies] #, fermi_indices]
+
     
-    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$'] #, 'fermi level parity and index']
-    contour_levels = [15, 10] #, [19, 20, 21, 22]] # [-22.5, -21.5, -20.5, -19.5, -18.5 -0.5, 0.5, 18.5, 19.5, 20.5, 21.5, 22.5]]
+    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I']
     
-    eps_points = np.array(eps_points)
-    gamma_points = np.array(gamma_points)
-    for r in range(len(gamma_points)):
-        gamma_points[r] *= np.pi/180
+    
+    
+    contour_levels = [15, 10, fermi_index_colour_levels, gs_spin_colour_levels]
+    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks]
+    
+    dc = ['c','c','d','d'] # record whether each data set is continuous or discrete
     
     
     for g in range(len(graphs_to_print)):
@@ -697,57 +725,53 @@ if "eps_max" in input_settings:
         
         ax.set_thetamin(0)   # Start angle in degrees
         ax.set_thetamax(60)  # End angle in degrees
+        ax.set_rmax(1.0)
         
         theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
         ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
         
         for r in range(len(gamma_points)):
-            plt.polar(gamma_points[r], eps_points[r], 'wx')
-                
-        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+            if fermi_parities[r] == "-":
+                dot, = plt.polar(gamma_points[r], eps_points[r], 'k.', label="parity (-)")
+            elif fermi_parities[r] == "+":
+                plus, = plt.polar(gamma_points[r], eps_points[r], 'k+', label="parity (+)")
         
+        
+        legend = ax.legend(handles=[dot, plus], loc="upper left", bbox_to_anchor=(-0.1, 1.0))
+        legend.set_title("data points")
+        
+        handles, labels = ax.get_legend_handles_labels()
+        for h in handles:
+            h.set_markerfacecolor('white')  # Set marker color to white on the graph, but don't update the legend afterwards (so that the legend markers remain black for visibility)
+            h.set_markeredgecolor('white')
+                
+        if dc[g] == 'c':
+            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+            plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+        else:
+            ''' # this isn't much good... the interpolation is too obvious. At least with the contour plot, each point has a correct and clearly-defined colour
+            c_level_boundaries = contour_levels[g]
+            cax = ax.tripcolor(gamma_points, eps_points, data_matrix[g], shading='flat', cmap='viridis')
+            cbar = plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
+            cbar.set_ticks(ticks)#c_level_boundaries[:-1])
+            cbar.set_ticklabels(cbar_ticks[g])
+            '''
+            c_level_boundaries = contour_levels[g]
+            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+            cbar = plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
+            cbar.set_ticks(ticks)
+            cbar.set_ticklabels(cbar_ticks[g])#['22-', '21-', '', '20-', '', '19-', '', '19+', '', '20+', '', '21+', '22+'])
+            
+           
+            
+            
         ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
         plt.xlabel("ε")
         ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
-        plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+       
         plt.show()
 
 #%%
-    # Generate example scattered data
-    theta = gamma_points #np.random.uniform(0, 2 * np.pi, 100)  # Angular positions
-    r =  eps_points #np.random.uniform(0, 1, 100)  # Radial positions
-    values = fermi_indices #np.sin(3 * theta) * r  # Example values to plot
     
-    # Create a polar plot
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-    
-    ax.set_thetamin(0)   # Start angle in degrees
-    ax.set_thetamax(60)  # End angle in degrees
-    
-    theta_ticks = np.arange(0, 70, 10)  # Create tick locations in degrees
-    ax.set_xticks(np.radians(theta_ticks))  # Convert to radians for set_xticks
-    
-    # Use tripcolor to plot the data
-    # trip = ax.tripcolor(theta, r, values, shading='flat', cmap='viridis')
-    c_level_boundaries = [18.5, 19.5,  20.5, 21.5, 22.5]#[-22.5, -21.5, -21.4, -20.5, -20.4, -19.5, -0.1, 0.1, 19.5, 20.4, 20.5, 21.4, 21.5, 22.5]
-    cax = ax.tricontourf(gamma_points, eps_points, fermi_indices, levels=c_level_boundaries)#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
-    
-    
-    for r in range(len(gamma_points)):
-        if fermi_parities[r] == "-":
-            plt.polar(gamma_points[r], eps_points[r], 'w.')
-        else: 
-            plt.polar(gamma_points[r], eps_points[r], 'w+')
-    
-    ax.set_title('Fermi Level Index and Parity of 207Tl', va='bottom', y=1.1)  # Adjust y value as needed
-    plt.xlabel("ε")
-    ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
-    cbar = plt.colorbar(cax, pad=0.1, label='Fermi Level Index and Parity')
-    
-    ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
-    cbar.set_ticks(ticks)
-    cbar.set_ticklabels([19, 20, 21, 22])#['22-', '21-', '', '20-', '', '19-', '', '19+', '', '20+', '', '21+', '22+'])
-
-    plt.show()
-    
-  
