@@ -117,6 +117,7 @@ if "eps" in input_settings and "gamma" in input_settings:
     
     input_settings["eps"] = input_settings["eps"].split(",") 
     if len(input_settings["eps"]) > 1 :                                             # then a range of eps values has been input
+        input_settings["line"] = "eps"
         eps_to_test =  np.arange(float(input_settings["eps"][0]),  
                                 float(input_settings["eps"][1])+float(input_settings["eps"][2]), # add a step to the final value (because range is non-inclusive)
                                 float(input_settings["eps"][2]))
@@ -124,6 +125,7 @@ if "eps" in input_settings and "gamma" in input_settings:
     
     input_settings["gamma"] = input_settings["gamma"].split(",")                    # same for gamma
     if len(input_settings["gamma"]) > 1 :                                             
+        input_settings["line"] = "gamma"
         gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
                                 float(input_settings["gamma"][1])+float(input_settings["gamma"][2]), 
                                 float(input_settings["gamma"][2]))
@@ -672,6 +674,7 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 
 eps_points = np.array(eps_points)
 gamma_points = np.array(gamma_points)
+gamma_points = [float(n) for n in gamma_points]
 for r in range(len(gamma_points)):
     gamma_points[r] *= np.pi/180
 
@@ -687,6 +690,12 @@ fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1
 fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
 gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
 gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
+
+graphs_to_print = ["Magnetic Dipole Moment the Ground State", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin"] #, "First Excitation Energy"]
+# for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
+data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I']
+
+
     
 
 #%%
@@ -700,13 +709,6 @@ gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
 #     additionally plots the positions of the data points as white x marks.
 
 if "eps_max" in input_settings:   
-    
-    graphs_to_print = ["Magnetic Dipole Moment the Ground State", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin"] #, "First Excitation Energy"]
-    # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
-    
-
-    
-    cbar_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I']
     
     
     
@@ -747,19 +749,19 @@ if "eps_max" in input_settings:
                 
         if dc[g] == 'c':
             cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
-            plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+            plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         else:
             ''' # this isn't much good... the interpolation is too obvious. At least with the contour plot, each point has a correct and clearly-defined colour
             c_level_boundaries = contour_levels[g]
             cax = ax.tripcolor(gamma_points, eps_points, data_matrix[g], shading='flat', cmap='viridis')
-            cbar = plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
             cbar.set_ticks(ticks)#c_level_boundaries[:-1])
             cbar.set_ticklabels(cbar_ticks[g])
             '''
             c_level_boundaries = contour_levels[g]
             cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
-            cbar = plt.colorbar(cax, pad=0.1, label=cbar_labels[g])
+            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
             cbar.set_ticks(ticks)
             cbar.set_ticklabels(cbar_ticks[g])#['22-', '21-', '', '20-', '', '19-', '', '19+', '', '20+', '', '21+', '22+'])
@@ -773,5 +775,36 @@ if "eps_max" in input_settings:
        
         plt.show()
 
-#%%
+elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)
     
+    
+    for g in range(len(graphs_to_print)):
+
+        
+        input_settings["current_graph"] = graphs_to_print[g]
+        print("\nplotting graph of %(current_graph)s variation..." % input_settings)
+        
+        data = np.array(data_matrix[g])
+        fig, ax = plt.subplots()
+        
+        
+        if input_settings["line"] == "eps":
+            input_settings["line"] = "ε"
+            input_settings["fixed"] = "γ / º"
+            print("plotting line graph of variation with eps...")
+            plt.plot(eps_to_test, data, '-x', label=gamma_to_test)
+            
+        else: # input_settings["line"] == "gamma":
+            input_settings["line"] = "γ / º"
+            input_settings["fixed"] = "ε"
+            print("plotting line graph of variation with gamma...")
+            plt.plot(gamma_to_test, data, '-x', label=eps_to_test)
+        
+        ax.set_title('variation of %(current_graph)s with %(line)s in %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
+        plt.xlabel("%(line)s" % input_settings)
+        plt.ylabel(data_axis_labels[g])
+        
+        legend = ax.legend()
+        legend.set_title("%(fixed)s" % input_settings)
+       
+        plt.show()

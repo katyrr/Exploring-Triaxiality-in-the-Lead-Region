@@ -50,9 +50,10 @@ A 191
 *********************************************************************************
 
 
-* single 0.170 25
-* gamma 0.481 0,60,30
-mesh 1.0
+* single 0.170 25 ***** eps gamma
+gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
+* eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
+* mesh 1.0 ************ max_eps
 
 
 
