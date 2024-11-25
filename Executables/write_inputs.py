@@ -749,6 +749,7 @@ if "eps_max" in input_settings:
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))  
         
+
         for r in range(len(gamma_points)):
             if experimental_data[g]:
                 error = abs(data_matrix[g][r] - experimental_data[g])
@@ -756,24 +757,32 @@ if "eps_max" in input_settings:
                     if g==0:
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
-                        dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-)")
+                        dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-) hit")
+   
                     elif fermi_parities[r] == "+":
-                        plus_hit, = plt.polar(gamma_points[r], eps_points[r], 'r+', label="parity (+)")
+                        plus_hit, = plt.polar(gamma_points[r], eps_points[r], 'r+', label="parity (+) hit")
                 else:
                     if r in agreed_points:
                          # this point is no longer in agreement, so remove it from the list
                         del agreed_points[agreed_points.index(r)]
                     if fermi_parities[r] == "-":
-                        dot, = plt.polar(gamma_points[r], eps_points[r], 'w.', label="parity (-)")
+                        dot_miss, = plt.polar(gamma_points[r], eps_points[r], 'w.', label="parity (-) miss")
                     else: # fermi_parities[r] == "+":
-                        plus, = plt.polar(gamma_points[r], eps_points[r], 'w+', label="parity (+)")
+                        plus_miss, = plt.polar(gamma_points[r], eps_points[r], 'w+', label="parity (+) miss")
+                        
+                # plot two black data points (unseen outside the data range) to use for the legend
+                dot, = plt.polar(3.0, 0.2, 'k.', label="parity (-)")
+                plus, = plt.polar(3.0, 0.2, 'k+', label="parity (+)")
             elif fermi_parities[r] == "-":
                 dot, = plt.polar(gamma_points[r], eps_points[r], 'k.', label="parity (-)")
             else: # fermi_parities[r] == "+":
                 plus, = plt.polar(gamma_points[r], eps_points[r], 'k+', label="parity (+)")
+                
+            
+            
+            
         
-        
-        legend = ax.legend(handles=[dot_hit, plus_hit], loc="upper left", bbox_to_anchor=(-0.1, 1.05))
+        legend = ax.legend(handles=[dot, plus], loc="upper left", bbox_to_anchor=(-0.1, 1.05))
         legend.set_title("data points")
         
         '''handles, labels = ax.get_legend_handles_labels()
