@@ -1,4 +1,4 @@
-********** correct config file ******* 21/11/24 ******* Test run on Ir191 *************
+********** correct config file ******* 27/11/24 ******* Test run on Ir191 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -14,13 +14,21 @@
 
 nucleus Ir191
 Z 77
-A 191
+A 191 
 *** therefore N is 114
 
 
-*** experimental results: ******* ground state and first excited state
+*** N is still 114, this is just removing the odd proton
+
+
+
+************** experimental results *******************************************
+
+*** ground state magnetic dipole moment and spin:
 gs_mu 0.1502 ******** mu_N
 gs_spin 1.5 
+
+*** first excited state energy and spin:
 fx_energy 82.4 ****** keV
 fx_spin 0.5 
 
@@ -55,10 +63,11 @@ fx_spin 0.5
 *********************************************************************************
 
 
+
 * single 0.170 25 ***** eps gamma
-* gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
+gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
-mesh 1.0 ************ max_eps
+* mesh 1.0 ************ max_eps
 
 
 
@@ -74,7 +83,7 @@ mode MO **** either MO or WS (not yet implemented WS)
 istrch 1 **** use spherical (0) or stretched (1) coordinates
 ************* also used in asyrmo
 
-nneupr -1 *** protons (1) neutrons (-1) or both (2)
+nneupr 1 *** protons (1) neutrons (-1) or both (2)
 par + ******* the parity calculated in gampn and displayed in probamo
 
 irec 1 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
@@ -92,17 +101,17 @@ imin 1 ***** min spin I
 ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-e2plus 0.210 ***** for calculating MoI (fixes value of the first E(2+))
+e2plus 0.210 **** 0.210 ***** for calculating MoI (fixes value of the first E(2+))
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-chsi 1.0 *** coriolis attenuation (1 for no attenuation)
+chsi 0.0 *** coriolis attenuation (1 for no attenuation)
 eta 1.0 **** coriolis attenuation (1 for no attenuation)
 
-nu 5 ******* the number of orbitals to consider *** this is different from nuu=0 in gampn!
+nu 7 ******* the number of orbitals to consider *** this is different from nuu=0 in gampn!
 
-nantj 4,4,4,4,3,3,2 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
-noutj 3,3,3,3,2,2,1 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
-ipout 3,2,2,2,1,1,1 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
+nantj 3,3,3,3,3,3,3 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+noutj 2,2,2,2,2,2,2 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+ipout 1,2,1,1,1,1,0 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
 
 
@@ -114,7 +123,7 @@ ipout 3,2,2,2,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 8000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+cutoff 2000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 
 
 ** parameters that are currently still fixed: 

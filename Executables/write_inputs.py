@@ -6,13 +6,13 @@ Created on Tue Oct  8 10:07:25 2024
 @author: katyrr
 
 
-run from Outputs directory in terminal, with command: 
+run from Outputs directory in terminal, with: 
     python3 ../../../Executables/write_inputs.py
 
-or run from console with: 
+or run from Spyder console with: 
     runfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/Tl207/MO/Outputs')
 
-to debug (use breakpoints) run from console with: 
+to debug (use breakpoints) run from Spyder console with: 
     debugfile('/Users/katyrr/Downloads/MSci Project/Code/Executables/write_inputs.py', wdir='/Users/katyrr/Downloads/MSci Project/Code/tl207/MO/Outputs')
 
 """
@@ -818,7 +818,7 @@ if "eps_max" in input_settings:
        
         plt.show()
         
-        print("number of points that agreed with experimental data:" + str(len(agreed_points)))
+        print("\n\nnumber of points that agreed with experimental data: " + str(len(agreed_points)))
         
 
 elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)
@@ -840,7 +840,7 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
             print("plotting line graph of variation with eps...")
-            if len(experimental_data[g])>0:
+            if experimental_data[g]:
                 plt.plot(eps_to_test, np.full(len(eps_to_test), float(experimental_data[g])), 'r-', label="experimental value")
             plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma)
             
@@ -848,7 +848,7 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
             input_settings["line"] = "γ / º"
             input_settings["fixed"] = "ε"
             print("plotting line graph of variation with gamma...")
-            if len(experimental_data[g])>0:
+            if experimental_data[g]:
                 plt.plot(gamma_to_test, np.full(len(gamma_to_test), float(experimental_data[g])), 'r-', label="experimental value")
             plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps)
         
