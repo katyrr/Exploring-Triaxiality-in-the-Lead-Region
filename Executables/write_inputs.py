@@ -156,7 +156,7 @@ if "eps" in input_settings and "gamma" in input_settings:
 elif "eps_max" in input_settings:                                               # then arrange a mesh of 91 evenly distributed (eps,gamma) points to test over
     
     input_settings["eps_max"] = float(input_settings["eps_max"])                # convert from string to float
-    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=20)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=25)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
     
     eps_points = []
     gamma_points = []
@@ -627,6 +627,8 @@ subprocess.call(["sh", "./../RunPROBAMO.sh"])
 
 
 input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
+input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
+input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
 
 #%%
 
@@ -642,6 +644,8 @@ print("\nreading PROBAMO.OUT files...")
 gs_mag_mom = []
 gs_spins = []
 fx_energies = []
+sx_energies = []
+tx_energies = []
 
 
 for file in written_file_tags :
@@ -664,6 +668,8 @@ for file in written_file_tags :
     '''
     
     fx_energy = 10000 # initialise to a large value so that the first comparison with a read value will be true
+    sx_energy = fx_energy
+    tx_energy = fx_energy
     for l in range(len(lines)):
         this_line = lines[l].strip()
         try:
@@ -678,21 +684,32 @@ for file in written_file_tags :
             if this_energy < fx_energy:
                 fx_energy = this_energy
                 fx_line = this_line
+        elif input_settings["sx_spin"] == this_spin:
+            this_energy = float(this_line[0:5].strip())
+            if this_energy < sx_energy:
+                sx_energy = this_energy
+                sx_line = this_line
+        elif input_settings["tx_spin"] == this_spin:
+            this_energy = float(this_line[0:5].strip())
+            if this_energy < tx_energy:
+                tx_energy = this_energy
+                tx_line = this_line
     gs_mag_mom.append(gs_line[-8:].strip())                             # get the magnetic moment
     gs_spins.append(gs_line[4:10].strip())
     
     
     try:
         fx_energies.append(float(fx_line[0:5].strip()))
+        sx_energies.append(float(sx_line[0:5].strip()))
+        tx_energies.append(float(sx_line[0:5].strip()))
     except NameError:
-        print("could not find the first excited state (no states of the appropriate spin)")
+        print("could not find the excited states (no states of the appropriate spins)")
         raise
         
 
 
 print("finished reading %d files\n" % len(asyrmo_inputs))
 
-#%%
 
 eps_points = np.array(eps_points)
 gamma_points = np.array(gamma_points)
@@ -703,7 +720,7 @@ for r in range(len(gamma_points)):
 fermi_energies = [float(n) for n in fermi_energies]
 gs_mag_mom = [float(n) for n in gs_mag_mom]
 gs_spins = [float(n[0])/2 for n in gs_spins]
-data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins, fx_energies]
+data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins, fx_energies, sx_energies, tx_energies]
 
 fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
 gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
@@ -713,14 +730,14 @@ fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
 gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
 gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
 
-graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin", "First Excitation Energy"]
+graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
 # for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
-data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I', "First Excitation Energy / keV"]
+data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
 
 
-experimental_data = [float(input_settings["gs_mu"]), [], [], float(input_settings["gs_spin"]), float(input_settings["fx_energy"])]
+experimental_data = [float(input_settings["gs_mu"]), [], [], float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
+error_tolerance = [0.1, 0.0, 0.0, 0.1, 20, 20] #!!!
 
-#%%
 
 ''' PLOT GRAPHS'''
 # plots variation in magnetic dipole moment with distortion (only if distortion was input as a mesh)
@@ -734,10 +751,10 @@ if "eps_max" in input_settings:
     
     
     
-    contour_levels = [8, 10, fermi_index_colour_levels, gs_spin_colour_levels, 10]
-    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks,0]
+    contour_levels = [8, 10, fermi_index_colour_levels, gs_spin_colour_levels, 10, 10]
+    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks,0,0]
     
-    dc = ['c','c','d','d','c'] # record whether each data set is continuous or discrete
+    dc = ['c','c','d','d','c', 'c'] # record whether each data set is continuous or discrete
     
     agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
     
@@ -759,8 +776,8 @@ if "eps_max" in input_settings:
         for r in range(len(gamma_points)):
             if experimental_data[g]:
                 error = abs(data_matrix[g][r] - experimental_data[g])
-                if error/experimental_data[g] < 0.1:                            # if they agree within 5%, plot the data point in red rather than white
-                    if g==0:
+                if error < error_tolerance[g]:  #                  error/experimental_data[g] < 0.1: #        #!!! if they agree within 5%, plot the data point in red rather than white
+                    if g==0:                                                    # there's nothing to disagree with yet, so this point agrees
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
                         dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-) hit")
@@ -824,7 +841,7 @@ if "eps_max" in input_settings:
        
         plt.show()
         
-        print("\n\nnumber of points that agreed with experimental data: " + str(len(agreed_points)))
+    print("\n\nnumber of points that agreed with experimental data: " + str(len(agreed_points)))
         
 
 elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)

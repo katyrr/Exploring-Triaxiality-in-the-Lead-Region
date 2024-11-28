@@ -18,9 +18,6 @@ A 191
 *** therefore N is 114
 
 
-*** N is still 114, this is just removing the odd proton
-
-
 
 ************** experimental results *******************************************
 
@@ -29,8 +26,16 @@ gs_mu 0.1502 ******** mu_N
 gs_spin 1.5 
 
 *** first excited state energy and spin:
-fx_energy 82.4 ****** keV
-fx_spin 2.5 
+fx_energy 82.4 ******* keV
+fx_spin 0.5
+
+*** second excited state energy and spin:
+sx_energy 129.4 ****** keV
+sx_spin 2.5 
+
+*** second excited state energy and spin:
+tx_energy 343.3 ****** keV ***** the third one is actually 179.0 keV to a 3/2+ state, but there are complications in reading that from the output (since the same spin is also the ground state)
+tx_spin 3.5
 
 
 
@@ -65,9 +70,9 @@ fx_spin 2.5
 
 
 * single 0.170 25 ***** eps gamma
-gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
+* gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
-* mesh 1.0 ************ max_eps
+mesh 0.2 ************ max_eps
 
 
 
@@ -101,7 +106,7 @@ imin 1 ***** min spin I
 ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-e2plus 0.210 **** 0.210 ***** for calculating MoI (fixes value of the first E(2+))
+e2plus 0.187 **** 0.210 ***** for calculating MoI (fixes value of the first E(2+))
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 chsi 0.0 *** coriolis attenuation (1 for no attenuation)
