@@ -651,12 +651,13 @@ for file in written_file_tags :
     
     lines = probamo_out_file.readlines()
     
-    ''' # this is assuming that the ground state will be spin 1/2!
     try:
         header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
     except ValueError: #!!! need to actually implement a backup plan for this - read error message and return to gampn with a new input
         print("Could not read probamo output at deformation " +file +"\nProbably because File18 was not generated from asyrmo, so probamo could not be run.\nTypically caused by incorrect input of orbitals into gampn.")
         raise
+    
+    ''' # this is assuming that the ground state will be spin 1/2!
     spin1_line_index = header+3                                                 # calculate the line number of the spin 1/2 state internal transition
     spin1_line = lines[spin1_line_index]
     mag_moments.append(spin1_line[52:60].strip())                               # get the magnetic moment
@@ -665,9 +666,14 @@ for file in written_file_tags :
     fx_energy = 10000 # initialise to a large value so that the first comparison with a read value will be true
     for l in range(len(lines)):
         this_line = lines[l].strip()
+        try:
+            dash_index = this_line.index(" - ")
+            this_spin = this_line[dash_index-3:dash_index]
+        except ValueError:
+            continue
         if this_line[0:3] == "0.0":
             gs_line = this_line
-        elif input_settings["fx_spin"] in this_line[4:10]:
+        elif input_settings["fx_spin"] == this_spin:
             this_energy = float(this_line[0:5].strip())
             if this_energy < fx_energy:
                 fx_energy = this_energy

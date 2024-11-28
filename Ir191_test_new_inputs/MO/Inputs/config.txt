@@ -30,7 +30,7 @@ gs_spin 1.5
 
 *** first excited state energy and spin:
 fx_energy 82.4 ****** keV
-fx_spin 0.5 
+fx_spin 2.5 
 
 
 
