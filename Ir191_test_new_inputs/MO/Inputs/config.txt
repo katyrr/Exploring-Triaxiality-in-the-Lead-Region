@@ -106,7 +106,7 @@ imin 1 ***** min spin I
 ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-e2plus 0.317 **** 0.210 *****  0.187 ****  for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.210 **** 0.317 *****  0.187 ****  for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 chsi 0.0 *** coriolis attenuation (1 for no attenuation)
