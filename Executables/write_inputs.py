@@ -736,7 +736,7 @@ data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi
 
 
 experimental_data = [float(input_settings["gs_mu"]), [], [], float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
-error_tolerance = [0.1, 0.0, 0.0, 0.1, 20, 20] #!!!
+error_tolerance = [1.0, 0.0, 0.0, 0.1, 100, 100] #!!!
 
 
 ''' PLOT GRAPHS'''
@@ -776,7 +776,7 @@ if "eps_max" in input_settings:
         for r in range(len(gamma_points)):
             if experimental_data[g]:
                 error = abs(data_matrix[g][r] - experimental_data[g])
-                if error < error_tolerance[g]:  #                  error/experimental_data[g] < 0.1: #        #!!! if they agree within 5%, plot the data point in red rather than white
+                if error < error_tolerance[g]:  #   error/experimental_data[g] < 0.1: #                      #!!! if they agree within 5%, plot the data point in red rather than white
                     if g==0:                                                    # there's nothing to disagree with yet, so this point agrees
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
@@ -842,9 +842,23 @@ if "eps_max" in input_settings:
         plt.show()
         
     print("\n\nnumber of points that agreed with experimental data: " + str(len(agreed_points)))
+    for p in agreed_points:
+        print("point %d: ε=%.3f, γ=%d" % (p, eps_points[p], gamma_points[p]*180/np.pi))
         
 
 elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)
+
+    # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
+    correct_spin_range = []
+    start_flag = False
+    for i in range(len(gs_spins)):
+        if gs_spins[i] == experimental_data[3] and not start_flag: # correct and range hasn't started yet
+            start_flag = True
+            correct_spin_range.append(i)
+        elif gs_spins[i] != experimental_data[3] and start_flag: # incorrect and range has started
+            start_flag = False
+            correct_spin_range.append(i)
+            
     
     
     for g in range(len(graphs_to_print)):
@@ -859,12 +873,17 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
         plt.xlabel("%(line)s" % input_settings)
         plt.ylabel(data_axis_labels[g])
         
-        if input_settings["line"] == "eps":
+        if input_settings["line"] == "eps" or input_settings["line"] == "ε":
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
             print("plotting line graph of variation with eps...")
             if experimental_data[g]:
                 plt.plot(eps_to_test, np.full(len(eps_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+            for r in range(len(correct_spin_range)):
+                plt.plot([eps_to_test[correct_spin_range[r]], eps_to_test[correct_spin_range[r]]], [min(data_matrix[g])*0.9,max(data_matrix[g])*1.1], 'b-', label="range of correct ground state spin")
+                if r+1 < len(correct_spin_range) and r%2 == 0:
+                    plt.plot([eps_to_test[correct_spin_range[r]], eps_to_test[correct_spin_range[r+1]]], [min(data_matrix[g]*0.9),min(data_matrix[g]*0.9)], 'b-')
+                    plt.plot([eps_to_test[correct_spin_range[r]], eps_to_test[correct_spin_range[r+1]]], [max(data_matrix[g]*1.1),max(data_matrix[g]*1.1)], 'b-')
             plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma)
             
         else: # input_settings["line"] == "gamma":
@@ -873,6 +892,22 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
             print("plotting line graph of variation with gamma...")
             if experimental_data[g]:
                 plt.plot(gamma_to_test, np.full(len(gamma_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+            for r in range(len(correct_spin_range)):
+                if correct_spin_range[r] == 0: # the first value of gamma in the range
+                    start_range = gamma_to_test[correct_spin_range[r]]-1
+                else:
+                    start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], gamma_to_test[correct_spin_range[r]]])
+                    
+                plt.plot([start_range, start_range], [min(data_matrix[g])*0.9,max(data_matrix[g])*1.1], 'b-', label="range of correct ground state spin")
+                
+                if r%2==0:
+                    if r+1 == len(correct_spin_range): # the last value of gamma in the range has the correct spin
+                
+                    else:
+                        end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], gamma_to_test[correct_spin_range[r+1]]])
+                    
+                    plt.plot([start_range, end_range], [min(data_matrix[g])*0.9,min(data_matrix[g])*0.9], 'b-')
+                    plt.plot([start_range, end_range], [max(data_matrix[g])*1.1,max(data_matrix[g])*1.1], 'b-')
             plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps)
         
         legend = ax.legend()

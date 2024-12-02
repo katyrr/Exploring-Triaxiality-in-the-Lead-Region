@@ -1,4 +1,4 @@
-********** config file ******* 12/11/24 ******* Test run on Tl207 *************
+********** config file ******* 29/11/24 ******* Applying Ir191 success to Tl207 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -6,7 +6,15 @@
 * the second word is the variable value
 * the third word and beyond are ignored (except for the deformation parameters)
 *
-
+*
+* key parameters to check every time you run this code:
+***** Z, A
+***** experimental data (double and triple check!)
+***** deformation
+***** nneupr (odd proton or neutron?)
+***** par (expected ground state parity?)
+***** e2plus (core first 2+ excited state energy)
+***** cutoff (max energy level to print in probamo)
 
 
 
@@ -18,6 +26,27 @@ A 207
 *** therefore N = 126 (magic)
 *** and Z is magic 82 - 1 single particle
 
+*** core is 206Hg
+*** which has first 2+ excited state at 1068.2 keV
+
+
+************** experimental results *******************************************
+
+*** ground state magnetic dipole moment and spin:
+gs_mu 1.876 ******** mu_N
+gs_spin 0.5 
+
+*** first excited state energy and spin:
+fx_energy 351.1 ******* keV
+fx_spin 1.5
+
+*** second excited state energy and spin:
+sx_energy 1682.6 ****** keV
+sx_spin 2.5 
+
+*** third excited state energy and spin:
+tx_energy 2675.7 ****** keV ***** the third one is actually 179.0 keV to a 3/2+ state, but there are complications in reading that from the output (since the same spin is also the ground state)
+tx_spin 2.5
 
 
 
@@ -32,13 +61,11 @@ A 207
 * if type="eps", specify eps range and step, and single gamma
 *			e.g. eps -0.2,0.3,0.1 20 
 *           * this will cover eps=[-0.2,-0.1,0.0,0.1,0.2,0.3] with gamma=20
-*			(range is inclusive)
 *			eps<0 for oblate, eps>0 for prolate, 0<gamma<30
 *
 * if type="gamma", specify single eps and gamma range
 *			e.g. gamma 0.3 0,30,5
 *			* this will cover gamma=[0,5,10,15,20,25,30] with eps=0.3
-*			(range is inclusive)
 *			eps<0 for oblate, eps>0 for prolate, 0<gamma<30
 *
 * if type="mesh", specify the maximum |eps| to reach (inclusive)
@@ -47,14 +74,16 @@ A 207
 *			since (-eps, gamma) is equivalent to (eps, 60-gamma)
 *			e.g. mesh 1.2
 *           * this will cover gamma between 0,60 and eps between 0,1.2 
-*           with an evenly distributed mesh of 91 points 
+*           with an evenly distributed mesh of points 
 *
 *********************************************************************************
 
 
-* single 0.0000001 0
-* gamma 0.481 0,60,30
-mesh 1.0
+
+* single 0.170 25 ***** eps gamma
+* gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
+eps 0.001,0.5,0.01 0 *** min_eps,max_eps,step gamma
+* mesh 0.2 ************ max_eps
 
 
 
@@ -62,49 +91,23 @@ mesh 1.0
 ******************** program settings ************************************
 
 
-mode MO 
+mode MO **** either MO or WS (not yet implemented WS)
 
 
 * gampn *
 
-emin 0
-emax 7
-
-par + ******* the parity calculated in gampn and displayed in probamo
-
-** removed the following paragraph - now calculating inputs in code
-*iparp + ****** the parity of proton orbitals 
-*norbitp 11 *** the number of proton orbitals 
-*forbitp 16 *** the first proton orbital *** e.g. +11 18 19 ... 27 28.
-*iparn + ****** the parity of neutron orbitals 
-*norbitn 7 **** the number of neutron orbitals 
-*forbitn 28 *** the first neutron orbital
+istrch 1 **** use spherical (0) or stretched (1) coordinates
+************* also used in asyrmo
 
 nneupr 1 *** protons (1) neutrons (-1) or both (2)
-istrch 1 *** use spherical (0) or stretched (1) coordinates
+par + ******* the parity calculated in gampn and displayed in probamo
 
-irec 0 ***** apply 2-body treatment of recoil terms in asy (1) or not (0)
-icorr 0 **** correct for J+/-/z ?
+irec 1 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
+************* also used in asyrmo
+icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-
-** parameters that are currently still fixed: 
-
-* ipkt 1 ***** number of data sets to read from file17 
-* iskip **** number of data sets to skip before collecting ipkt *** for asy, prob 
-** the above may be different for each program?
-
-* nuu 0 ****** number of coupled oscillator shells (standard 4 
-*** but redundant for istrch=1 and eps4=eps6=omrot=0 since N-shells are pure)
-* noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0)
-* omrot 0 **** rotation frequency (0 for PR calculations)
-
-* nprot 8 **** number of proton oscillator shells (max 10)
-* nneutr 8 *** number of neutron oscillator shells (max 10)
-
-* itrans 0 *** if odd-odd, transform wfncs to NLls basis ?
-* nshelp 0 *** if odd-odd, and pure N-shells, which N-shell for levelp(j) ? 
-* nsheln 0 *** if odd-odd, and pure N-shells, which N-shell for leveln(k) ?
-
+emin 5.0
+emax 6.0 ****** range of energies in which to calculate s.p. wvfncs
 
 
 
@@ -112,32 +115,23 @@ icorr 0 **** correct for J+/-/z ?
 
 imin 1 ***** min spin I 
 ispin 13 *** max spin I
+kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-kmax 13 **** max 29, set kmax=ispin if no truncation required
+e2plus 0.210 *****  0.187 **** 1.068 ****  for calculating MoI (fixes value of the first E(2+))
+e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-nu 5 ******* the number of orbitals to consider
+chsi 0.0 *** coriolis attenuation (1 for no attenuation)
+eta 1.0 **** coriolis attenuation (1 for no attenuation)
 
-chsi 1.0 ******* coriolis attenuation (1 for no attenuation)
-eta 1.0 ******** coriolis attenuation (1 for no attenuation)
+nu 7 ******* the number of orbitals to consider *** this is different from nuu=0 in gampn!
+
+nantj 3,3,3,3,3,3,3 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+noutj 2,2,2,2,2,2,2 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+ipout 1,2,1,1,1,1,0 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
 
-** parameters that are currently still fixed: 
 
-* nmin 4 **** min N-shell in deformed s.p. wvfncs
-* nmax 4 ****
 
-* vmi 0 ********** account for core states? (else assume rigid rotor core)
-* iarcut 8 ******* number of core states included for each core spin
-* a00 0.0188 ***** parameter for vmi
-* stiff 100.00 *** parameter for vmi
-* ipout ********** number of core states to print
-
-* e2plus 0.210 *** for calculating MoI
-* e2plur 0.0 ***** for calculating MoI
-* gn0 19.2 ******* for calculating pairing strength (19.2 standard for N, Z > 60)
-* gn1 7.4 ******** for calculating pairing strength (7.4 standard for N, Z > 60)
-* ipair 15 ******* number of orbitals ± fermi level to include in pairing calculations
-****************** (15 standard for N, Z > 60)
 
 
 
@@ -145,7 +139,7 @@ eta 1.0 ******** coriolis attenuation (1 for no attenuation)
 
 * probamo *
 
-cutoff 2500.0 *** energy cutoff in keV for trans probability and elec/mag moments
+cutoff 2000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 
 
 ** parameters that are currently still fixed: 
@@ -161,3 +155,44 @@ cutoff 2500.0 *** energy cutoff in keV for trans probability and elec/mag moment
 * bs4p 0.000
 
 
+
+************** parameters that are fixed in the code, and should not need to be changed: ***************
+
+* gampn ************************************************************************************************
+
+* ipkt 1 ***** number of data sets to read
+* iskip 0 **** number of data sets to skip before collecting ipkt
+************** these are just for calculating multiple deformations in a single run
+
+* nuu 0 ****** number of coupled oscillator shells 
+**************(meaningless when N-shells are pure - when eps4/6=0 and omrot=0 and istrch = 1)
+
+* noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0) (1 for PR calculations)
+* omrot 0 **** rotation frequency (0 for PR calculations)
+
+* nprot 8 **** number of proton oscillator shells (max 10)
+* nneutr 8 *** number of neutron oscillator shells (max 10)
+
+* itrans 0 *** if odd-odd, transform wfncs to NLls basis ?
+* nshelp 0 *** if odd-odd, and pure N-shells, which N-shell for levelp(j) ? 
+* nsheln 0 *** if odd-odd, and pure N-shells, which N-shell for leveln(k) ?
+
+* NKAMYL 0 *** the number of N-Shells for which KAPPA and MY are dependent on L 
+**************(requires subsequent provision of the values of KAPPA and MY at each L and N)
+
+* asyrmo ***********************************************************************************************
+
+vmi 0 ************ account for core states (1) or assume rigid rotor core (0, standard)
+* nmin 4 ********* min N-shell in deformed s.p. wvfncs
+* nmax 4 ********* max
+* iarcut 8 ******* number of core states included for each core spin
+* a00 0.0188 ***** parameter for vmi
+* stiff 100.00 *** parameter for vmi (both calculated from Harris Parameters)
+****************** these parameters are only used if vmi = 1
+
+* gn0 19.2 ******* for calculating pairing strength (19.2 standard for N, Z > 60)
+* gn1 7.4 ******** for calculating pairing strength (7.4 standard for N, Z > 60)
+* ipair 15 ******* number of orbitals ± fermi level to include in pairing calculations
+****************** (15 standard for N, Z > 60)
+
+* probamo *********************************************************************************************
