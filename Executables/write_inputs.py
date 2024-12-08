@@ -6,7 +6,7 @@ Created on Tue Oct  8 10:07:25 2024
 @author: katyrr
 
 
-run from Outputs directory in terminal, with: 
+run from Outputs directory folder in terminal, with: 
     python3 ../../../Executables/write_inputs.py
 
 or run from Spyder console with: 
@@ -41,16 +41,16 @@ config_file_name = "../Inputs/config.txt"
 # counts and outputs the number of non-empty and non-comment lines (should be equal to the number of variables input in the config file)
 # expects each line to have the format:    var_name value
 # outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
-# tests whether deformation has been input as a range or as a single value, and creates a list of values to test (which may contain just one value)
+# tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
 
 config_file = open(config_file_name, 'r')
 print("reading from config file...\n")
 
 
-line_count = 0                                                                  # start a counter for lines read
-all_lines_count = 0                                                             # start a counter for all lines (including empty lines and comments)
-bad_lines = []                                                                  # create an empty list to store indices of bad lines
+line_count = 0                                                                  # start a counter for lines read (not including ignored lines)
+all_lines_count = 0                                                             # start a counter for all lines  (including empty lines and comments)
+bad_lines = []                                                                  # create an empty list to store indices of bad lines, so that they can be reported
 
 input_settings = {}                                                             # create an empty dictionary to hold settings for input
 
@@ -62,25 +62,25 @@ for line in config_file:
     line_string = line.strip()                                                  # extract text from line
     if line_string == "" : continue                                             # skip blank rows
     if line_string[0] == "*" : continue                                         # skip comment lines
+    line_count += 1 
     
-    split_string = line_string.split(" ")                                       # split into name and value (and potentially comments starting with *)
+    split_string = line_string.split(" ")                                       # split into name and value
         
-    line_count += 1                                                            
-    
     for n in range(len(split_string)):
         word = split_string[n]
         if word[0] == '*':                                                      # remove inline comments 
             del split_string[n:]
             break  
     
-    if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single":                      # these are the only cases where 3 input words are expected
-        expected_num_words = 3
+    if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single":
+        expected_num_words = 3                                                  # these variables have two values associated with the variable name
     else:
-        expected_num_words = 2
+        expected_num_words = 2                                                  # all other variables have only one value associated with the variable name
     
-    if len(split_string)>expected_num_words :                                                    # check whether the line has been formatted as expected
+    # warn if the input looks unexpected
+    if len(split_string)>expected_num_words :                                 
         print("Line "+str(all_lines_count)+ ''' has too many words! 
-              Check var name contains no spaces, and seperate list 
+              Check var name contains no spaces, and separate list 
               values with commas not spaces. Ignoring extra words.\n''')
         bad_lines.append(line_count)
         
@@ -88,38 +88,44 @@ for line in config_file:
         print("Line "+str(all_lines_count)+''' is missing either 
               variable name or value. Check they are both present 
               and seperated with a space. Skipping this line.\n''')
+        continue
         bad_lines.append(line_count)
     
     
+    # save deformation input in the input_settings dictionary
     if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single": 
+        
+        # warn if multiple sets of deformation parameters have been input
         if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print("Deformation parameters have been input multiple times. Check that config file only contains one deformation input. Ignoring excess inputs.")
+            print("Deformation parameter sets have been input multiple times. Check that config file only contains one set of deformation inputs. Ignoring excess inputs.")
             continue
+        
         input_settings["eps"] = split_string[1]
         input_settings["gamma"] = split_string[2]
         
     elif split_string[0]=="mesh":
+        
         if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print("Deformation parameters have been input multiple times. Check that config file only contains one deformation input. Ignoring excess inputs.")
+            print("Deformation parameter sets have been input multiple times. Check that config file only contains one set of deformation inputs. Ignoring excess inputs.")
             continue
+        
         input_settings["eps_max"] = split_string[1]
         
     else:
-        input_settings[split_string[0]] = split_string[1]                       # store in dictionary
+        # save other (non-deformation) parameters
+        input_settings[split_string[0]] = split_string[1]
 
 
 
-
-
-
-
+#!!! this next block could probably be moved into the block above, and functionalised
+# get a list of gamma values, and a list of eps values to test
 if "eps" in input_settings and "gamma" in input_settings:
     
     input_settings["eps"] = input_settings["eps"].split(",") 
     if len(input_settings["eps"]) > 1 :                                             # then a range of eps values has been input
         input_settings["line"] = "eps"
         eps_to_test =  np.arange(float(input_settings["eps"][0]),  
-                                float(input_settings["eps"][1])+float(input_settings["eps"][2]), # add a step to the final value (because range is non-inclusive)
+                                float(input_settings["eps"][1])+float(input_settings["eps"][2]), # add a step to the final value (because arange function is non-inclusive)
                                 float(input_settings["eps"][2]))
     else : eps_to_test = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
     
@@ -153,7 +159,7 @@ if "eps" in input_settings and "gamma" in input_settings:
 elif "eps_max" in input_settings:                                               # then arrange a mesh of 91 evenly distributed (eps,gamma) points to test over
     
     input_settings["eps_max"] = float(input_settings["eps_max"])                # convert from string to float
-    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=25)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=10)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
     
     eps_points = []
     gamma_points = []
@@ -234,8 +240,6 @@ input_settings["gampn_orbitals"] = gampn_orbitals
     
     
     #%%
-    
-    
     
 ''' WRITE GAMPN.DAT FILES USING DICT '''
 # checks which mode to run (MO or WS)
