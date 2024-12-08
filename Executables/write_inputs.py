@@ -73,9 +73,8 @@ for line in config_file:
             break  
     
     if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single":
-        expected_num_words = 3                                                  # these variables have two values associated with the variable name
-    else:
-        expected_num_words = 2                                                  # all other variables have only one value associated with the variable name
+          expected_num_words = 3                                                  # these variables have two values associated with the variable name
+    else: expected_num_words = 2                                                  # all other variables have only one value associated with the variable name
     
     # warn if the input looks unexpected
     if len(split_string)>expected_num_words :                                 
@@ -101,7 +100,31 @@ for line in config_file:
             continue
         
         input_settings["eps"] = split_string[1]
+        input_settings["eps"] = input_settings["eps"].split(",") 
+        if len(input_settings["eps"]) > 1 :                                     # then a range of eps values has been input
+            input_settings["line"] = "eps"
+            eps_to_test =  np.arange(float(input_settings["eps"][0]),           # add a step to the end value (because arange function is non-inclusive)
+                                    float(input_settings["eps"][1])+float(input_settings["eps"][2]), 
+                                    float(input_settings["eps"][2]))
+        else : eps_to_test = [float(input_settings["eps"][0])]                  # even though it only has one element, a list is easier to input to a for loop later
+        
         input_settings["gamma"] = split_string[2]
+        input_settings["gamma"] = input_settings["gamma"].split(",")            # same for gamma
+        if len(input_settings["gamma"]) > 1 :                                             
+            input_settings["line"] = "gamma"
+            gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
+                                    float(input_settings["gamma"][1])+float(input_settings["gamma"][2]), 
+                                    float(input_settings["gamma"][2]))
+        else : gamma_to_test = [float(input_settings["gamma"][0])] 
+        
+        
+        eps_points = []
+        gamma_points = []
+        for l in range(len(eps_to_test)):
+            for p in range(len(gamma_to_test)):
+                eps_points.append(eps_to_test[l])
+                gamma_points.append(gamma_to_test[p])
+                
         
     elif split_string[0]=="mesh":
         
@@ -110,75 +133,30 @@ for line in config_file:
             continue
         
         input_settings["eps_max"] = split_string[1]
+        input_settings["eps_max"] = float(input_settings["eps_max"])            # convert from string to float
+        
+        # arrange a mesh of evenly distributed (eps,gamma) points to test over, such that the largest value of eps is tested with outer_points gamma values 
+        outer_points = 25                                                       # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
+        eps_to_test = np.linspace(0.001,                                        # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+                                  input_settings["eps_max"], num=outer_points)
+        eps_points = []
+        gamma_points = []
+        for l in range(len(eps_to_test)):
+            for p in range(l+1):
+                eps = np.round(eps_to_test[l], 3)
+                eps_points.append(eps)
+                if l==0: gamma = 0
+                else: gamma = np.round(p*(60/l)) 
+                gamma_points.append(gamma)
         
     else:
         # save other (non-deformation) parameters
         input_settings[split_string[0]] = split_string[1]
 
 
-
-#!!! this next block could probably be moved into the block above, and functionalised
-# get a list of gamma values, and a list of eps values to test
-if "eps" in input_settings and "gamma" in input_settings:
-    
-    input_settings["eps"] = input_settings["eps"].split(",") 
-    if len(input_settings["eps"]) > 1 :                                             # then a range of eps values has been input
-        input_settings["line"] = "eps"
-        eps_to_test =  np.arange(float(input_settings["eps"][0]),  
-                                float(input_settings["eps"][1])+float(input_settings["eps"][2]), # add a step to the final value (because arange function is non-inclusive)
-                                float(input_settings["eps"][2]))
-    else : eps_to_test = [float(input_settings["eps"][0])]                          # even though it only has one element, a list is easier to input to a for loop later
-    
-    input_settings["gamma"] = input_settings["gamma"].split(",")                    # same for gamma
-    if len(input_settings["gamma"]) > 1 :                                             
-        input_settings["line"] = "gamma"
-        gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
-                                float(input_settings["gamma"][1])+float(input_settings["gamma"][2]), 
-                                float(input_settings["gamma"][2]))
-    else : gamma_to_test = [float(input_settings["gamma"][0])] 
-    
-    
-    eps_points = []
-    gamma_points = []
-    for l in range(len(eps_to_test)):
-        for p in range(len(gamma_to_test)):
-            eps_points.append(eps_to_test[l])
-            gamma_points.append(gamma_to_test[p])
-            
-    
-    print(input_settings)
-    print("\n\nFinished reading lines: "+str(line_count))
-    print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
-
-
-
-
-
-
-    
-elif "eps_max" in input_settings:                                               # then arrange a mesh of 91 evenly distributed (eps,gamma) points to test over
-    
-    input_settings["eps_max"] = float(input_settings["eps_max"])                # convert from string to float
-    eps_to_test = np.linspace(0.001, input_settings["eps_max"], num=10)         #!!!start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
-    
-    eps_points = []
-    gamma_points = []
-    for l in range(len(eps_to_test)):
-        for p in range(l+1):
-            eps = np.round(eps_to_test[l], 3)
-            eps_points.append(eps)
-            if l==0:
-                gamma = 0
-            else:
-                gamma = np.round(p*(60/l)) 
-            gamma_points.append(gamma)
-            
-    print(input_settings)
-    print("\n\nFinished reading lines: "+str(line_count))
-    print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
-    
-            
-    
+print(input_settings)
+print("\n\nFinished reading lines: "+str(line_count))
+print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
 
 
