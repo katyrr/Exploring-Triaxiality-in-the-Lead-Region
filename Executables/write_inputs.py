@@ -167,6 +167,7 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 # using input A and Z, work out which is odd
 # check that the odd particle matches the input of nneupr (the input nneupr will take precedence, but a mismatch may indicate an input error)
 # half and ceiling for the overall index of the fermi level orbital
+# generate the orbitals input for gampn (e.g. orbitals_string = "+4 19 20 21 22")
 
 print("calcualting fermi level...")
 
@@ -194,15 +195,17 @@ else:
 print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
 
 # generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
-num_orbs = 11                                                                   #!!! select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
+gampn_orbitals = input_settings["par"]
+gampn_orbitals += input_settings["num_orbs"]                                    # e.g. orbitals_string = "4 19 20 21 22"
 
-first_index = input_settings["fermi_level"]//2 - num_orbs//2
-last_index = input_settings["fermi_level"]//2 + num_orbs//2
-if num_orbs%2 == 1:                                                             # if an even number is requested, we need to add one to the final index to ensure the correct number are included
+input_settings["num_orbs"] = int(input_settings["num_orbs"])                    
+
+first_index = input_settings["fermi_level"]//2 - input_settings["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
+last_index = input_settings["fermi_level"]//2 + input_settings["num_orbs"]//2
+if input_settings["num_orbs"]%2 == 1:                                           # if an even number is requested, we need to add one to the final index to ensure the correct number are included
     last_index += 1
 orbitals = np.r_[first_index:last_index]                                        # generate a list of orbitals in unit steps inside this range with list slicing
-
-gampn_orbitals = str(num_orbs)                                                  # e.g. orbitals_string = "4 19 20 21 22" (set the parity later)
+                                                 
 for l in orbitals:
     gampn_orbitals += " "
     gampn_orbitals += str(l)
@@ -280,8 +283,8 @@ if (input_settings["mode"] == "MO") :
 0.054,0.69,0.062,0.26
 0,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
-%(par)s%(gampn_orbitals)s                 IPARP, NORBITP, LEVELP
-%(par)s%(gampn_orbitals)s                  IPARN, NORBITN, LEVELN
+%(gampn_orbitals)s                 IPARP, NORBITP, LEVELP
+%(gampn_orbitals)s                  IPARN, NORBITN, LEVELN
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
