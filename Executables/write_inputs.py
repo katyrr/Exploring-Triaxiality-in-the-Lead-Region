@@ -136,7 +136,7 @@ for line in config_file:
         input_settings["eps_max"] = float(input_settings["eps_max"])            # convert from string to float
         
         # arrange a mesh of evenly distributed (eps,gamma) points to test over, such that the largest value of eps is tested with outer_points gamma values 
-        outer_points = 25                                                       # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
+        outer_points = 25                                                       #!!! the total number of data points generated = 0.5*outer_points*(outer_points + 1)
         eps_to_test = np.linspace(0.001,                                        # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
                                   input_settings["eps_max"], num=outer_points)
         eps_points = []
@@ -164,8 +164,8 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
 
 ''' CALCULATE FERMI LEVEL '''
-# using input A and Z
-# work out which is odd
+# using input A and Z, work out which is odd
+# check that the odd particle matches the input of nneupr (the input nneupr will take precedence, but a mismatch may indicate an input error)
 # half and ceiling for the overall index of the fermi level orbital
 
 print("calcualting fermi level...")
@@ -176,16 +176,15 @@ input_settings["N"] = input_settings["A"]-input_settings["Z"]                   
 
 if input_settings["nneupr"] == "1":
     print("calculating for odd protons...")
-    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level
+    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level orbital index
     if input_settings["Z"]%2 == 0:
-        print("this nucleus has even Z; check inputs (the code will treat this as the core and assume an odd proton on top)")
+        print("this nucleus has even Z but nneupr = 1; check inputs (the code will treat this as the core and assume an odd proton on top)")
     
 elif input_settings["nneupr"]  == "-1":    
     print("calculating for odd neutrons...")
     input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
     if input_settings["Z"]%2 == 0:
-        print("this nucleus has even N; check inputs (the code will treat this as the core and assume an odd neutron on top)")
-    
+        print("this nucleus has even N but nneupr = -1; check inputs (the code will treat this as the core and assume an odd neutron on top)")
 
 else:
     print("missing nneupr input")
@@ -194,25 +193,21 @@ else:
 
 print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
 
+# generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
+num_orbs = 11                                                                   #!!! select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
 
-
-
-num_to_calc = 11
-
-first_index = input_settings["fermi_level"]//2 - num_to_calc//2
-last_index = input_settings["fermi_level"]//2 + num_to_calc//2
-if num_to_calc%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
+first_index = input_settings["fermi_level"]//2 - num_orbs//2
+last_index = input_settings["fermi_level"]//2 + num_orbs//2
+if num_orbs%2 == 1:                                                             # if an even number is requested, we need to add one to the final index to ensure the correct number are included
     last_index += 1
-orbitals = np.r_[first_index:last_index]
+orbitals = np.r_[first_index:last_index]                                        # generate a list of orbitals in unit steps inside this range with list slicing
 
-gampn_orbitals = str(num_to_calc)                                             # e.g. orbitals_string = "4 19 20 21 22" (set the parity later)
+gampn_orbitals = str(num_orbs)                                                  # e.g. orbitals_string = "4 19 20 21 22" (set the parity later)
 for l in orbitals:
     gampn_orbitals += " "
     gampn_orbitals += str(l)
     
 input_settings["gampn_orbitals"] = gampn_orbitals
-
-
 
 
     

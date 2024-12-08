@@ -109,6 +109,8 @@ icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) o
 emin 5.0
 emax 6.0 ****** range of energies in which to calculate s.p. wvfncs
 
+num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
+
 
 
 * asyrmo *
