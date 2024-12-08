@@ -218,10 +218,9 @@ input_settings["gampn_orbitals"] = gampn_orbitals
     #%%
     
 ''' WRITE GAMPN.DAT FILES USING DICT '''
-# checks which mode to run (MO or WS)
-# sets up a for loop through the list of eps values to test, nested inside a similar loop over gamma 
+# loops through the data points to be tested (specified by the arrays eps_points and gamma_points, which should have the same length) 
 # each iteration:
-#   creates a tag referencing the code being run, the nucleus being tested, and the value of eps being tested in this iteration
+#   creates a tag referencing the nucleus being tested, and the values of eps and gamma being tested in this iteration
 #   creates/overwrites a .DAT file in the Inputs directory folder, named using the tag
 #   uses string formatting with the dictionary to write the .DAT file 
 #   (currently uses the provided example as a base, and changes as few settings as possible!)
@@ -232,40 +231,19 @@ print("writing GAMPN.DAT files for a mesh...")
 write_count = 0                                                                 # start counting how many files get written
 written_file_tags = []                                                          # create a list to record which files were written
 
-if (input_settings["mode"] == "MO") :
+for p in range(len(gamma_points)):
     
-    '''
-    porbs = ""
-    porb_index = int(input_settings["forbitp"])
-    for o in range(int(input_settings["norbitp"])):
-        porbs += (" " + str(porb_index))
-        porb_index += 1
-    input_settings["porbs"] = porbs
+    input_settings["current_eps"] = eps_points[p]                           # store eps in the dict for ease of use when string formatting below
+    input_settings["current_gamma"] = gamma_points[p]
     
-    norbs = ""
-    norb_index = int(input_settings["forbitn"])
-    for o in range(int(input_settings["norbitn"])):
-        norbs += (" " + str(norb_index))
-        norb_index += 1
-    input_settings["norbs"] = norbs
-    '''
-   # %(iparp)s%(norbitp)s%(porbs)s                  IPARP, NORBITP, LEVELP
-   # %(iparn)s%(norbitn)s%(norbs)s                  IPARN, NORBITN, LEVELN
+    file_tag = "%s_e%.3f_g%.1f" % (input_settings["nucleus"], input_settings["current_eps"], input_settings["current_gamma"])
     
+    input_settings["current_f002"] = "f002_"+file_tag+".dat"
+    input_settings["current_f016"] = "f016_"+file_tag+".dat"
+    input_settings["current_f017"] = "f017_"+file_tag+".dat"
     
-    for p in range(len(gamma_points)):
-        
-        input_settings["current_eps"] = eps_points[p]                                   # store eps in the dict for ease of use when string formatting below
-        input_settings["current_gamma"] = gamma_points[p]
-        
-        file_tag = "e%.3f_g%.1f" % (input_settings["current_eps"], input_settings["current_gamma"])
-        
-        input_settings["current_f002"] = "f002_"+file_tag+".dat"
-        input_settings["current_f016"] = "f016_"+file_tag+".dat"
-        input_settings["current_f017"] = "f017_"+file_tag+".dat"
-        
-        try:                                                                    # only overwrite the existing input file if this code is successful
-            new_input_text =     '''
+    try:                                                                    # only overwrite the existing input file if this code is successful
+        new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
 %(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
@@ -288,33 +266,24 @@ if (input_settings["mode"] == "MO") :
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
-        
-        ''' % input_settings
-                
-        except KeyError:
-            print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
-                  " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-            raise
+    
+    ''' % input_settings
             
-        else: 
-            gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
-            gampn_dat_file = open(gampn_dat_file_path, 'w')
-            gampn_dat_file.write(new_input_text)
-            gampn_dat_file.close()     
-    
-        write_count += 1
-        written_file_tags.append(file_tag)
+    except KeyError:
+        print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
+              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+        raise
+        
+    else: 
+        gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
+        gampn_dat_file = open(gampn_dat_file_path, 'w')
+        gampn_dat_file.write(new_input_text)
+        gampn_dat_file.close()     
 
-    print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
+    write_count += 1
+    written_file_tags.append(file_tag)
 
-
-else : 
-    print("No deformation parameters were input. Check config file.")
-    
-
-
-
-
+print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
 
 
