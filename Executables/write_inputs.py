@@ -24,12 +24,13 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 import matplotlib.pyplot as plt                                                 # for plotting graphs
+import time                                                                     # for checking how long it took to run
 
 plt.rcParams['figure.dpi'] = 150
 
 config_file_name = "../Inputs/config.txt"
                                                                  
-
+start_wall_time = time.time()
 
 
 #%%
@@ -136,7 +137,7 @@ for line in config_file:
         input_settings["eps_max"] = float(input_settings["eps_max"])            # convert from string to float
         
         # arrange a mesh of evenly distributed (eps,gamma) points to test over, such that the largest value of eps is tested with outer_points gamma values 
-        outer_points = 25                                                       #!!! the total number of data points generated = 0.5*outer_points*(outer_points + 1)
+        outer_points = int(input_settings["outer_points"])                      # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
         eps_to_test = np.linspace(0.001,                                        # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
                                   input_settings["eps_max"], num=outer_points)
         eps_points = []
@@ -211,8 +212,6 @@ for l in orbitals:
     gampn_orbitals += str(l)
     
 input_settings["gampn_orbitals"] = gampn_orbitals
-
-
     
     
     #%%
@@ -300,25 +299,28 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 
 
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
-print("running gampn")
+timer_lapse = time.time()
+print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_wall_time))
+allowed_time = 10                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
 for file in written_file_tags :
     new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
     new_shell_script_text += ("\ncp GAMPN.out GAM_"+file+".OUT")                # copy GAMPN.out to a new txt file with a more descriptive name
 
-new_shell_script_text += "\n\necho finished running gampn"
+new_shell_script_text += "\n\necho message from terminal: finished running gampn"
 
 shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
 gampn = subprocess.Popen(["sh", "./../RunGAMPN.sh"])                            # start gampn as a subprocess (#!!! asynchronous - potential for parallelisation??)
-gampn.wait(5)                                                                   # wait to ensure it has finished before starting to read outputs, if it takes longer than 5 seconds, timeout (#!!! may need to allow a longer timeout for larger datasets)
+gampn.wait(allowed_time)                                                        # wait to ensure it has finished before starting to read outputs, if it takes longer than 10 seconds, timeout (#!!! may need to allow a longer timeout for larger datasets)
 
 
-
-
+new_timer_lapse = time.time()
+print("finished running gampn in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
+timer_lapse = new_timer_lapse
 
 
 
@@ -408,12 +410,12 @@ input_settings["nantj"] = input_settings["nantj"].replace(",", " ")
 input_settings["noutj"] = input_settings["noutj"].replace(",", " ")
 input_settings["ipout"] = input_settings["ipout"].replace(",", " ")
 
-count = 0
-for file in written_file_tags:
+
+for f in range(len(written_file_tags)):
     
-    input_settings["current_orbitals"] = asyrmo_orbitals[count]
-    count += 1
+    input_settings["current_orbitals"] = asyrmo_orbitals[f]
     
+    file = written_file_tags[f]
     input_settings["current_f016"] = "f016_"+file+".dat"
     input_settings["current_f017"] = "f017_"+file+".dat"
     input_settings["current_f018"] = "f018_"+file+".dat"
@@ -446,15 +448,12 @@ for file in written_file_tags:
         asyrmo_dat_file.close()     
     
 
-print("finished writing %d ASY.DAT files" % count)
+print("finished writing %d ASY.DAT files" % (f+1))
 
 
 
 
 #%%
-
-
-
 
 
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
@@ -463,11 +462,9 @@ print("finished writing %d ASY.DAT files" % count)
 # so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
 
-shell_script_file_path = "../RunASYRMO.sh"                                # this is where the shell script will be created
+shell_script_file_path = "../RunASYRMO.sh"                                      # this is where the shell script will be created
 
-
-new_shell_script_text = "echo running ASYRMO ..."
-
+new_shell_script_text = ""
 for file in written_file_tags :
     
     new_gampn_out_file_name = "ASY_"+file+".OUT"
@@ -475,16 +472,18 @@ for file in written_file_tags :
     new_shell_script_text += ("\n./../../../Executables/MO/asyrmo < ../Inputs/ASY_"+file+".DAT")
     new_shell_script_text += ("\ncp ASYRMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
 
-new_shell_script_text += "\n\necho done"
+new_shell_script_text += "\n\necho message from terminal: finished running asyrmo"
 
 shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
 asyrmo = subprocess.Popen(["sh", "./../RunASYRMO.sh"])
-asyrmo.wait(5)
+asyrmo.wait(allowed_time)
 
-
+new_timer_lapse = time.time()
+print("finished running asyrmo in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
+timer_lapse = new_timer_lapse
 
 
 
@@ -562,9 +561,11 @@ shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
 probamo = subprocess.Popen(["sh", "./../RunPROBAMO.sh"])
-probamo.wait(5)
+probamo.wait(allowed_time)
 
-
+new_timer_lapse = time.time()
+print("finished running probamo in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
+timer_lapse = new_timer_lapse
 
 
 input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
@@ -690,8 +691,6 @@ error_tolerance = [1.0, 0.0, 0.0, 0.1, 100, 100] #!!!
 
 if "eps_max" in input_settings:   
     
-    
-    
     contour_levels = [8, 10, fermi_index_colour_levels, gs_spin_colour_levels, 10, 10]
     cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks,0,0]
     
@@ -806,7 +805,7 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
 
         
         input_settings["current_graph"] = graphs_to_print[g]
-        print("\nplotting graph of %(current_graph)s variation..." % input_settings)
+        print("plotting graph of %(current_graph)s variation..." % input_settings)
         
         fig, ax = plt.subplots()
         
@@ -873,3 +872,13 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
         
        
         plt.show()
+
+new_timer_lapse = time.time()
+print("finished plotting graphs in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
+print("\ntotal runtime = %.2f seconds" % (new_timer_lapse-start_wall_time))
+
+
+
+
+
+

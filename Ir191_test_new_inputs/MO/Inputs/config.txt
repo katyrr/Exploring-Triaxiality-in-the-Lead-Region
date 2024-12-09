@@ -64,16 +64,20 @@ tx_spin 3.5
 *			e.g. mesh 1.2
 *           * this will cover gamma between 0,60 and eps between 0,1.2 
 *           with an evenly distributed mesh of points 
+*			total number of data points in mesh = (outer_points)*(outer_points + 1)*0.5
 *
 *********************************************************************************
 
 
 
-* single 0.170 25 ***** eps gamma
-gamma 0.170 15,20,0.5 *** eps min_gamma,max_gamma,step
-* eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
-* mesh 0.5 ************ max_eps
 
+* single 0.170 25 ***** eps gamma
+
+* gamma 0.170 15,20,0.5 *** eps min_gamma,max_gamma,step
+* eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
+
+outer_points 10 ***** the number of gamma values to try at eps_max 
+mesh 0.5 ************ max_eps
 
 
 
@@ -110,7 +114,7 @@ kmax 13 **** max 29; set kmax=ispin if no truncation required
 e2plus 0.317 ***** 0.210 **** 0.187 **** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-chsi 0.0 *** coriolis attenuation (1 for no attenuation)
+chsi 1.0 *** coriolis attenuation (1 for no attenuation) *** example sets 0.0
 eta 1.0 **** coriolis attenuation (1 for no attenuation)
 
 nu 7 ******* the number of orbitals to consider *** this is different from nuu=0 in gampn!
