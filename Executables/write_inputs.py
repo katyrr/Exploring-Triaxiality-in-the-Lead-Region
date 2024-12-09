@@ -45,9 +45,7 @@ start_wall_time = time.time()
 # tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
 
-config_file = open(config_file_name, 'r')
 print("reading from config file...\n")
-
 
 line_count = 0                                                                  # start a counter for lines read (not including ignored lines)
 all_lines_count = 0                                                             # start a counter for all lines  (including empty lines and comments)
@@ -55,7 +53,7 @@ bad_lines = []                                                                  
 
 input_settings = {}                                                             # create an empty dictionary to hold settings for input
 
-
+config_file = open(config_file_name, 'r')
 for line in config_file:
     
     all_lines_count += 1
@@ -97,7 +95,9 @@ for line in config_file:
         
         # warn if multiple sets of deformation parameters have been input
         if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print("Deformation parameter sets have been input multiple times. Check that config file only contains one set of deformation inputs. Ignoring excess inputs.")
+            print('''Deformation parameter sets have been input multiple times. 
+                  Check that config file only contains one set of deformation inputs. 
+                  Ignoring excess inputs.''')
             continue
         
         input_settings["eps"] = split_string[1]
@@ -130,7 +130,9 @@ for line in config_file:
     elif split_string[0]=="mesh":
         
         if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print("Deformation parameter sets have been input multiple times. Check that config file only contains one set of deformation inputs. Ignoring excess inputs.")
+            print('''Deformation parameter sets have been input multiple times. 
+                  Check that config file only contains one set of deformation inputs. 
+                  Ignoring excess inputs.''')
             continue
         
         input_settings["eps_max"] = split_string[1]
@@ -149,10 +151,22 @@ for line in config_file:
                 if l==0: gamma = 0
                 else: gamma = np.round(p*(60/l)) 
                 gamma_points.append(gamma)
+        eps_points = np.array(eps_points)
+        gamma_points = np.array(gamma_points)
         
     else:
         # save other (non-deformation) parameters
         input_settings[split_string[0]] = split_string[1]
+config_file.close()
+    
+input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
+input_settings["Z"] = int(input_settings["Z"])
+
+input_settings["num_orbs"] = int(input_settings["num_orbs"])       
+    
+input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
+input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
+input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
 
 
 print(input_settings)
@@ -162,8 +176,6 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
 
 #%%
-
-
 ''' CALCULATE FERMI LEVEL '''
 # using input A and Z, work out which is odd
 # check that the odd particle matches the input of nneupr (the input nneupr will take precedence, but a mismatch may indicate an input error)
@@ -172,21 +184,22 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
 print("calcualting fermi level...")
 
-input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
-input_settings["Z"] = int(input_settings["Z"])
+
 input_settings["N"] = input_settings["A"]-input_settings["Z"]                   # calculate N = A - Z
 
 if input_settings["nneupr"] == "1":
     print("calculating for odd protons...")
     input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level orbital index
     if input_settings["Z"]%2 == 0:
-        print("this nucleus has even Z but nneupr = 1; check inputs (the code will treat this as the core and assume an odd proton on top)")
+        print('''this nucleus has even Z but nneupr = 1; check inputs 
+              (the code will treat this as the core and assume an odd proton on top)''')
     
 elif input_settings["nneupr"]  == "-1":    
     print("calculating for odd neutrons...")
     input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
     if input_settings["Z"]%2 == 0:
-        print("this nucleus has even N but nneupr = -1; check inputs (the code will treat this as the core and assume an odd neutron on top)")
+        print('''this nucleus has even N but nneupr = -1; check inputs 
+              (the code will treat this as the core and assume an odd neutron on top)''')
 
 else:
     print("missing nneupr input")
@@ -197,9 +210,7 @@ print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
 
 # generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
 gampn_orbitals = input_settings["par"]
-gampn_orbitals += input_settings["num_orbs"]                                    # e.g. orbitals_string = "4 19 20 21 22"
-
-input_settings["num_orbs"] = int(input_settings["num_orbs"])                    
+gampn_orbitals += str(input_settings["num_orbs"])                                    # e.g. orbitals_string = "4 19 20 21 22"
 
 first_index = input_settings["fermi_level"]//2 - input_settings["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
 last_index = input_settings["fermi_level"]//2 + input_settings["num_orbs"]//2
@@ -214,8 +225,7 @@ for l in orbitals:
 input_settings["gampn_orbitals"] = gampn_orbitals
     
     
-    #%%
-    
+#%%   
 ''' WRITE GAMPN.DAT FILES USING DICT '''
 # loops through the data points to be tested (specified by the arrays eps_points and gamma_points, which should have the same length) 
 # each iteration:
@@ -235,7 +245,9 @@ for p in range(len(gamma_points)):
     input_settings["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
     input_settings["current_gamma"] = gamma_points[p]
     
-    file_tag = "%s_e%.3f_g%.1f" % (input_settings["nucleus"], input_settings["current_eps"], input_settings["current_gamma"])
+    file_tag = "%s_e%.3f_g%.1f" % (input_settings["nucleus"], 
+                                   input_settings["current_eps"], 
+                                   input_settings["current_gamma"])
     
     input_settings["current_f002"] = "f002_"+file_tag+".dat"
     input_settings["current_f016"] = "f016_"+file_tag+".dat"
@@ -282,16 +294,13 @@ for p in range(len(gamma_points)):
     write_count += 1
     written_file_tags.append(file_tag)
 
-print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
+print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" 
+      % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
 
 
 
 #%%
-
-
-
-
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN '''
 # writes a bash shell script to run each of the GAMPN .DAT files written above
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
@@ -301,7 +310,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
 timer_lapse = time.time()
 print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_wall_time))
-allowed_time = 10                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+allowed_time = 20                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
 for file in written_file_tags :
@@ -331,10 +340,6 @@ timer_lapse = new_timer_lapse
 
 
 #%%
-
-
-
-
 ''' READ GAMPN.OUT FILE '''
 # for each deformation (i.e. each GAMPN.OUT file):
 #   determine the line number of the fermi level orbital in the GAMPN.OUT file
@@ -354,6 +359,7 @@ for file in written_file_tags :
     gampn_out_file_name = "GAM_"+file+".OUT"
     gampn_out_file = open(gampn_out_file_name, 'r')
     lines = gampn_out_file.readlines()
+    gampn_out_file.close()
     
     # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
     header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
@@ -397,8 +403,6 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 
 #%%
-
-
 ''' WRITING ASYRMO.DAT FILE '''
 # for each deformation, writes a .DAT file for ASYRMO using the file tag to name, and the provided example as a base
 
@@ -454,8 +458,6 @@ print("finished writing %d ASY.DAT files" % (f+1))
 
 
 #%%
-
-
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
 # writes a bash shell script to run each of the ASYRMO .DAT files written above
 # after each one is run, the output file ASYRMO.out is copied to a new text file with a more descriptive name (based on file tag),
@@ -489,10 +491,6 @@ timer_lapse = new_timer_lapse
 
 
 #%%
-
-
-
-
 ''' WRITING PROBAMO.DAT FILE '''
 # for each deformation, writes a .DAT file for PROBAMO, using the file tag to name, and the provided example as a base
 
@@ -501,7 +499,7 @@ for file in written_file_tags:
     input_settings["current_f017"] = "f017_"+file+".dat"
     input_settings["current_f018"] = "f018_"+file+".dat"
 
-    try:                                                                        # only overwrite the existing input file if this code is successful
+    try:
         new_input_text =     '''
 
 '%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
@@ -519,10 +517,10 @@ for file in written_file_tags:
         raise
         
     else: 
-        asyrmo_dat_file_path = "../Inputs/PROB_"+file+".DAT" 
-        asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
-        asyrmo_dat_file.write(new_input_text)
-        asyrmo_dat_file.close()     
+        probamo_dat_file_path = "../Inputs/PROB_"+file+".DAT" 
+        probamo_dat_file = open(probamo_dat_file_path, 'w')
+        probamo_dat_file.write(new_input_text)
+        probamo_dat_file.close()     
     
 
 print("finished writing PROB.DAT files")
@@ -533,18 +531,13 @@ print("finished writing PROB.DAT files")
 
 
 #%%
-
-
-
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE PROBAMO '''
 # writes a bash shell script to run each of the PROBAMO .DAT files written above
 # after each one is run, the output file PROBAMO.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
 
 
-shell_script_file_path = "../RunPROBAMO.sh"                                # this is where the shell script will be created
-
-
+shell_script_file_path = "../RunPROBAMO.sh"                                     # this is where the shell script will be created
 new_shell_script_text = "echo running PROBAMO ..."
 
 for file in written_file_tags :
@@ -564,25 +557,22 @@ probamo = subprocess.Popen(["sh", "./../RunPROBAMO.sh"])
 probamo.wait(allowed_time)
 
 new_timer_lapse = time.time()
-print("finished running probamo in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
+print("finished running probamo in time = %.2f seconds" 
+      % (new_timer_lapse-timer_lapse))
 timer_lapse = new_timer_lapse
-
-
-input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
-input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
-input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
 
 #%%
 
 ''' READ PROBAMO.OUT FILE '''
 # for each deformation (i.e. each PROBAMO.OUT file):
-#   work out the line number of the fermi level orbital in the GAMPN.OUT file
-#   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
-#   construct a string for fermi_parity,nu,[level(j),j=1,nu]
+# the row containing the ground state is identified by energy=0.0
+# the ground state spin and magnetic dipole moment are recorded
+# the lowest energy (yrast) state with the same spin as the experimental first excited state is identified
+# the "first excitation energy" is recorded
+# similarly for the second and third experimental excited states
 
 print("\nreading PROBAMO.OUT files...")
 
-#mag_moments     = []                                                            # an empty array to store the magnetic dipole moment at each deformation
 gs_mag_mom = []
 gs_spins = []
 fx_energies = []
@@ -591,54 +581,43 @@ tx_energies = []
 
 
 for file in written_file_tags :
-    
+
     probamo_out_file_name = "PROB_"+file+".OUT"
+    
+    # locate the yrast (lowest energy) state of each spin
+    fx_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
+    sx_energy = math.inf
+    tx_energy = math.inf
+    
     probamo_out_file = open(probamo_out_file_name, 'r')
-    
-    lines = probamo_out_file.readlines()
-    
-    try:
-        header = lines.index("       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)\n")
-    except ValueError: #!!! need to actually implement a backup plan for this - read error message and return to gampn with a new input
-        print("Could not read probamo output at deformation " +file +"\nProbably because File18 was not generated from asyrmo, so probamo could not be run.\nTypically caused by incorrect input of orbitals into gampn.")
-        raise
-    
-    ''' # this is assuming that the ground state will be spin 1/2!
-    spin1_line_index = header+3                                                 # calculate the line number of the spin 1/2 state internal transition
-    spin1_line = lines[spin1_line_index]
-    mag_moments.append(spin1_line[52:60].strip())                               # get the magnetic moment
-    '''
-    
-    fx_energy = 10000 # initialise to a large value so that the first comparison with a read value will be true
-    sx_energy = fx_energy
-    tx_energy = fx_energy
-    for l in range(len(lines)):
-        this_line = lines[l].strip()
-        try:
-            dash_index = this_line.index(" - ")
-            this_spin = this_line[dash_index-3:dash_index]
+    for line in probamo_out_file:
+        line = line.strip()
+        
+        try:                                                                    # determine whether this line is a data row of the table (if a '-' is present, then it is)
+            dash_index = line.index(" - ")
+            spin = line[dash_index-3:dash_index]                                # get the spin of this row
         except ValueError:
-            continue
-        if this_line[0:3] == "0.0":
-            gs_line = this_line
-        elif input_settings["fx_spin"] == this_spin:
-            this_energy = float(this_line[0:5].strip())
-            if this_energy < fx_energy:
+            continue                                                            # if this row doesn't contain data, ignore it
+        
+        if line[0:3] == "0.0":                                                  # then this is the ground state
+            gs_mag_mom.append(line[-8:].strip())                                # get the ground state magnetic moment
+            gs_spins.append(spin)                                   
+        
+        elif spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
+            this_energy = float(line[0:5].strip())
+            if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
                 fx_energy = this_energy
-                fx_line = this_line
-        elif input_settings["sx_spin"] == this_spin:
-            this_energy = float(this_line[0:5].strip())
+                fx_line = line
+        elif spin == input_settings["sx_spin"]:                                 # repeat for second excited state
+            this_energy = float(line[0:5].strip())
             if this_energy < sx_energy:
                 sx_energy = this_energy
-                sx_line = this_line
-        elif input_settings["tx_spin"] == this_spin:
-            this_energy = float(this_line[0:5].strip())
+                sx_line = line
+        elif spin == input_settings["tx_spin"]:                                 # repeat for third excited state
+            this_energy = float(line[0:5].strip())
             if this_energy < tx_energy:
                 tx_energy = this_energy
-                tx_line = this_line
-    gs_mag_mom.append(gs_line[-8:].strip())                             # get the magnetic moment
-    gs_spins.append(gs_line[4:10].strip())
-    
+                tx_line = line
     
     try:
         fx_energies.append(float(fx_line[0:5].strip()))
@@ -648,53 +627,76 @@ for file in written_file_tags :
         print("could not find the excited states (no states of the appropriate spins)")
         raise
         
+    probamo_out_file.close()
 
-
-print("finished reading %d files\n" % len(asyrmo_orbitals))
-
-
-eps_points = np.array(eps_points)
-gamma_points = np.array(gamma_points)
-gamma_points = [float(n) for n in gamma_points]
-for r in range(len(gamma_points)):
-    gamma_points[r] *= np.pi/180
-
+# convert collected data from string to float
 fermi_energies = [float(n) for n in fermi_energies]
 gs_mag_mom = [float(n) for n in gs_mag_mom]
 gs_spins = [float(n[0])/2 for n in gs_spins]
-data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, gs_spins, fx_energies, sx_energies, tx_energies]
+
+print("finished reading %d files\n" % len(asyrmo_orbitals))
+
+#%%
+
+''' PREPARE TO PLOT GRAPHS '''
+# gamma is converted to radians.
+# all arrays of data to be plotted are collected into a single matrix.
+# lists of the titles to be used in each plot are constructed.
+# similarly for contour levels, colour bar ticks, data axis labels and units, 
+#       experimental data to compare results to, absolute error tolerance, 
+#       and whether the data set is continuous or discrete.
+
+for r in range(len(gamma_points)):
+    gamma_points[r] *= np.pi/180
+
+
+data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, 
+               gs_spins, fx_energies, sx_energies, tx_energies]
+
+graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
+                   "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
 
 fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
 gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
+contour_levels = [8, 10, fermi_index_colour_levels, 
+                  gs_spin_colour_levels, 10, 10]
 
 fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
 fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
 gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
 gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
+cbar_ticks = [0,0, fermi_index_cbar_ticks, 
+              gs_spin_cbar_ticks,0,0]
 
-graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
-# for gs Jp, find EI=0.0 in probamo.out and read spin; for first exc en, input expected Jp, find in probamo.out, and read exc en 
-data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
+data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 
+                    'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
 
 
-experimental_data = [float(input_settings["gs_mu"]), [], [], float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
-error_tolerance = [1.0, 0.0, 0.0, 0.1, 100, 100] #!!!
+experimental_data = [float(input_settings["gs_mu"]), [], [], 
+                     float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
 
+error_tolerance = [0.2, 0.0, 0.0, 0.1, 100, 100]                                #!!! these are a bit arbitrary...
+
+dc = ['c','c','d','d','c', 'c']                                                 # record whether each data set is continuous or discrete
+
+
+#%%
 
 ''' PLOT GRAPHS'''
-# plots variation in magnetic dipole moment with distortion (only if distortion was input as a mesh)
-#     converts oblate input values (with gamma between 0-30º and eps<0) to the equivalent parameterisation: 
-#     eps -> -eps (now positive) and gamma -> 60º-gamma (now in range 30-60º)
-#     which allows all of the values to be plotted in polar coordinates.
-#     
-#     additionally plots the positions of the data points as white x marks.
+# plots variation of each data set with distortion
+# if a mesh of eps and gamma has been tested, plot wedge contour plots
+#   for each data point in each data set:
+#       use '+' data markers for positive parity points, and '.' markers for negative parity points
+#       compare with experimental value (if available)
+#       if the absolute error is below a tolerance, consider this to be a "match"; plot the data marker in red
+#       otherwise plot in white
+#   keep a list of data points at which all the data sets match their corresponding experimental values (within tolerance) 
+# if only one of eps and gamma is varying, plot line graphs 
+#   mark the experimental value in red for easy comparison
+#   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
 
 if "eps_max" in input_settings:   
     
-    contour_levels = [8, 10, fermi_index_colour_levels, gs_spin_colour_levels, 10, 10]
-    cbar_ticks = [0,0, fermi_index_cbar_ticks, gs_spin_cbar_ticks,0,0]
-    
-    dc = ['c','c','d','d','c', 'c'] # record whether each data set is continuous or discrete
     
     agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
     
@@ -712,170 +714,226 @@ if "eps_max" in input_settings:
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))  
         
-
+        # create flags to record which ROIs should be included in the legend
+        dot_hit_flag = False
+        plus_hit_flag = False
+        dot_miss_flag = False
+        plus_miss_flag = False
+        dot_flag = False
+        dot_flag = False
+        
+        # plot the data point markers, and check which deformations give a result that matches experiment
         for r in range(len(gamma_points)):
-            if experimental_data[g]:
+            if experimental_data[g]:                                            # if the experimental data exists for comparison
                 error = abs(data_matrix[g][r] - experimental_data[g])
-                if error < error_tolerance[g]:  #   error/experimental_data[g] < 0.1: #                  #!!! if they agree within 5%, plot the data point in red rather than white
-                    if g==0 and fermi_parities[r]==input_settings["par"]:                                # check that the ground state parity has been reproduced
+                if error < error_tolerance[g]: # error/experimental_data[g] < 0.1: #!!! if they agree within 10%, plot the data point in red rather than white
+                    if g==0 and fermi_parities[r]==input_settings["par"]:       # check that the ground state parity has been reproduced
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
-                        dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-) hit")
+                        plt.polar(gamma_points[r], eps_points[r], 'r.')
+                        dot_hit_flag = True
    
                     elif fermi_parities[r] == "+":
-                        plus_hit, = plt.polar(gamma_points[r], eps_points[r], 'r+', label="parity (+) hit")
+                        plt.polar(gamma_points[r], eps_points[r], 'r+')
+                        plus_hit_flag = True
                 else:
                     if r in agreed_points:
-                         # this point is no longer in agreement, so remove it from the list
-                        del agreed_points[agreed_points.index(r)]
+                        del agreed_points[agreed_points.index(r)]               # this point is no longer in agreement, so remove it from the list
                     if fermi_parities[r] == "-":
-                        dot_miss, = plt.polar(gamma_points[r], eps_points[r], 'w.', label="parity (-) miss")
+                        plt.polar(gamma_points[r], eps_points[r], 'w.')
+                        dot_miss_flag = True
                     else: # fermi_parities[r] == "+":
-                        plus_miss, = plt.polar(gamma_points[r], eps_points[r], 'w+', label="parity (+) miss")
+                        plt.polar(gamma_points[r], eps_points[r], 'w+')
+                        plus_miss_flag = True
                         
-                # plot two black data points (unseen outside the data range) to use for the legend
-                dot, = plt.polar(3.0, 0.2, 'k.', label="parity (-)")
-                plus, = plt.polar(3.0, 0.2, 'k+', label="parity (+)")
+            # if there is no experimental data available for comparison, just plot all points in white            
             elif fermi_parities[r] == "-":
-                dot, = plt.polar(gamma_points[r], eps_points[r], 'k.', label="parity (-)")
+                plt.polar(gamma_points[r], eps_points[r], 'w.')
+                dot_flag = True
             else: # fermi_parities[r] == "+":
-                plus, = plt.polar(gamma_points[r], eps_points[r], 'k+', label="parity (+)")
+                plt.polar(gamma_points[r], eps_points[r],'w+')
+                plus_flag = True
                 
+        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
+        dot, = plt.polar(3.0, 0.2, 'k.', label="parity (-)")
+        plus, = plt.polar(3.0, 0.2, 'k+', label="parity (+)")
+        dot_miss, = plt.polar(3.0, 0.2, 'k.', label="parity (-) miss")
+        plus_miss, = plt.polar(3.0, 0.2, 'k+', label="parity (+) miss")
+        dot_hit, = plt.polar(3.0, 0.2, 'r.', label="parity (-) match")
+        plus_hit, = plt.polar(3.0, 0.2, 'r+', label="parity (+) match")
             
-            
-            
+        legend_handles=[]
         
-        legend = ax.legend(handles=[dot, plus], loc="upper left", bbox_to_anchor=(-0.1, 1.05))
+        if dot_hit_flag: legend_handles.append(dot_hit)
+        if plus_hit_flag: legend_handles.append(plus_hit)
+        if dot_miss_flag: legend_handles.append(dot_miss)
+        if plus_miss_flag: legend_handles.append(plus_miss)
+        if dot_flag: legend_handles.append(dot)
+        if dot_flag: legend_handles.append(plus)
+            
+        legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 1.05))
         legend.set_title("data points")
         
-        '''handles, labels = ax.get_legend_handles_labels()
-        for h in handles:
-            h.set_markerfacecolor('white')  # Set marker color to white on the graph, but don't update the legend afterwards (so that the legend markers remain black for visibility)
-            h.set_markeredgecolor('white')
-        '''     
-        if dc[g] == 'c':
-            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
-            plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-        else:
-            ''' # this isn't much good... the interpolation is too obvious. At least with the contour plot, each point has a correct and clearly-defined colour
-            c_level_boundaries = contour_levels[g]
-            cax = ax.tripcolor(gamma_points, eps_points, data_matrix[g], shading='flat', cmap='viridis')
-            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
-            cbar.set_ticks(ticks)#c_level_boundaries[:-1])
-            cbar.set_ticklabels(cbar_ticks[g])
-            '''
-            c_level_boundaries = contour_levels[g]
-            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
-            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
-            cbar.set_ticks(ticks)
-            cbar.set_ticklabels(cbar_ticks[g])#['22-', '21-', '', '20-', '', '19-', '', '19+', '', '20+', '', '21+', '22+'])
-            
-           
-            
-            
-        ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
+        
+        # now add filled colour contour plots
+        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
+        plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+   
+        c_level_boundaries = contour_levels[g]
+        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+        cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+        ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
+        cbar.set_ticks(ticks)
+        cbar.set_ticklabels(cbar_ticks[g])
+        
+        # add title and axis labels
+        ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)                      
         plt.xlabel("ε")
-        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center')
+        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
        
         plt.show()
         
-    print("\n\nnumber of points that agreed with experimental data: " + str(len(agreed_points)))
+    print("\n\nnumber of points that agreed with experimental data: " +
+          str(len(agreed_points)))
+    print("\n")
     for p in agreed_points:
-        print("point %d: ε=%.3f, γ=%d" % (p, eps_points[p], gamma_points[p]*180/np.pi))
+        print("point %d: ε=%.3f, γ=%d" 
+              % (p, eps_points[p], gamma_points[p]*180/np.pi))
+    print("\n")
         
 
-elif "line" in input_settings: # then plot a line graph of parammeter variation with eps (or gamma)
+elif "line" in input_settings:                                                  # then plot a line graph of data variation with eps (or gamma)
 
     # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
-    correct_spin_range = []
+    correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
     start_flag = False
     for i in range(len(gs_spins)):
-        if gs_spins[i] == experimental_data[3] and not start_flag: # correct and range hasn't started yet
+        if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
             start_flag = True
             correct_spin_range.append(i)
-        elif gs_spins[i] != experimental_data[3] and start_flag: # incorrect and range has started
+        elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
             start_flag = False
             correct_spin_range.append(i)
-            
     
-    
+    # plot graphs
     for g in range(len(graphs_to_print)):
-
-        
         input_settings["current_graph"] = graphs_to_print[g]
         print("plotting graph of %(current_graph)s variation..." % input_settings)
         
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots()                                                # create figure and axes
         
-        ax.set_title('Variation of %(current_graph)s With %(line)s in %(nucleus)s' % input_settings, va='bottom', y=1.1)  # Adjust y value as needed
-        plt.xlabel("%(line)s" % input_settings)
-        plt.ylabel(data_axis_labels[g])
-        
+        # if eps was varied and gamma was fixed:
         if input_settings["line"] == "eps" or input_settings["line"] == "ε":
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
             print("plotting line graph of variation with eps...")
+            
+            # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
-                exp, = plt.plot(eps_to_test, np.full(len(eps_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+                exp, = plt.plot(eps_to_test, 
+                       np.full(len(eps_to_test), float(experimental_data[g])), 
+                       'r-', label="experimental value")
+            
+            # mark the range in which the correct ground state spin was calculated
             for r in range(len(correct_spin_range)):
-                if correct_spin_range[r] == 0: # the first value of gamma in the range
-                    start_range = eps_to_test[correct_spin_range[r]]-float(input_settings["eps"][2])/2
+                if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
+                    start_range = (eps_to_test[correct_spin_range[r]]-
+                                   float(input_settings["eps"][2])/2)          
                 else:
-                    start_range = np.mean([eps_to_test[correct_spin_range[r]-1], eps_to_test[correct_spin_range[r]]])
-                    
-                correct_spin, = plt.plot([start_range, start_range], [min(data_matrix[g])+0.05*max(data_matrix[g]), max(data_matrix[g])*1.05], 'g-', label="range of correct spin")
+                    start_range = np.mean([eps_to_test[correct_spin_range[r]-1], 
+                                           eps_to_test[correct_spin_range[r]]])
                 
+                correct_spin, = plt.plot([start_range, start_range], 
+                                         [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                                          max(data_matrix[g])*1.05], 
+                                         'g-', label="range of correct spin")   # this plots the front and end edges of the box
                 if r%2==0:
-                    if r+1 == len(correct_spin_range): # the last value of gamma in the range has the correct spin
-                        end_range = eps_to_test[-1]+float(input_settings["eps"][2])/2
+                    if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
+                        end_range = (eps_to_test[-1]+
+                                     float(input_settings["eps"][2])/2)
                     else:
-                        end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], eps_to_test[correct_spin_range[r+1]]])
+                        end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], 
+                                             eps_to_test[correct_spin_range[r+1]]])
                     
-                    plt.plot([start_range, end_range], [min(data_matrix[g])+0.05*max(data_matrix[g]), min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
-                    plt.plot([start_range, end_range], [max(data_matrix[g])*1.05, max(data_matrix[g])*1.05], 'g-')
+                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                              min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
+                    plt.plot([start_range, end_range], 
+                             [max(data_matrix[g])*1.05, 
+                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+            
+            # now plot the actual data
             data, = plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma_to_test[0])
 
-            
-        else: # input_settings["line"] == "gamma":
+        # if gamma was varied and eps was fixed:   
+        else:                                                                   # input_settings["line"] == "gamma":
             input_settings["line"] = "γ / º"
             input_settings["fixed"] = "ε"
             print("plotting line graph of variation with gamma...")
+            
+            # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
-                exp, = plt.plot(gamma_to_test, np.full(len(gamma_to_test), float(experimental_data[g])), 'r-', label="experimental value")
+                exp, = plt.plot(gamma_to_test, 
+                       np.full(len(gamma_to_test), float(experimental_data[g])), 
+                       'r-', label="experimental value")
+            
+            # mark the range in which the correct ground state spin was calculated
             for r in range(len(correct_spin_range)):
-                if correct_spin_range[r] == 0: # the first value of gamma in the range
-                    start_range = gamma_to_test[correct_spin_range[r]]-float(input_settings["gamma"][2])/2
+                if correct_spin_range[r] == 0:                                  # the first value of gamma in the range has the correct spin
+                    start_range = (gamma_to_test[correct_spin_range[r]]-
+                                   float(input_settings["gamma"][2])/2)
                 else:
-                    start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], gamma_to_test[correct_spin_range[r]]])
+                    start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], 
+                                           gamma_to_test[correct_spin_range[r]]])
                     
-                correct_spin, = plt.plot([start_range, start_range], [min(data_matrix[g])-0.05*max(data_matrix[g]), max(data_matrix[g])*1.05], 'g-', label="range of correct spin")
+                correct_spin, = plt.plot([start_range, start_range], 
+                                         [min(data_matrix[g])-0.05*max(data_matrix[g]), 
+                                          max(data_matrix[g])*1.05], 
+                                         'g-', label="range of correct spin")
                 
                 if r%2==0:
-                    if r+1 == len(correct_spin_range): # the last value of gamma in the range has the correct spin
-                        end_range = gamma_to_test[-1]+float(input_settings["gamma"][2])/2
-                        correct_spin, = plt.plot([end_range, end_range], [min(data_matrix[g])-0.05*max(data_matrix[g]), max(data_matrix[g])*1.05], 'g-', label="range of correct spin")
+                    if r+1 == len(correct_spin_range):                          # the last value of gamma in the range has the correct spin
+                        end_range = (gamma_to_test[-1]+
+                                     float(input_settings["gamma"][2])/2)
+                        
+                        correct_spin, = plt.plot([end_range, end_range], 
+                                        [min(data_matrix[g])-0.05*max(data_matrix[g]), 
+                                         max(data_matrix[g])*1.05], 
+                                        'g-', label="range of correct spin")    # this plots the front and end edges of the box
                        
                     else:
-                        end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], gamma_to_test[correct_spin_range[r+1]]])
+                        end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], 
+                                             gamma_to_test[correct_spin_range[r+1]]])
                     
-                    plt.plot([start_range, end_range], [min(data_matrix[g])-0.05*max(data_matrix[g]), min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
-                    plt.plot([start_range, end_range], [max(data_matrix[g])*1.05, max(data_matrix[g])*1.05], 'g-')
-        
+                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                             [min(data_matrix[g])-0.05*max(data_matrix[g]),
+                              min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
+                    plt.plot([start_range, end_range], 
+                             [max(data_matrix[g])*1.05, 
+                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+            
+            # plot the actual data
             data, = plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps_to_test[0])
         
+        
+        # add title and axis labels
+        ax.set_title('Variation of %(current_graph)s With %(line)s in %(nucleus)s' 
+                     % input_settings, va='bottom', y=1.1)                     
+        plt.xlabel("%(line)s" % input_settings)
+        plt.ylabel(data_axis_labels[g])
+        
+        # add legend (depending on what ROIs have been drawn)
         if correct_spin_range: legend = ax.legend(handles=[exp, correct_spin, data])
         else:
             legend = ax.legend(handles=[exp, data])
             print("none of these deformations yeilded a correct ground state spin")
         
-       
         plt.show()
 
+# note how long it took
 new_timer_lapse = time.time()
 print("finished plotting graphs in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-print("\ntotal runtime = %.2f seconds" % (new_timer_lapse-start_wall_time))
+print("total runtime = %.2f seconds" % (new_timer_lapse-start_wall_time))
 
 
 
