@@ -226,14 +226,14 @@ input_settings["gampn_orbitals"] = gampn_orbitals
 #   (currently uses the provided example as a base, and changes as few settings as possible!)
 # if anything went wrong, the existing .DAT file won't be overwritten 
 
-print("writing GAMPN.DAT files for a mesh...")
+print("writing GAMPN.DAT files...")
 
 write_count = 0                                                                 # start counting how many files get written
 written_file_tags = []                                                          # create a list to record which files were written
 
 for p in range(len(gamma_points)):
     
-    input_settings["current_eps"] = eps_points[p]                           # store eps in the dict for ease of use when string formatting below
+    input_settings["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
     input_settings["current_gamma"] = gamma_points[p]
     
     file_tag = "%s_e%.3f_g%.1f" % (input_settings["nucleus"], input_settings["current_eps"], input_settings["current_gamma"])
@@ -242,7 +242,7 @@ for p in range(len(gamma_points)):
     input_settings["current_f016"] = "f016_"+file_tag+".dat"
     input_settings["current_f017"] = "f017_"+file_tag+".dat"
     
-    try:                                                                    # only overwrite the existing input file if this code is successful
+    try:                                                                        # only overwrite the existing input file if this code is successful
         new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
@@ -261,8 +261,8 @@ for p in range(len(gamma_points)):
 0.054,0.69,0.062,0.26
 0,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
-%(gampn_orbitals)s                 IPARP, NORBITP, LEVELP
-%(gampn_orbitals)s                  IPARN, NORBITN, LEVELN
+%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
+%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
@@ -299,25 +299,23 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
 
 
-shell_script_file_path = "../RunGAMPN.sh"                                # this is where the shell script will be created
+shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
+print("running gampn")
 
-
-new_shell_script_text = "echo running GAMPN ..."
-
+new_shell_script_text = ""
 for file in written_file_tags :
-    
-    
     new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
     new_shell_script_text += ("\ncp GAMPN.out GAM_"+file+".OUT")                # copy GAMPN.out to a new txt file with a more descriptive name
 
-
-new_shell_script_text += "\n\necho done"
+new_shell_script_text += "\n\necho finished running gampn"
 
 shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../RunGAMPN.sh"])
+gampn = subprocess.Popen(["sh", "./../RunGAMPN.sh"])                            # start gampn as a subprocess (#!!! asynchronous - potential for parallelisation??)
+gampn.wait(5)                                                                   # wait to ensure it has finished before starting to read outputs, if it takes longer than 5 seconds, timeout (#!!! may need to allow a longer timeout for larger datasets)
+
 
 
 
@@ -337,68 +335,61 @@ subprocess.call(["sh", "./../RunGAMPN.sh"])
 
 ''' READ GAMPN.OUT FILE '''
 # for each deformation (i.e. each GAMPN.OUT file):
-#   work out the line number of the fermi level orbital in the GAMPN.OUT file
-#   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
-#   construct a string for ipar,nu,[level(j),j=1,nu]
+#   determine the line number of the fermi level orbital in the GAMPN.OUT file
+#   read that line from GAMPN.OUT and get the energy, parity, and single-party-index
+#   generate the orbitals input for asyrmo (e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
 
 print("\nreading GAMPN.OUT files...")
 
-asyrmo_inputs      = []                                                         # an empty array to store inputs for asyrmo.dat
+asyrmo_orbitals    = []                                                         # an empty array to store inputs for asyrmo.dat
 fermi_energies     = []                                                         # for the fermi energy at each deformation
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
 
 for file in written_file_tags :
     
+    # open the file and read
     gampn_out_file_name = "GAM_"+file+".OUT"
     gampn_out_file = open(gampn_out_file_name, 'r')
-    
     lines = gampn_out_file.readlines()
     
+    # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
     header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
-    
-        
-        
     fermi_level_line = input_settings["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
     if input_settings["fermi_level"] > 40:
         fermi_level_line -= 40
         whole_line = lines[fermi_level_line]
         half_line = whole_line[60:-1].strip()                                   # get only the second half of the line
-        
     else:
         whole_line = lines[fermi_level_line]
         half_line = whole_line[0:60].strip()                                    # get only the first half of the line
+        
+    # from the half-line containing data on the fermi level orbital, extract the parity, single-parity-index, and energy
+    hash_index = half_line.index("#")                                           # use the index of '#' as a reference point 
+    fermi_parities.append(half_line[hash_index-2])                              #!!! rather than reading the parity out like this, just set it as a parameter? 
+    fermi_energies.append(half_line[hash_index-10 : hash_index-4])              #!!! convert to float here? and convert to MeV (read EFAC conversion factor from output)
     
-    hash_index = half_line.index("#")                                           # use the index of # as a reference point 
-    ipar = half_line[hash_index-2]                                              #!!! rather than reading the parity out like this, just set it as a parameter? 
     single_parity_index = half_line[hash_index+1 : hash_index+3]
-    fermi_energy = half_line[hash_index-10 : hash_index-4]
-    fermi_energies.append(fermi_energy)
-    fermi_index = int(single_parity_index)
-    #if (ipar=="-"): fermi_index *= 1
-    fermi_parities.append(ipar)
-    fermi_indices.append(fermi_index)
-    
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit, ignore the ")" that will have been caught
         single_parity_index = single_parity_index[0]
+    fermi_indices.append(int(single_parity_index))
     
+    
+    # generate a string that contains the number of orbitals and their indices, in the correct format for input to asyrmo
     nu = int(input_settings["nu"])
-    
     first_index = int(single_parity_index) - nu//2
     last_index = int(single_parity_index) + nu//2
     if nu%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
         last_index += 1
     orbitals = np.r_[first_index:last_index]
     
-    orbitals_string = ipar + input_settings["nu"]                               # e.g. orbitals_string = "+4 19 20 21 22"
+    orbitals_string = fermi_parities[-1] + input_settings["nu"]                 # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
     for l in orbitals:
         orbitals_string += " "
         orbitals_string += str(l)
-    
-    asyrmo_inputs.append(orbitals_string)
-    
+    asyrmo_orbitals.append(orbitals_string)
 
-print("finished reading %d files\n" % len(asyrmo_inputs))
+print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 
 
@@ -409,6 +400,10 @@ print("finished reading %d files\n" % len(asyrmo_inputs))
 ''' WRITING ASYRMO.DAT FILE '''
 # for each deformation, writes a .DAT file for ASYRMO using the file tag to name, and the provided example as a base
 
+
+print("writing ASYRMO.DAT files...")
+
+# convert the nantj, noutj, ipout inputs to the correct format
 input_settings["nantj"] = input_settings["nantj"].replace(",", " ")
 input_settings["noutj"] = input_settings["noutj"].replace(",", " ")
 input_settings["ipout"] = input_settings["ipout"].replace(",", " ")
@@ -416,14 +411,14 @@ input_settings["ipout"] = input_settings["ipout"].replace(",", " ")
 count = 0
 for file in written_file_tags:
     
-    input_settings["current_orbitals"] = asyrmo_inputs[count]
+    input_settings["current_orbitals"] = asyrmo_orbitals[count]
     count += 1
     
     input_settings["current_f016"] = "f016_"+file+".dat"
     input_settings["current_f017"] = "f017_"+file+".dat"
     input_settings["current_f018"] = "f018_"+file+".dat"
     
-    try:                                                                    # only overwrite the existing input file if this code is successful
+    try:                                                                        # only overwrite the existing input file if this code is successful
         new_input_text =     '''
 
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
@@ -451,7 +446,7 @@ for file in written_file_tags:
         asyrmo_dat_file.close()     
     
 
-print("finished writing ASY.DAT files")
+print("finished writing %d ASY.DAT files" % count)
 
 
 
@@ -486,8 +481,8 @@ shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../RunASYRMO.sh"])
-
+asyrmo = subprocess.Popen(["sh", "./../RunASYRMO.sh"])
+asyrmo.wait(5)
 
 
 
@@ -566,8 +561,8 @@ shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
 shell_script_file.close()                                                       
 
-subprocess.call(["sh", "./../RunPROBAMO.sh"])
-
+probamo = subprocess.Popen(["sh", "./../RunPROBAMO.sh"])
+probamo.wait(5)
 
 
 
@@ -582,7 +577,7 @@ input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
 # for each deformation (i.e. each PROBAMO.OUT file):
 #   work out the line number of the fermi level orbital in the GAMPN.OUT file
 #   read that line from GAMPN.OUT and get the energy, parity, and orbital index restricted to that parity
-#   construct a string for ipar,nu,[level(j),j=1,nu]
+#   construct a string for fermi_parity,nu,[level(j),j=1,nu]
 
 print("\nreading PROBAMO.OUT files...")
 
@@ -654,7 +649,7 @@ for file in written_file_tags :
         
 
 
-print("finished reading %d files\n" % len(asyrmo_inputs))
+print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 
 eps_points = np.array(eps_points)
@@ -722,8 +717,8 @@ if "eps_max" in input_settings:
         for r in range(len(gamma_points)):
             if experimental_data[g]:
                 error = abs(data_matrix[g][r] - experimental_data[g])
-                if error < error_tolerance[g]:  #   error/experimental_data[g] < 0.1: #                      #!!! if they agree within 5%, plot the data point in red rather than white
-                    if g==0:                                                    # there's nothing to disagree with yet, so this point agrees
+                if error < error_tolerance[g]:  #   error/experimental_data[g] < 0.1: #                  #!!! if they agree within 5%, plot the data point in red rather than white
+                    if g==0 and fermi_parities[r]==input_settings["par"]:                                # check that the ground state parity has been reproduced
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
                         dot_hit, = plt.polar(gamma_points[r], eps_points[r], 'r.', label="parity (-) hit")
@@ -868,10 +863,13 @@ elif "line" in input_settings: # then plot a line graph of parammeter variation 
                     
                     plt.plot([start_range, end_range], [min(data_matrix[g])-0.05*max(data_matrix[g]), min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
                     plt.plot([start_range, end_range], [max(data_matrix[g])*1.05, max(data_matrix[g])*1.05], 'g-')
+        
             data, = plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps_to_test[0])
         
-        #legend = ax.legend()
-        legend = ax.legend(handles=[exp, correct_spin, data])
-        #legend.set_title("%(fixed)s" % input_settings)
+        if correct_spin_range: legend = ax.legend(handles=[exp, correct_spin, data])
+        else:
+            legend = ax.legend(handles=[exp, data])
+            print("none of these deformations yeilded a correct ground state spin")
+        
        
         plt.show()

@@ -70,7 +70,7 @@ tx_spin 3.5
 
 
 * single 0.170 25 ***** eps gamma
-gamma 0.170 10,25,0.5 *** eps min_gamma,max_gamma,step
+gamma 0.170 15,20,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
 * mesh 0.5 ************ max_eps
 
