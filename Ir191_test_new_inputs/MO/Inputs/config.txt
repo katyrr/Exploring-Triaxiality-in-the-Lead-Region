@@ -76,7 +76,7 @@ tx_spin 3.5
 * gamma 0.170 0,60,5 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
 
-outer_points 20 ***** the number of gamma values to try at eps_max 
+outer_points 25 ***** the number of gamma values to try at eps_max 
 mesh 0.5 ************ max_eps
 
 
@@ -99,8 +99,8 @@ irec 1 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body wit
 ************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-emin 5.0
-emax 6.0 ****** range of energies in which to calculate s.p. wvfncs
+emin 5.5
+emax 6.5 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
 

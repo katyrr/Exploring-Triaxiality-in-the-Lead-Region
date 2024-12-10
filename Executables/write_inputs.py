@@ -210,7 +210,7 @@ print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
 
 # generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
 gampn_orbitals = input_settings["par"]
-gampn_orbitals += str(input_settings["num_orbs"])                                    # e.g. orbitals_string = "4 19 20 21 22"
+gampn_orbitals += str(input_settings["num_orbs"])                               # e.g. orbitals_string = "4 19 20 21 22"
 
 first_index = input_settings["fermi_level"]//2 - input_settings["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
 last_index = input_settings["fermi_level"]//2 + input_settings["num_orbs"]//2
@@ -310,7 +310,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
 timer_lapse = time.time()
 print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_wall_time))
-allowed_time = 20                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+allowed_time = 0.1*write_count                                                  # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
 for file in written_file_tags :
@@ -361,6 +361,10 @@ for file in written_file_tags :
     lines = gampn_out_file.readlines()
     gampn_out_file.close()
     
+    # get the EFAC value (conversion factor from hw to MeV)
+    efac_header = lines.index("     KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC\n")
+    efac = float(lines[efac_header+1][85:95].strip())
+    
     # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
     header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
     fermi_level_line = input_settings["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
@@ -375,7 +379,7 @@ for file in written_file_tags :
     # from the half-line containing data on the fermi level orbital, extract the parity, single-parity-index, and energy
     hash_index = half_line.index("#")                                           # use the index of '#' as a reference point 
     fermi_parities.append(half_line[hash_index-2])                              #!!! rather than reading the parity out like this, just set it as a parameter? 
-    fermi_energies.append(half_line[hash_index-10 : hash_index-4])              #!!! convert to float here? and convert to MeV (read EFAC conversion factor from output)
+    fermi_energies.append(float(half_line[hash_index-10 : hash_index-4])*efac)              #!!! convert to float here? and convert to MeV (read EFAC conversion factor from output)
     
     single_parity_index = half_line[hash_index+1 : hash_index+3]
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit, ignore the ")" that will have been caught
@@ -630,7 +634,6 @@ for file in written_file_tags :
     probamo_out_file.close()
 
 # convert collected data from string to float
-fermi_energies = [float(n) for n in fermi_energies]
 gs_mag_mom = [float(n) for n in gs_mag_mom]
 gs_spins = [float(n[0])/2 for n in gs_spins]
 
@@ -668,16 +671,14 @@ gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
 cbar_ticks = [0,0, fermi_index_cbar_ticks, 
               gs_spin_cbar_ticks,0,0]
 
-data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / $\hbar\omega_{0}$', 'fermi level parity and index', 
+data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / MeV', 'fermi level parity and index',
                     'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
 
 
 experimental_data = [float(input_settings["gs_mu"]), [], [], 
                      float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
 
-error_tolerance = [0.2, 0.0, 0.0, 0.1, 100, 100]                                #!!! these are a bit arbitrary...
-
-dc = ['c','c','d','d','c', 'c']                                                 # record whether each data set is continuous or discrete
+error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
 
 
 #%%
@@ -776,15 +777,22 @@ if "eps_max" in input_settings:
         
         
         # now add filled colour contour plots
-        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=contour_levels[g])#, vmin=-0.8, vmax=5.4) # vmin/max are range of colourmap, -0.8/6.4 for mu, 4.5, 6.5 for fermi energy
-        plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-   
         c_level_boundaries = contour_levels[g]
+        
+        
         cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
         cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-        ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 for i in range(len(c_level_boundaries) - 1)] # Calculate midpoints of levels for tick placement
-        cbar.set_ticks(ticks)
-        cbar.set_ticklabels(cbar_ticks[g])
+        if isinstance(c_level_boundaries, list):                                # then format for discrete values
+            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+    
+            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
+                     for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
+            cbar.set_ticks(ticks)
+            cbar.set_ticklabels(cbar_ticks[g])
+  
+    
+        
         
         # add title and axis labels
         ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)                      
