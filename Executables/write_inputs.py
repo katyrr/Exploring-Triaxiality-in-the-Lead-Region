@@ -715,7 +715,21 @@ if "eps_max" in input_settings:
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))  
         
-        # create flags to record which ROIs should be included in the legend
+        # create filled colour contour plots
+        c_level_boundaries = contour_levels[g]
+        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+        cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+        if isinstance(c_level_boundaries, list):                                # then format for discrete values
+            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+    
+            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
+                     for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
+            cbar.set_ticks(ticks)
+            cbar.set_ticklabels(cbar_ticks[g])
+  
+        
+        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
         dot_hit_flag = False
         plus_hit_flag = False
         dot_miss_flag = False
@@ -746,6 +760,7 @@ if "eps_max" in input_settings:
                     else: # fermi_parities[r] == "+":
                         plt.polar(gamma_points[r], eps_points[r], 'w+')
                         plus_miss_flag = True
+                cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
                         
             # if there is no experimental data available for comparison, just plot all points in white            
             elif fermi_parities[r] == "-":
@@ -776,22 +791,6 @@ if "eps_max" in input_settings:
         legend.set_title("data points")
         
         
-        # now add filled colour contour plots
-        c_level_boundaries = contour_levels[g]
-        
-        
-        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
-        cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-        if isinstance(c_level_boundaries, list):                                # then format for discrete values
-            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
-            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-    
-            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
-                     for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
-            cbar.set_ticks(ticks)
-            cbar.set_ticklabels(cbar_ticks[g])
-  
-    
         
         
         # add title and axis labels
