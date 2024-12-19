@@ -24,11 +24,14 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 import matplotlib.pyplot as plt                                                 # for plotting graphs
+from matplotlib import rc                                                       # for TeX formatting
 import time                                                                     # for checking how long it took to run
 
 plt.rcParams['figure.dpi'] = 150
+rc('text', usetex=False)
 
 config_file_name = "../Inputs/config.txt"
+
                                                                  
 start_wall_time = time.time()
 
@@ -163,10 +166,16 @@ input_settings["A"] = int(input_settings["A"])                                  
 input_settings["Z"] = int(input_settings["Z"])
 
 input_settings["num_orbs"] = int(input_settings["num_orbs"])       
-    
-input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
-input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
-input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
+
+if "fx_spin" in input_settings:
+    input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
+else: input_settings["fx_spin"] = "0"
+if "sx_spin" in input_settings:
+    input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
+else: input_settings["sx_spin"] = "0"
+if "tx_spin" in input_settings:
+    input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
+else: input_settings["tx_spin"] = "0"
 
 
 print(input_settings)
@@ -310,7 +319,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
 timer_lapse = time.time()
 print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_wall_time))
-allowed_time = 0.1*write_count                                                  # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+allowed_time = 0.1*write_count + 10                                            # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
 for file in written_file_tags :
@@ -542,7 +551,7 @@ print("finished writing PROB.DAT files")
 
 
 shell_script_file_path = "../RunPROBAMO.sh"                                     # this is where the shell script will be created
-new_shell_script_text = "echo running PROBAMO ..."
+new_shell_script_text = ""
 
 for file in written_file_tags :
     
@@ -551,7 +560,7 @@ for file in written_file_tags :
     new_shell_script_text += ("\n./../../../Executables/MO/probamo < ../Inputs/PROB_"+file+".DAT")
     new_shell_script_text += ("\ncp PROBAMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
 
-new_shell_script_text += "\n\necho done"
+new_shell_script_text += "\n\necho messgae from terminal: finished running probamo"
 
 shell_script_file = open(shell_script_file_path, 'w')
 shell_script_file.write(new_shell_script_text)
@@ -629,7 +638,7 @@ for file in written_file_tags :
         tx_energies.append(float(sx_line[0:5].strip()))
     except NameError:
         print("could not find the excited states (no states of the appropriate spins)")
-        raise
+        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
     probamo_out_file.close()
 
@@ -674,10 +683,17 @@ cbar_ticks = [0,0, fermi_index_cbar_ticks,
 data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / MeV', 'fermi level parity and index',
                     'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
 
-
-experimental_data = [float(input_settings["gs_mu"]), [], [], 
-                     float(input_settings["gs_spin"]), float(input_settings["fx_energy"]), float(input_settings["sx_energy"])]
-
+experimental_data = [[], [], [], 
+                     [], [], []]
+if "gs_mu" in input_settings:
+    experimental_data[0] = float(input_settings["gs_mu"])
+if "gs_spin" in input_settings:
+    experimental_data[3] = float(input_settings["gs_spin"])
+if "fx_energy" in input_settings:
+    experimental_data[4] = float(input_settings["fx_energy"])
+if "sx_energy" in input_settings:
+    experimental_data[5] = float(input_settings["sx_energy"])
+    
 error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
 
 
@@ -727,7 +743,11 @@ if "eps_max" in input_settings:
                      for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
             cbar.set_ticks(ticks)
             cbar.set_ticklabels(cbar_ticks[g])
-  
+        
+        ax.tricontour(gamma_points, eps_points, data_matrix[3], 
+                      levels=[float(input_settings["gs_spin"])-0.5,float(input_settings["gs_spin"])+0.5],  
+                      colors=[(213/255,1,0)], linewidths=1.0)
+        
         
         # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
         dot_hit_flag = False
@@ -760,7 +780,7 @@ if "eps_max" in input_settings:
                     else: # fermi_parities[r] == "+":
                         plt.polar(gamma_points[r], eps_points[r], 'w+')
                         plus_miss_flag = True
-                cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
+                exp, = cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
                         
             # if there is no experimental data available for comparison, just plot all points in white            
             elif fermi_parities[r] == "-":
@@ -771,26 +791,36 @@ if "eps_max" in input_settings:
                 plus_flag = True
                 
         # plot four data points (unseen outside the data range) with desired formatting to use for the legend
-        dot, = plt.polar(3.0, 0.2, 'k.', label="parity (-)")
-        plus, = plt.polar(3.0, 0.2, 'k+', label="parity (+)")
+        dot, = plt.polar(3.0, 0.2, 'k.', label="negative parity")
+        plus, = plt.polar(3.0, 0.2, 'k+', label="positive parity")
         dot_miss, = plt.polar(3.0, 0.2, 'k.', label="parity (-) miss")
         plus_miss, = plt.polar(3.0, 0.2, 'k+', label="parity (+) miss")
         dot_hit, = plt.polar(3.0, 0.2, 'r.', label="parity (-) match")
         plus_hit, = plt.polar(3.0, 0.2, 'r+', label="parity (+) match")
-            
-        legend_handles=[]
+        exp, = plt.polar(3.0, 0.2, 'r-', label="experimental value")
+        spin, = plt.polar(3.0, 0.2, '-', color=(213/255,1,0), linewidth=2.0, 
+                          label="boundary of correct\nground state spin")
         
+        
+        legend_handles=[dot, plus]
+        '''
         if dot_hit_flag: legend_handles.append(dot_hit)
         if plus_hit_flag: legend_handles.append(plus_hit)
         if dot_miss_flag: legend_handles.append(dot_miss)
         if plus_miss_flag: legend_handles.append(plus_miss)
         if dot_flag: legend_handles.append(dot)
         if dot_flag: legend_handles.append(plus)
-            
-        legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 1.05))
-        legend.set_title("data points")
+        '''
         
         
+        annotation_legend = ax.legend(handles=[spin, exp],  loc="upper left", bbox_to_anchor=(-0.3, 1.12))
+        annotation_legend.set_title('annotations\n----------------------')
+        
+        
+        legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 0.78))
+        legend.set_title("data points\n---------------")
+        
+        plt.gca().add_artist(annotation_legend)
         
         
         # add title and axis labels
@@ -808,6 +838,17 @@ if "eps_max" in input_settings:
               % (p, eps_points[p], gamma_points[p]*180/np.pi))
     print("\n")
         
+
+
+
+
+
+
+
+
+
+
+
 
 elif "line" in input_settings:                                                  # then plot a line graph of data variation with eps (or gamma)
 
@@ -833,7 +874,7 @@ elif "line" in input_settings:                                                  
         if input_settings["line"] == "eps" or input_settings["line"] == "ε":
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
-            print("plotting line graph of variation with eps...")
+            # print("plotting line graph of variation with eps...")
             
             # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
@@ -876,7 +917,7 @@ elif "line" in input_settings:                                                  
         else:                                                                   # input_settings["line"] == "gamma":
             input_settings["line"] = "γ / º"
             input_settings["fixed"] = "ε"
-            print("plotting line graph of variation with gamma...")
+            # print("plotting line graph of variation with gamma...")
             
             # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
@@ -919,8 +960,16 @@ elif "line" in input_settings:                                                  
                              [max(data_matrix[g])*1.05, 
                               max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
             
-            # plot the actual data
-            data, = plt.plot(gamma_to_test, data_matrix[g], 'k-x', label="ε = %s" % eps_to_test[0])
+            # plot the actual data (first a line graph, then the points seperately so that the parities can be indicated by the markers)
+            data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
+            for p in range(len(gamma_to_test)):
+                if fermi_parities[p] == "-":
+                    dot, = plt.polar(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+
+                elif fermi_parities[p] == "+":
+                    plus, = plt.polar(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+                    
+            
         
         
         # add title and axis labels
@@ -930,9 +979,9 @@ elif "line" in input_settings:                                                  
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range: legend = ax.legend(handles=[exp, correct_spin, data])
+        if correct_spin_range: legend = ax.legend(handles=[exp, correct_spin, data, dot, plus])
         else:
-            legend = ax.legend(handles=[exp, data])
+            legend = ax.legend(handles=[exp, data, dot, plus])
             print("none of these deformations yeilded a correct ground state spin")
         
         plt.show()

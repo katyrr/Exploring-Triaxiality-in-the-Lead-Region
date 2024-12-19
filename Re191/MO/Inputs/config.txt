@@ -1,4 +1,4 @@
-********** correct config file ******* 27/11/24 ******* Test run on Ir191 *************
+********** config file ******* 18/12/24 ******* Test run on Re191 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
 * each line is split into words with delimiter " "
@@ -12,31 +12,18 @@
 
 **************** nucleus info *************************************************
 
-nucleus Ir191
-Z 77
+nucleus Re191
+Z 75
 A 191 
-*** therefore N is 114
+*** therefore N is 116
 
 
 
 ************** experimental results *******************************************
 
-*** ground state magnetic dipole moment and spin:
-gs_mu 0.1502 ******** mu_N
-gs_spin 1.5 
-
-*** first excited state energy and spin:
-fx_energy 82.4 ******* keV
-fx_spin 0.5
-
-*** second excited state energy and spin:
-sx_energy 129.4 ****** keV
-sx_spin 2.5 
-
-*** third excited state energy and spin:
-tx_energy 343.3 ****** keV ***** the third one is actually 179.0 keV to a 3/2+ state, but there are complications in reading that from the output (since the same spin is also the ground state)
-tx_spin 3.5
-
+*** ground state spin:
+gs_spin 0.5 
+fx_spin 1.5 ***** this is not actually an excited state, but the forms a doublet ground state with the above
 
 
 ************** deformation parameters - range to run over *********************
@@ -69,11 +56,11 @@ tx_spin 3.5
 *********************************************************************************
 
 
+***** choose one of these lines:
 
+single 0.156 45 ***** eps gamma
 
-* single 0.170 25 ***** eps gamma
-
-gamma 0.170 10,40,1 *** eps min_gamma,max_gamma,step
+* gamma 0.170 10,40,1 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
 
 outer_points 25 ***** the number of gamma values to try at eps_max 
@@ -99,8 +86,8 @@ irec 1 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body wit
 ************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-emin 5.5
-emax 6.5 ****** range of energies in which to calculate s.p. wvfncs
+emin 4.0
+emax 7.0 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
 
@@ -111,10 +98,10 @@ imin 1 ***** min spin I
 ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
-e2plus 0.187 **** 0.210 **** 0.317 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.2068 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-chsi 1.0 *** coriolis attenuation (1 for no attenuation) *** example sets 0.0
+chsi 1.0 *** coriolis attenuation (1 for no attenuation) *** example sets 0.0 ...?
 eta 1.0 **** coriolis attenuation (1 for no attenuation)
 
 nu 7 ******* the number of orbitals to consider *** this is different from nuu=0 in gampn!
