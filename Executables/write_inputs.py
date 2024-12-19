@@ -586,51 +586,106 @@ timer_lapse = new_timer_lapse
 
 print("\nreading PROBAMO.OUT files...")
 
-gs_mag_mom = []
-gs_spins = []
-fx_energies = []
-sx_energies = []
-tx_energies = []
+if input_settings["spin_or_excitation"]=="excitation":
+    gs_mag_mom = []
+    gs_spins = []
+    fx_energies = []
+    sx_energies = []
+    tx_energies = []
+    
+else: # input_settings["spin_or_excitation"]=="spin"
+    num_to_record = int(input_settings["num_to_record"])-1 
+    
+    mag_mom_1 = []
+    mag_mom_3 = []
+    mag_mom_5 = []
+    
+    energies_1 = []
+    energies_3 = []
+    energies_5 = []
+    
+    for i in range(num_to_record+1):
+        mag_mom_1.append([])
+        mag_mom_3.append([])
+        mag_mom_5.append([])
+        
+        energies_1.append([])
+        energies_3.append([])
+        energies_5.append([])
+    
+    
 
 
 for file in written_file_tags :
 
     probamo_out_file_name = "PROB_"+file+".OUT"
     
-    # locate the yrast (lowest energy) state of each spin
-    fx_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
-    sx_energy = math.inf
-    tx_energy = math.inf
+    if input_settings["spin_or_excitation"]=="excitation":
+        # locate the yrast (lowest energy) state of each spin
+        fx_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
+        sx_energy = math.inf
+        tx_energy = math.inf
+    
+    else: # input_settings["spin_or_excitation"]=="spin"
+        states_1 = 0 # for counting how many states of each spin have been calculated
+        states_3 = 0
+        states_5 = 0
     
     probamo_out_file = open(probamo_out_file_name, 'r')
     for line in probamo_out_file:
         line = line.strip()
         
-        try:                                                                    # determine whether this line is a data row of the table (if a '-' is present, then it is)
+        try:                                                                    # determine whether this line is a data row of the table (if a ' - ' is present (with a space either side!), then it is)
             dash_index = line.index(" - ")
-            spin = line[dash_index-3:dash_index]                                # get the spin of this row
         except ValueError:
-            continue                                                            # if this row doesn't contain data, ignore it
+            continue    
+        else:
+            spin = float(line[dash_index-4:dash_index].strip()[0])/2                        # get the spin of this row
+            final_spin = float(line[dash_index+11:dash_index+16].strip()[0])/2              # get the spin of the final state (after transition)
+            this_energy = float(line[:6].strip())
+            final_energy = float(line[dash_index+3:dash_index+10].strip())
+                                                                # if this row doesn't contain data, ignore it
         
-        if line[0:3] == "0.0":                                                  # then this is the ground state
-            gs_mag_mom.append(line[-8:].strip())                                # get the ground state magnetic moment
-            gs_spins.append(spin)                                   
-        
-        elif spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
-            this_energy = float(line[0:5].strip())
-            if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
-                fx_energy = this_energy
-                fx_line = line
-        elif spin == input_settings["sx_spin"]:                                 # repeat for second excited state
-            this_energy = float(line[0:5].strip())
-            if this_energy < sx_energy:
-                sx_energy = this_energy
-                sx_line = line
-        elif spin == input_settings["tx_spin"]:                                 # repeat for third excited state
-            this_energy = float(line[0:5].strip())
-            if this_energy < tx_energy:
-                tx_energy = this_energy
-                tx_line = line
+        if input_settings["spin_or_excitation"]=="excitation":
+            if line[0:3] == "0.0":                                                  # then this is the ground state
+                gs_mag_mom.append(float(line[-8:].strip()))                                # get the ground state magnetic moment
+                gs_spins.append(spin)                                   
+            
+            elif spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
+                if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
+                    fx_energy = this_energy
+                    fx_line = line
+            elif spin == input_settings["sx_spin"]:                                 # repeat for second excited state
+                if this_energy < sx_energy:
+                    sx_energy = this_energy
+                    sx_line = line
+            elif spin == input_settings["tx_spin"]:                                 # repeat for third excited state
+                if this_energy < tx_energy:
+                    tx_energy = this_energy
+                    tx_line = line
+                    
+        else: # input_settings["spin_or_excitation"]=="spin"
+            if spin == 0.5  and final_spin == 0.5 and this_energy==final_energy:        # check that this line represents an internal transition (static moment)
+                if states_1 > num_to_record: # only save the first three
+                    continue
+                mag_mom_1[states_1].append(float(line[-8:].strip()))                                 
+                energies_1[states_1].append(float(line[0:6].strip())) 
+                states_1 += 1                                  
+            
+            elif spin == 1.5 and final_spin == 1.5 and this_energy==final_energy:
+                if states_3 > num_to_record:
+                    continue
+                mag_mom_3[states_3].append(float(line[-8:].strip()))                                 
+                energies_3[states_3].append(float(line[0:6].strip()))   
+                states_3 += 1
+                
+            elif spin == 2.5 and final_spin == 2.5 and this_energy==final_energy:
+                if states_5 > num_to_record:
+                    continue
+                mag_mom_5[states_5].append(float(line[-8:].strip()))                                 
+                energies_5[states_5].append(float(line[0:6].strip()))   
+                states_5 += 1
+                
     
     try:
         fx_energies.append(float(fx_line[0:5].strip()))
@@ -643,8 +698,8 @@ for file in written_file_tags :
     probamo_out_file.close()
 
 # convert collected data from string to float
-gs_mag_mom = [float(n) for n in gs_mag_mom]
-gs_spins = [float(n[0])/2 for n in gs_spins]
+#gs_mag_mom = [float(n) for n in gs_mag_mom]
+#gs_spins = [float(n[0])/2 for n in gs_spins]
 
 print("finished reading %d files\n" % len(asyrmo_orbitals))
 
@@ -661,40 +716,92 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 for r in range(len(gamma_points)):
     gamma_points[r] *= np.pi/180
 
-
-data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, 
-               gs_spins, fx_energies, sx_energies, tx_energies]
-
-graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
-                   "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
-
-fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
-gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
-contour_levels = [8, 10, fermi_index_colour_levels, 
-                  gs_spin_colour_levels, 10, 10]
-
-fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
-fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
-gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
-gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
-cbar_ticks = [0,0, fermi_index_cbar_ticks, 
-              gs_spin_cbar_ticks,0,0]
-
-data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / MeV', 'fermi level parity and index',
-                    'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
-
-experimental_data = [[], [], [], 
-                     [], [], []]
-if "gs_mu" in input_settings:
-    experimental_data[0] = float(input_settings["gs_mu"])
-if "gs_spin" in input_settings:
-    experimental_data[3] = float(input_settings["gs_spin"])
-if "fx_energy" in input_settings:
-    experimental_data[4] = float(input_settings["fx_energy"])
-if "sx_energy" in input_settings:
-    experimental_data[5] = float(input_settings["sx_energy"])
+if input_settings["spin_or_excitation"]=="excitation":
+    # locate the yrast (lowest energy) state of each spin
     
-error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
+    data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, 
+                   gs_spins, fx_energies, sx_energies, tx_energies]
+
+    graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
+                       "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
+
+    fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
+    gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
+    contour_levels = [8, 10, fermi_index_colour_levels, 
+                      gs_spin_colour_levels, 10, 10]
+
+    fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
+    fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
+    gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
+    gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
+    cbar_ticks = [0,0, fermi_index_cbar_ticks, 
+                  gs_spin_cbar_ticks,0,0]
+
+    data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / MeV', 'fermi level parity and index',
+                        'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
+
+    experimental_data = [[], [], [], 
+                         [], [], []]
+    if "gs_mu" in input_settings:
+        experimental_data[0] = float(input_settings["gs_mu"])
+    if "gs_spin" in input_settings:
+        experimental_data[3] = float(input_settings["gs_spin"])
+    if "fx_energy" in input_settings:
+        experimental_data[4] = float(input_settings["fx_energy"])
+    if "sx_energy" in input_settings:
+        experimental_data[5] = float(input_settings["sx_energy"])
+        
+    error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
+
+
+else: # input_settings["spin_or_excitation"]=="spin"
+
+    data_matrix = [mag_mom_1, mag_mom_3, mag_mom_5, 
+                   [fermi_energies], [fermi_indices], 
+                   energies_1, energies_3, energies_5]
+
+    graphs_to_print = ["Magnetic Dipole Moments of Spin 1/2 States", "Magnetic Dipole Moments of Spin 3/2 States", "Magnetic Dipole Moments of Spin 5/2 States", 
+                       "Fermi Energy", "Fermi Level Parity And Index", 
+                       "Energies of Spin 1/2 States", "Energies of Spin 3/2 States", "Energies of Spin 5/2 States"]
+
+    fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
+    contour_levels = [8, 8, 8, 
+                      10, fermi_index_colour_levels, 
+                      10, 10, 10]
+
+    fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
+    fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
+    cbar_ticks = [0,0,0,
+                  0,fermi_index_cbar_ticks, 
+                  0,0,0]
+
+    data_axis_labels = [r'μ / $μ_{N}$', r'μ / $μ_{N}$',r'μ / $μ_{N}$',
+                        'fermi energy / MeV', 'fermi level parity and index',
+                        "Energy / keV", "Energy / keV", "Energy / keV"]
+
+    experimental_data = [[], [], [],
+                         [], [],
+                         [], [], []]
+    if "gs_mu" in input_settings:
+        experimental_data[0] = float(input_settings["gs_mu"])
+        experimental_data[1] = float(input_settings["gs_mu"])
+        experimental_data[2] = float(input_settings["gs_mu"])
+    if "fx_energy" in input_settings:
+        if input_settings["fx_spin"] == "1/2":
+            experimental_data[5] = float(input_settings["fx_energy"])
+        if input_settings["fx_spin"] == "3/2":
+            experimental_data[6] = float(input_settings["fx_energy"])
+        if input_settings["fx_spin"] == "5/2":
+            experimental_data[7] = float(input_settings["fx_energy"])
+    if "sx_energy" in input_settings:
+        if input_settings["sx_spin"] == "1/2":
+            experimental_data[5] = float(input_settings["sx_energy"])
+        if input_settings["sx_spin"] == "3/2":
+            experimental_data[6] = float(input_settings["sx_energy"])
+        if input_settings["sx_spin"] == "5/2":
+            experimental_data[7] = float(input_settings["sx_energy"])
+        
+    error_tolerance = [0.2, 0.2, 0.2, 0.0, 0.0, 50, 50, 50]                                #!!! these are a bit arbitrary...
 
 
 #%%
@@ -821,7 +928,6 @@ if "eps_max" in input_settings:
         
         legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 0.78))
         legend.set_title("data points\n---------------")
-        
         plt.gca().add_artist(annotation_legend)
         
         
@@ -857,14 +963,16 @@ elif "line" in input_settings:                                                  
     # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
     correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
     start_flag = False
-    for i in range(len(gs_spins)):
-        if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
-            start_flag = True
-            correct_spin_range.append(i)
-        elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
-            start_flag = False
-            correct_spin_range.append(i)
     
+    if input_settings["mark_spin"]==1:
+        for i in range(len(gs_spins)):
+            if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
+                start_flag = True
+                correct_spin_range.append(i)
+            elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
+                start_flag = False
+                correct_spin_range.append(i)
+        
     # plot graphs
     for g in range(len(graphs_to_print)):
         input_settings["current_graph"] = graphs_to_print[g]
@@ -915,8 +1023,34 @@ elif "line" in input_settings:                                                  
                 
                 
             # now plot the actual data
-            data, = plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma_to_test[0])
-
+            if input_settings["spin_or_excitation"]=="excitation":
+                data, = plt.plot(eps_to_test, data_matrix[g], 'k-', label="γ = %s" % gamma_to_test[0])
+                for p in range(len(eps_to_test)):
+                    if fermi_parities[p] == "-":
+                        dot, = plt.plot(eps_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+    
+                    elif fermi_parities[p] == "+":
+                        plus, = plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+            
+            else: # input_settings["spin_or_excitation"]=="spin":
+                this_data = data_matrix[g]
+                line_colours = ['k-', 'b-', 'y-']
+                line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+                data_handles = []
+                for s in range(len(this_data)):
+                    
+                    data, = plt.plot(eps_to_test, this_data[s], line_colours[s], label=line_labels[s])
+                    data_handles.append(data)
+                    for p in range(len(this_data[s])):
+                        if fermi_parities[p] == "-":
+                            dot, = plt.plot(eps_to_test[p], this_data[s][p], 'k.', label='negative parity')
+        
+                        elif fermi_parities[p] == "+":
+                            plus, = plt.plot(eps_to_test[p], this_data[s][p], 'k+', label='positive parity')
+                legend_title = "γ = %s" % gamma_to_test[0]
+            
+            
+            
         # if gamma was varied and eps was fixed:   
         else:                                                                   # input_settings["line"] == "gamma":
             input_settings["line"] = "γ / º"
@@ -967,30 +1101,58 @@ elif "line" in input_settings:                                                  
                 
                 
             # plot the actual data (first a line graph, then the points seperately so that the parities can be indicated by the markers)
-            data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
-            for p in range(len(gamma_to_test)):
-                if fermi_parities[p] == "-":
-                    dot, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
-
-                elif fermi_parities[p] == "+":
-                    plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+            
+            if input_settings["spin_or_excitation"]=="excitation":
+                data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
+                for p in range(len(gamma_to_test)):
+                    if fermi_parities[p] == "-":
+                        dot, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+    
+                    elif fermi_parities[p] == "+":
+                        plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+            
+            else: # input_settings["spin_or_excitation"]=="spin":
+                this_data = data_matrix[g]
+                line_colours = ['k-', 'b-', 'y-']
+                line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+                data_handles = []
+                for s in range(len(this_data)):
                     
+                    data, = plt.plot(gamma_to_test, this_data[s], line_colours[s], label=line_labels[s])
+                    data_handles.append(data)
+                    for p in range(len(this_data[s])):
+                        if fermi_parities[p] == "-":
+                            dot, = plt.plot(gamma_to_test[p], this_data[s][p], 'k.', label='negative parity')
+        
+                        elif fermi_parities[p] == "+":
+                            plus, = plt.plot(gamma_to_test[p], this_data[s][p], 'k+', label='positive parity')
+                legend_title = "ε = %s" % eps_to_test[0]
+                
             
         
-        
         # add title and axis labels
-        ax.set_title('Variation of %(current_graph)s With %(line)s in %(nucleus)s' 
+        ax.set_title('%(current_graph)s in %(nucleus)s' 
                      % input_settings, va='bottom', y=1.1)                     
         plt.xlabel("%(line)s" % input_settings)
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
         if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
-            legend = ax.legend(handles=[exp, correct_spin, data, dot, plus])
+            legend_handles=[exp, correct_spin, data, dot, plus]
         elif experimental_data[g]:
-            legend = ax.legend(handles=[exp, data, dot, plus])
-        else: legend = ax.legend(handles=[data, dot, plus])
+            legend_handles=[exp, data, dot, plus]
+        else: 
+            legend_handles=[data, dot, plus]
         
+        if input_settings["spin_or_excitation"] == "spin":
+             legend_handles.remove(data)
+             legend_handles += data_handles
+    
+        legend = ax.legend(handles = list(reversed(legend_handles)))
+        
+        if input_settings["spin_or_excitation"] == "spin":
+            legend.set_title(legend_title)
+            
         plt.show()
 
 # note how long it took
