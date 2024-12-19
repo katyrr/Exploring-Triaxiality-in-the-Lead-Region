@@ -744,9 +744,11 @@ if "eps_max" in input_settings:
             cbar.set_ticks(ticks)
             cbar.set_ticklabels(cbar_ticks[g])
         
-        ax.tricontour(gamma_points, eps_points, data_matrix[3], 
-                      levels=[float(input_settings["gs_spin"])-0.5,float(input_settings["gs_spin"])+0.5],  
-                      colors=[(213/255,1,0)], linewidths=1.0)
+        # mark the range in which the correct ground state spin was calculated
+        if input_settings["mark_spin"]==1:
+            ax.tricontour(gamma_points, eps_points, data_matrix[3], 
+                          levels=[float(input_settings["gs_spin"])-0.5,float(input_settings["gs_spin"])+0.5],  
+                          colors=[(213/255,1,0)], linewidths=1.0)
         
         
         # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
@@ -883,33 +885,35 @@ elif "line" in input_settings:                                                  
                        'r-', label="experimental value")
             
             # mark the range in which the correct ground state spin was calculated
-            for r in range(len(correct_spin_range)):
-                if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
-                    start_range = (eps_to_test[correct_spin_range[r]]-
-                                   float(input_settings["eps"][2])/2)          
-                else:
-                    start_range = np.mean([eps_to_test[correct_spin_range[r]-1], 
-                                           eps_to_test[correct_spin_range[r]]])
-                
-                correct_spin, = plt.plot([start_range, start_range], 
-                                         [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                                          max(data_matrix[g])*1.05], 
-                                         'g-', label="range of correct spin")   # this plots the front and end edges of the box
-                if r%2==0:
-                    if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
-                        end_range = (eps_to_test[-1]+
-                                     float(input_settings["eps"][2])/2)
+            if input_settings["mark_spin"]==1:
+                for r in range(len(correct_spin_range)):
+                    if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
+                        start_range = (eps_to_test[correct_spin_range[r]]-
+                                       float(input_settings["eps"][2])/2)          
                     else:
-                        end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], 
-                                             eps_to_test[correct_spin_range[r+1]]])
+                        start_range = np.mean([eps_to_test[correct_spin_range[r]-1], 
+                                               eps_to_test[correct_spin_range[r]]])
                     
-                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                              min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
-                    plt.plot([start_range, end_range], 
-                             [max(data_matrix[g])*1.05, 
-                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
-            
+                    correct_spin, = plt.plot([start_range, start_range], 
+                                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                                              max(data_matrix[g])*1.05], 
+                                             'g-', label="range of correct spin")   # this plots the front and end edges of the box
+                    if r%2==0:
+                        if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
+                            end_range = (eps_to_test[-1]+
+                                         float(input_settings["eps"][2])/2)
+                        else:
+                            end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], 
+                                                 eps_to_test[correct_spin_range[r+1]]])
+                        
+                        plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                                 [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                                  min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
+                        plt.plot([start_range, end_range], 
+                                 [max(data_matrix[g])*1.05, 
+                                  max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+                
+                
             # now plot the actual data
             data, = plt.plot(eps_to_test, data_matrix[g], 'k-x', label="γ = %s" % gamma_to_test[0])
 
@@ -923,51 +927,53 @@ elif "line" in input_settings:                                                  
             if experimental_data[g]:
                 exp, = plt.plot(gamma_to_test, 
                        np.full(len(gamma_to_test), float(experimental_data[g])), 
-                       'r-', label="experimental value")
+                       'r-', linewidth=3, label="experimental value")
             
             # mark the range in which the correct ground state spin was calculated
-            for r in range(len(correct_spin_range)):
-                if correct_spin_range[r] == 0:                                  # the first value of gamma in the range has the correct spin
-                    start_range = (gamma_to_test[correct_spin_range[r]]-
-                                   float(input_settings["gamma"][2])/2)
-                else:
-                    start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], 
-                                           gamma_to_test[correct_spin_range[r]]])
-                    
-                correct_spin, = plt.plot([start_range, start_range], 
-                                         [min(data_matrix[g])-0.05*max(data_matrix[g]), 
-                                          max(data_matrix[g])*1.05], 
-                                         'g-', label="range of correct spin")
-                
-                if r%2==0:
-                    if r+1 == len(correct_spin_range):                          # the last value of gamma in the range has the correct spin
-                        end_range = (gamma_to_test[-1]+
-                                     float(input_settings["gamma"][2])/2)
-                        
-                        correct_spin, = plt.plot([end_range, end_range], 
-                                        [min(data_matrix[g])-0.05*max(data_matrix[g]), 
-                                         max(data_matrix[g])*1.05], 
-                                        'g-', label="range of correct spin")    # this plots the front and end edges of the box
-                       
+            if input_settings["mark_spin"]==1:
+                for r in range(len(correct_spin_range)):
+                    if correct_spin_range[r] == 0:                                  # the first value of gamma in the range has the correct spin
+                        start_range = (gamma_to_test[correct_spin_range[r]]-
+                                       float(input_settings["gamma"][2])/2)
                     else:
-                        end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], 
-                                             gamma_to_test[correct_spin_range[r+1]]])
+                        start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], 
+                                               gamma_to_test[correct_spin_range[r]]])
+                        
+                    correct_spin, = plt.plot([start_range, start_range], 
+                                             [min(data_matrix[g])-0.05*max(data_matrix[g]), 
+                                              max(data_matrix[g])*1.05], 
+                                             'g-', label="range of correct spin")
                     
-                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                             [min(data_matrix[g])-0.05*max(data_matrix[g]),
-                              min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
-                    plt.plot([start_range, end_range], 
-                             [max(data_matrix[g])*1.05, 
-                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
-            
+                    if r%2==0:
+                        if r+1 == len(correct_spin_range):                          # the last value of gamma in the range has the correct spin
+                            end_range = (gamma_to_test[-1]+
+                                         float(input_settings["gamma"][2])/2)
+                            
+                            correct_spin, = plt.plot([end_range, end_range], 
+                                            [min(data_matrix[g])-0.05*max(data_matrix[g]), 
+                                             max(data_matrix[g])*1.05], 
+                                            'g-', label="range of correct spin")    # this plots the front and end edges of the box
+                           
+                        else:
+                            end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], 
+                                                 gamma_to_test[correct_spin_range[r+1]]])
+                        
+                        plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                                 [min(data_matrix[g])-0.05*max(data_matrix[g]),
+                                  min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
+                        plt.plot([start_range, end_range], 
+                                 [max(data_matrix[g])*1.05, 
+                                  max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+                
+                
             # plot the actual data (first a line graph, then the points seperately so that the parities can be indicated by the markers)
             data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
             for p in range(len(gamma_to_test)):
                 if fermi_parities[p] == "-":
-                    dot, = plt.polar(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+                    dot, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
 
                 elif fermi_parities[p] == "+":
-                    plus, = plt.polar(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+                    plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
                     
             
         
@@ -979,10 +985,11 @@ elif "line" in input_settings:                                                  
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range: legend = ax.legend(handles=[exp, correct_spin, data, dot, plus])
-        else:
+        if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
+            legend = ax.legend(handles=[exp, correct_spin, data, dot, plus])
+        elif experimental_data[g]:
             legend = ax.legend(handles=[exp, data, dot, plus])
-            print("none of these deformations yeilded a correct ground state spin")
+        else: legend = ax.legend(handles=[data, dot, plus])
         
         plt.show()
 

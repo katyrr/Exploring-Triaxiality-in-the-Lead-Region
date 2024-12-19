@@ -22,8 +22,16 @@ A 191
 ************** experimental results *******************************************
 
 *** ground state spin:
-gs_spin 0.5 
-fx_spin 1.5 ***** this is not actually an excited state, but the forms a doublet ground state with the above
+gs_spin 1.5 
+fx_spin 0.5 ***** this is not actually an excited state, but the forms a doublet ground state with the above
+sx_spin 2.5
+
+
+
+************** graph plotting options ****************************************
+
+mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green 
+
 
 
 ************** deformation parameters - range to run over *********************
@@ -58,9 +66,9 @@ fx_spin 1.5 ***** this is not actually an excited state, but the forms a doublet
 
 ***** choose one of these lines:
 
-single 0.156 45 ***** eps gamma
+single 0.156 -105 ***** eps gamma
 
-* gamma 0.170 10,40,1 *** eps min_gamma,max_gamma,step
+* gamma 0.156 0,60,1 *** eps min_gamma,max_gamma,step
 * eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
 
 outer_points 25 ***** the number of gamma values to try at eps_max 
@@ -76,7 +84,7 @@ mode MO **** either MO or WS (not yet implemented WS)
 
 * gampn *
 
-istrch 1 **** use spherical (0) or stretched (1) coordinates
+istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
 ************* also used in asyrmo
 
 nneupr 1 *** protons (1) neutrons (-1) or both (2)
