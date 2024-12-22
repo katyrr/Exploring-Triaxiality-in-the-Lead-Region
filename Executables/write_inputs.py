@@ -24,11 +24,12 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 import matplotlib.pyplot as plt                                                 # for plotting graphs
-from matplotlib import rc                                                       # for TeX formatting
+# from matplotlib import rc                                                     # for TeX formatting
 import time                                                                     # for checking how long it took to run
+from matplotlib.ticker import FuncFormatter                                     # for formatting axis ticks
 
 plt.rcParams['figure.dpi'] = 150
-rc('text', usetex=False)
+# rc('text', usetex=False)
 
 config_file_name = "../Inputs/config.txt"
 
@@ -616,7 +617,9 @@ else: # input_settings["spin_or_excitation"]=="spin"
     
 
 
-for file in written_file_tags :
+for f in range(len(written_file_tags)) :
+    
+    file = written_file_tags[f]
 
     probamo_out_file_name = "PROB_"+file+".OUT"
     
@@ -640,8 +643,18 @@ for file in written_file_tags :
         except ValueError:
             continue    
         else:
-            spin = float(line[dash_index-4:dash_index].strip()[0])/2                        # get the spin of this row
-            final_spin = float(line[dash_index+11:dash_index+16].strip()[0])/2              # get the spin of the final state (after transition)
+            spin_string = line[dash_index-4:dash_index].strip()
+            if spin_string[1] == "/":
+                spin = float(spin_string[0])/2                        # get the spin of this row
+            else: 
+                spin = float(spin_string[:2])/2
+                
+            final_spin_string = line[dash_index+11:dash_index+16].strip()              # get the spin of the final state (after transition)
+            if final_spin_string[1] == "/":
+                final_spin = float(final_spin_string[0])/2                        # get the spin of this row
+            else: 
+                final_spin = float(final_spin_string[:2])/2
+                
             this_energy = float(line[:6].strip())
             final_energy = float(line[dash_index+3:dash_index+10].strip())
                                                                 # if this row doesn't contain data, ignore it
@@ -670,13 +683,16 @@ for file in written_file_tags :
                     continue
                 mag_mom_1[states_1].append(float(line[-8:].strip()))                                 
                 energies_1[states_1].append(float(line[0:6].strip())) 
-                states_1 += 1                                  
+                
+                states_1 += 1
+                                             
             
             elif spin == 1.5 and final_spin == 1.5 and this_energy==final_energy:
                 if states_3 > num_to_record:
                     continue
                 mag_mom_3[states_3].append(float(line[-8:].strip()))                                 
                 energies_3[states_3].append(float(line[0:6].strip()))   
+                
                 states_3 += 1
                 
             elif spin == 2.5 and final_spin == 2.5 and this_energy==final_energy:
@@ -684,8 +700,29 @@ for file in written_file_tags :
                     continue
                 mag_mom_5[states_5].append(float(line[-8:].strip()))                                 
                 energies_5[states_5].append(float(line[0:6].strip()))   
+                
                 states_5 += 1
                 
+    for s in range(num_to_record+1):
+        if len(mag_mom_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            mag_mom_1[s].append(np.NaN)
+                
+        if len(mag_mom_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            mag_mom_3[s].append(np.NaN)
+       
+        if len(mag_mom_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            mag_mom_5[s].append(np.NaN)
+        
+        if len(energies_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            energies_1[s].append(np.NaN)
+                
+        if len(energies_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            energies_3[s].append(np.NaN)
+       
+        if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            energies_5[s].append(np.NaN)
+        
+        
     
     try:
         fx_energies.append(float(fx_line[0:5].strip()))
@@ -759,10 +796,16 @@ else: # input_settings["spin_or_excitation"]=="spin"
     data_matrix = [mag_mom_1, mag_mom_3, mag_mom_5, 
                    [fermi_energies], [fermi_indices], 
                    energies_1, energies_3, energies_5]
+    
+    if "eps_max" in input_settings or num_to_record == 0: 
+        graphs_to_print = ["Magnetic Dipole Moment of Lowest Spin 1/2 State", "Magnetic Dipole Moment of Lowest Spin 3/2 State", "Magnetic Dipole Moment of Lowest Spin 5/2 State", 
+                           "Fermi Energy", "Fermi Level Parity And Index", 
+                           "Energy of Lowest Spin 1/2 State", "Energy of Lowest Spin 3/2 State", "Energy of Lowest Spin 5/2 State"]
 
-    graphs_to_print = ["Magnetic Dipole Moments of Spin 1/2 States", "Magnetic Dipole Moments of Spin 3/2 States", "Magnetic Dipole Moments of Spin 5/2 States", 
-                       "Fermi Energy", "Fermi Level Parity And Index", 
-                       "Energies of Spin 1/2 States", "Energies of Spin 3/2 States", "Energies of Spin 5/2 States"]
+    else:   
+        graphs_to_print = ["Magnetic Dipole Moments of Spin 1/2 States", "Magnetic Dipole Moments of Spin 3/2 States", "Magnetic Dipole Moments of Spin 5/2 States", 
+                           "Fermi Energy", "Fermi Level Parity And Index", 
+                           "Energies of Spin 1/2 States", "Energies of Spin 3/2 States", "Energies of Spin 5/2 States"]
 
     fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
     contour_levels = [8, 8, 8, 
@@ -836,21 +879,41 @@ if "eps_max" in input_settings:
         ax.set_rmax(1.0)
         
         theta_ticks = np.arange(0, 70, 10)  
-        ax.set_xticks(np.radians(theta_ticks))  
+        ax.set_xticks(np.radians(theta_ticks))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))    # set the number of decimal places 
+
         
         # create filled colour contour plots
         c_level_boundaries = contour_levels[g]
-        cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
-        cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-        if isinstance(c_level_boundaries, list):                                # then format for discrete values
+        if input_settings["spin_or_excitation"] == "excitation":
+            
             cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-    
-            ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
-                     for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
-            cbar.set_ticks(ticks)
-            cbar.set_ticklabels(cbar_ticks[g])
+            if isinstance(c_level_boundaries, list):                                # then format for discrete values
+                cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+                cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         
+                ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
+                         for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
+                cbar.set_ticks(ticks)
+                cbar.set_ticklabels(cbar_ticks[g])
+                
+        else: # input_settings["spin_or_excitation"] == "spin"
+            this_data = data_matrix[g]
+            
+            
+            cax = ax.tricontourf(gamma_points, eps_points, this_data[0], levels=c_level_boundaries)
+            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+            if isinstance(c_level_boundaries, list):                                # then format for discrete values
+                cax = ax.tricontourf(gamma_points, eps_points, this_data[0], levels=c_level_boundaries)
+                cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+        
+                ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
+                         for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
+                cbar.set_ticks(ticks)
+                cbar.set_ticklabels(cbar_ticks[g])
+                
+            
         # mark the range in which the correct ground state spin was calculated
         if input_settings["mark_spin"]==1:
             ax.tricontour(gamma_points, eps_points, data_matrix[3], 
@@ -921,21 +984,28 @@ if "eps_max" in input_settings:
         if dot_flag: legend_handles.append(plus)
         '''
         
-        
-        annotation_legend = ax.legend(handles=[spin, exp],  loc="upper left", bbox_to_anchor=(-0.3, 1.12))
-        annotation_legend.set_title('annotations\n----------------------')
-        
+        annotation_handles = []
+        if experimental_data[g]:
+            annotation_handles.append(exp)
+        if input_settings["mark_spin"]==1:
+            annotation_handles.append(spin)
         
         legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 0.78))
         legend.set_title("data points\n---------------")
-        plt.gca().add_artist(annotation_legend)
+        
+        if len(annotation_handles) > 0:
+            annotation_legend = ax.legend(handles=annotation_handles,  loc="upper left", bbox_to_anchor=(-0.3, 1.12))
+            annotation_legend.set_title('annotations\n----------------------')
+            plt.gca().add_artist(annotation_legend)
         
         
         # add title and axis labels
         ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)                      
         plt.xlabel("ε")
         ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
-       
+        
+        
+        
         plt.show()
         
     print("\n\nnumber of points that agreed with experimental data: " +
@@ -1113,8 +1183,8 @@ elif "line" in input_settings:                                                  
             
             else: # input_settings["spin_or_excitation"]=="spin":
                 this_data = data_matrix[g]
-                line_colours = ['k-', 'b-', 'y-']
-                line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+                line_colours = ['k-', 'b-', 'y-', 'c-', 'm-']
+                line_labels = ["lowest energy", "second lowest energy", "third lowest energy", "fourth lowest energy", "fifth lowest energy"]
                 data_handles = []
                 for s in range(len(this_data)):
                     

@@ -23,7 +23,7 @@ A 191
 
 spin_or_excitation spin ****** (spin or excitation) whether to collect data from probamo based on expected excited states or simply grouped by spin
 
-num_to_record 1 ***** (if spin_or_excitation=="spin") how many states of each spin should be recorded (current max 3)
+num_to_record 1 ***** (if spin_or_excitation=="spin") how many states of each spin should be recorded (current max 5, but 3 is realistically the most you want)
 
 gs_spin 1.5 
 fx_spin 0.5 ***** this is not actually an excited state, but the forms a doublet ground state with the above
@@ -71,11 +71,11 @@ mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in gr
 
 * single 0.156 -105 ***** eps gamma
 
-gamma 0.156 0,60,10 *** eps min_gamma,max_gamma,step
-* eps 0.001,1.0,0.1 0 *** min_eps,max_eps,step gamma
+* gamma 0.156 0,60,1 *** eps min_gamma,max_gamma,step
+* eps 0.01,0.5,0.01 26.5 *** min_eps,max_eps,step gamma
 
 outer_points 25 ***** the number of gamma values to try at eps_max 
-* mesh 0.5 ************ max_eps
+mesh 0.2 ************ max_eps
 
 
 
