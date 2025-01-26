@@ -206,8 +206,8 @@ if input_settings["nneupr"] == "1":
     
 elif input_settings["nneupr"]  == "-1":    
     print("calculating for odd neutrons...")
-    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)
-    if input_settings["Z"]%2 == 0:
+    input_settings["fermi_level"] = math.ceil(input_settings["N"]/2)
+    if input_settings["N"]%2 == 0:
         print('''this nucleus has even N but nneupr = -1; check inputs 
               (the code will treat this as the core and assume an odd neutron on top)''')
 
@@ -654,8 +654,12 @@ for f in range(len(written_file_tags)) :
                 final_spin = float(final_spin_string[0])/2                        # get the spin of this row
             else: 
                 final_spin = float(final_spin_string[:2])/2
-                
-            this_energy = float(line[:6].strip())
+            
+            try:
+                this_energy = float(line[:6].strip())
+            except ValueError: # could not convert string to float: '0.0  1'
+                this_energy = float(line[:5].strip())
+            
             final_energy = float(line[dash_index+3:dash_index+10].strip())
                                                                 # if this row doesn't contain data, ignore it
         

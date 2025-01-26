@@ -1,0 +1,25 @@
+
+        
+'f002_e0.170_g22.5.dat' 'f016_e0.170_g22.5.dat' 'f017_e0.170_g22.5.dat'     file2, file16, file17
+1,0,1                          ISTRCH,ICORR,irec
+9,1                            NKAMY,NNEUPR
+0.120,0.00,0.120,0.00
+0.120,0.00,0.120,0.00
+0.105,0.00,0.105,0.00
+0.090,0.30,0.090,0.25
+0.065,0.57,0.070,0.39
+0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
+0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0
+0.054,0.69,0.062,0.26
+0,1,1,0                       NUU,IPKT,NOYES,ITRANS
+5.0,6.0
++11 14 15 16 17 18 19 20 21 22 23 24                 IPARP, NORBITP, LEVELP
++11 14 15 16 17 18 19 20 21 22 23 24                  IPARN, NORBITN, LEVELN
+77,191                                                Z,A
+0.17,22.5,0.00,0.0,0.0000,8,8,0,0
+(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
+        
+        

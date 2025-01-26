@@ -103,6 +103,8 @@ emax 7.0 ****** range of energies in which to calculate s.p. wvfncs
 num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
 
 
+
+
 * asyrmo *
 
 imin 1 ***** min spin I 
