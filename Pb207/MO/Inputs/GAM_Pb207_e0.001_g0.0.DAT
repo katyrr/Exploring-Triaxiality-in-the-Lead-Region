@@ -1,7 +1,7 @@
 
         
 'f002_Pb207_e0.001_g0.0.dat' 'f016_Pb207_e0.001_g0.0.dat' 'f017_Pb207_e0.001_g0.0.dat'     file2, file16, file17
-1,0,1                          ISTRCH,ICORR,irec
+1,0,0                          ISTRCH,ICORR,irec
 9,-1                            NKAMY,NNEUPR
 0.120,0.00,0.120,0.00
 0.120,0.00,0.120,0.00

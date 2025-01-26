@@ -664,19 +664,20 @@ for f in range(len(written_file_tags)) :
                                                                 # if this row doesn't contain data, ignore it
         
         if input_settings["spin_or_excitation"]=="excitation":
+            frac_spin = (str(int(float(spin)*2))+"/2")
             if line[0:3] == "0.0":                                                  # then this is the ground state
                 gs_mag_mom.append(float(line[-8:].strip()))                                # get the ground state magnetic moment
                 gs_spins.append(spin)                                   
             
-            elif spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
+            elif frac_spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
                 if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
                     fx_energy = this_energy
                     fx_line = line
-            elif spin == input_settings["sx_spin"]:                                 # repeat for second excited state
+            elif frac_spin == input_settings["sx_spin"]:                                 # repeat for second excited state
                 if this_energy < sx_energy:
                     sx_energy = this_energy
                     sx_line = line
-            elif spin == input_settings["tx_spin"]:                                 # repeat for third excited state
+            elif frac_spin == input_settings["tx_spin"]:                                 # repeat for third excited state
                 if this_energy < tx_energy:
                     tx_energy = this_energy
                     tx_line = line
@@ -706,36 +707,47 @@ for f in range(len(written_file_tags)) :
                 energies_5[states_5].append(float(line[0:6].strip()))   
                 
                 states_5 += 1
-                
-    for s in range(num_to_record+1):
-        if len(mag_mom_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            mag_mom_1[s].append(np.NaN)
-                
-        if len(mag_mom_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            mag_mom_3[s].append(np.NaN)
-       
-        if len(mag_mom_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            mag_mom_5[s].append(np.NaN)
-        
-        if len(energies_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            energies_1[s].append(np.NaN)
-                
-        if len(energies_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            energies_3[s].append(np.NaN)
-       
-        if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
-            energies_5[s].append(np.NaN)
-        
+    
+    if input_settings["spin_or_excitation"]=="spin":
+        for s in range(num_to_record+1):
+            if len(mag_mom_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                mag_mom_1[s].append(np.NaN)
+                    
+            if len(mag_mom_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                mag_mom_3[s].append(np.NaN)
+           
+            if len(mag_mom_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                mag_mom_5[s].append(np.NaN)
+            
+            if len(energies_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                energies_1[s].append(np.NaN)
+                    
+            if len(energies_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                energies_3[s].append(np.NaN)
+           
+            if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+                energies_5[s].append(np.NaN)
+            
         
     
     try:
         fx_energies.append(float(fx_line[0:5].strip()))
-        sx_energies.append(float(sx_line[0:5].strip()))
-        tx_energies.append(float(sx_line[0:5].strip()))
     except NameError:
-        print("could not find the excited states (no states of the appropriate spins)")
+        print("could not find an excited state with spin: " + input_settings["fx_spin"] + " in file: " + probamo_out_file_name)
         # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-        
+            
+    try:
+        sx_energies.append(float(sx_line[0:5].strip()))
+    except NameError:
+        print("could not find an excited state with spin: " + input_settings["sx_spin"] + " in file: " + probamo_out_file_name)
+        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
+    
+    try:
+        tx_energies.append(float(tx_line[0:5].strip()))
+    except NameError:
+        print("could not find an excited state with spin: " + input_settings["tx_spin"] + " in file: " + probamo_out_file_name)
+        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
+    
     probamo_out_file.close()
 
 # convert collected data from string to float
@@ -830,16 +842,27 @@ else: # input_settings["spin_or_excitation"]=="spin"
                          [], [],
                          [], [], []]
     if "gs_mu" in input_settings:
-        experimental_data[0] = float(input_settings["gs_mu"])
-        experimental_data[1] = float(input_settings["gs_mu"])
-        experimental_data[2] = float(input_settings["gs_mu"])
+        
+        if input_settings["gs_spin"] == "0.5":
+            experimental_data[0] = float(input_settings["gs_mu"])
+        if input_settings["gs_spin"] == "1.5":
+            experimental_data[1] = float(input_settings["gs_mu"])
+        if input_settings["gs_spin"] == "2.5":
+            experimental_data[2] = float(input_settings["gs_mu"])
+        
     if "fx_energy" in input_settings:
         if input_settings["fx_spin"] == "1/2":
             experimental_data[5] = float(input_settings["fx_energy"])
+            if "fx_mu" in input_settings:
+                experimental_data[0] = float(input_settings["fx_mu"])
         if input_settings["fx_spin"] == "3/2":
             experimental_data[6] = float(input_settings["fx_energy"])
+            if "fx_mu" in input_settings:
+                experimental_data[1] = float(input_settings["fx_mu"])
         if input_settings["fx_spin"] == "5/2":
             experimental_data[7] = float(input_settings["fx_energy"])
+            if "fx_mu" in input_settings:
+                experimental_data[2] = float(input_settings["fx_mu"])
     if "sx_energy" in input_settings:
         if input_settings["sx_spin"] == "1/2":
             experimental_data[5] = float(input_settings["sx_energy"])
@@ -931,7 +954,7 @@ if "eps_max" in input_settings:
         dot_miss_flag = False
         plus_miss_flag = False
         dot_flag = False
-        dot_flag = False
+        plus_flag = False
         
         # plot the data point markers, and check which deformations give a result that matches experiment
         for r in range(len(gamma_points)):
@@ -1054,11 +1077,26 @@ elif "line" in input_settings:                                                  
         
         fig, ax = plt.subplots()                                                # create figure and axes
         
+        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
+        dot, = plt.plot(3.0, 0.0, 'k.', label="negative parity")
+        plus, = plt.plot(3.0, 0.0, 'k+', label="positive parity")
+        
+        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
+        dot_flag = False
+        plus_flag = False
+        
+          
+        
+        
+        
         # if eps was varied and gamma was fixed:
         if input_settings["line"] == "eps" or input_settings["line"] == "ε":
             input_settings["line"] = "ε"
             input_settings["fixed"] = "γ / º"
             # print("plotting line graph of variation with eps...")
+            
+            pad = 0.05*(eps_to_test[-1]-eps_to_test[0])
+            ax.set_xlim([eps_to_test[0]-pad, eps_to_test[-1]+pad]) 
             
             # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
@@ -1101,11 +1139,12 @@ elif "line" in input_settings:                                                  
                 data, = plt.plot(eps_to_test, data_matrix[g], 'k-', label="γ = %s" % gamma_to_test[0])
                 for p in range(len(eps_to_test)):
                     if fermi_parities[p] == "-":
-                        dot, = plt.plot(eps_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
-    
+                        plt.plot(eps_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+                        dot_flag = True
                     elif fermi_parities[p] == "+":
-                        plus, = plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
-            
+                        plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+                        plus_flag = True
+                        
             else: # input_settings["spin_or_excitation"]=="spin":
                 this_data = data_matrix[g]
                 line_colours = ['k-', 'b-', 'y-']
@@ -1117,10 +1156,11 @@ elif "line" in input_settings:                                                  
                     data_handles.append(data)
                     for p in range(len(this_data[s])):
                         if fermi_parities[p] == "-":
-                            dot, = plt.plot(eps_to_test[p], this_data[s][p], 'k.', label='negative parity')
-        
+                            plt.plot(eps_to_test[p], this_data[s][p], 'k.', label='negative parity')
+                            dot_flag = True
                         elif fermi_parities[p] == "+":
-                            plus, = plt.plot(eps_to_test[p], this_data[s][p], 'k+', label='positive parity')
+                            plt.plot(eps_to_test[p], this_data[s][p], 'k+', label='positive parity')
+                            plus_flag = True
                 legend_title = "γ = %s" % gamma_to_test[0]
             
             
@@ -1130,6 +1170,9 @@ elif "line" in input_settings:                                                  
             input_settings["line"] = "γ / º"
             input_settings["fixed"] = "ε"
             # print("plotting line graph of variation with gamma...")
+            
+            pad = 0.05*(gamma_to_test[-1]-gamma_to_test[0])
+            ax.set_xlim([gamma_to_test[0]-pad, gamma_to_test[-1]+pad])
             
             # if experimental data is available, plot it in red for easy comparison
             if experimental_data[g]:
@@ -1212,11 +1255,17 @@ elif "line" in input_settings:                                                  
         
         # add legend (depending on what ROIs have been drawn)
         if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
-            legend_handles=[exp, correct_spin, data, dot, plus]
+            legend_handles=[exp, correct_spin, data, dot]
         elif experimental_data[g]:
-            legend_handles=[exp, data, dot, plus]
+            legend_handles=[exp, data]
         else: 
-            legend_handles=[data, dot, plus]
+            legend_handles=[data]
+            
+        if dot_flag:
+            legend_handles.append(dot)
+        
+        if plus_flag:
+            legend_handles.append(plus)
         
         if input_settings["spin_or_excitation"] == "spin":
              legend_handles.remove(data)
