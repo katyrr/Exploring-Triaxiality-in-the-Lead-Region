@@ -46,9 +46,9 @@ tx_spin 3.5
 
 ************** graph plotting options ****************************************
 
-mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
+mark_spin 1 ******* (1 or 0) highlight region of correct ground state spin in green
 
-spin_or_excitation excitation ****** (spin or excitation) whether to collect data from probamo based on expected excited states or simply grouped by spin
+spin_or_excitation spin ****** (spin or excitation) whether to collect data from probamo based on expected excited states or simply grouped by spin
 
 num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each spin should be recorded (current max 5, but 3 is realistically the most you want)
 
@@ -82,14 +82,13 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 *
 *********************************************************************************
 
-
-* single 0.001 0 ***** eps gamma
+single 0.001 0 ***** eps gamma
 
 * gamma 0.156 0,60,1 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.1,0.01 0 *** min_eps,max_eps,step gamma
+* eps -0.09,0.09,0.02 0 *** min_eps,max_eps,step gamma
 
-outer_points 20 ***** the number of gamma values to try at eps_max 
-mesh 0.5 ************ max_eps
+* outer_points 20 ***** the number of gamma values to try at eps_max 
+* mesh 0.5 ************ max_eps
 
 
 
@@ -112,8 +111,8 @@ irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body wit
 ************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-emin 0.0
-emax 7.0 ****** range of energies in which to calculate s.p. wvfncs
+emin 6.0
+emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
 
@@ -129,13 +128,13 @@ ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
-e2plus 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.73 *** 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 nu 5 ******* the number of orbitals to consider
 
-chsi 1.0 *** coriolis attenuation (1 for no attenuation)
-eta 1.0 **** coriolis attenuation (1 for no attenuation)
+chsi 0.0 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
+eta 1.0 **** coriolis attenuation (1 for no attenuation, 5 for standard)
 
 nantj 3,3,3,3,3,3,3 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 noutj 2,2,2,2,2,2,2 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
@@ -153,7 +152,7 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 2500.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+cutoff 3000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 
 
 ** parameters that are currently still fixed: 

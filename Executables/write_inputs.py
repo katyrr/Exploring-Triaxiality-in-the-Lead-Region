@@ -93,6 +93,15 @@ for line in config_file:
         continue
         bad_lines.append(line_count)
     
+    if split_string[0]=="e2plus":
+        input_settings["e2plus"] = split_string[1]
+        input_settings["e2plus"] = input_settings["e2plus"].split(",")
+        if len(input_settings["e2plus"]) > 1 :                                     # then a range of eps values has been input
+            e2plus_to_test =  np.arange(float(input_settings["e2plus"][0]),           # add a step to the end value (because arange function is non-inclusive)
+                                    float(input_settings["e2plus"][1])+float(input_settings["e2plus"][2]), 
+                                    float(input_settings["e2plus"][2]))
+        else : e2plus_to_test = [float(input_settings["e2plus"][0])]                  # even though it only has one element, a list is easier to input to a for loop later
+        
     
     # save deformation input in the input_settings dictionary
     if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single": 
@@ -183,7 +192,7 @@ print(input_settings)
 print("\n\nFinished reading lines: "+str(line_count))
 print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 
-
+    
 
 #%%
 ''' CALCULATE FERMI LEVEL '''
@@ -251,20 +260,27 @@ write_count = 0                                                                 
 written_file_tags = []                                                          # create a list to record which files were written
 
 for p in range(len(gamma_points)):
-    
-    input_settings["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
-    input_settings["current_gamma"] = gamma_points[p]
-    
-    file_tag = "%s_e%.3f_g%.1f" % (input_settings["nucleus"], 
-                                   input_settings["current_eps"], 
-                                   input_settings["current_gamma"])
-    
-    input_settings["current_f002"] = "f002_"+file_tag+".dat"
-    input_settings["current_f016"] = "f016_"+file_tag+".dat"
-    input_settings["current_f017"] = "f017_"+file_tag+".dat"
-    
-    try:                                                                        # only overwrite the existing input file if this code is successful
-        new_input_text =     '''
+    for e in e2plus_to_test:
+        
+        if len(e2plus_to_test)>1 and len(gamma_points)>1:
+            raise ValueError("only input a range of e2plus if the deformation input is a single point")
+        
+        input_settings["current_e2plus"] = e
+        
+        input_settings["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
+        input_settings["current_gamma"] = gamma_points[p]
+        
+        file_tag = "e%.3f_g%.1f_p%.3f_%s" % (input_settings["current_eps"], 
+                                       input_settings["current_gamma"],
+                                       input_settings["current_e2plus"],
+                                       input_settings["nucleus"])
+        
+        input_settings["current_f002"] = "f002_"+file_tag+".dat"
+        input_settings["current_f016"] = "f016_"+file_tag+".dat"
+        input_settings["current_f017"] = "f017_"+file_tag+".dat"
+        
+        try:                                                                        # only overwrite the existing input file if this code is successful
+            new_input_text =     '''
         
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
 %(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
@@ -288,21 +304,21 @@ for p in range(len(gamma_points)):
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
     
-    ''' % input_settings
+        ''' % input_settings
+                
+        except KeyError:
+            print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
+                  " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
+            raise
             
-    except KeyError:
-        print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
-              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-        raise
-        
-    else: 
-        gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
-        gampn_dat_file = open(gampn_dat_file_path, 'w')
-        gampn_dat_file.write(new_input_text)
-        gampn_dat_file.close()     
-
-    write_count += 1
-    written_file_tags.append(file_tag)
+        else: 
+            gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
+            gampn_dat_file = open(gampn_dat_file_path, 'w')
+            gampn_dat_file.write(new_input_text)
+            gampn_dat_file.close()     
+    
+        write_count += 1
+        written_file_tags.append(file_tag)
 
 print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" 
       % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
@@ -433,6 +449,11 @@ for f in range(len(written_file_tags)):
     
     input_settings["current_orbitals"] = asyrmo_orbitals[f]
     
+    if len(e2plus_to_test)>1:
+        input_settings["current_e2plus"] = e2plus_to_test[f]
+    else:
+        input_settings["current_e2plus"] = e2plus_to_test[0]
+    
     file = written_file_tags[f]
     input_settings["current_f016"] = "f016_"+file+".dat"
     input_settings["current_f017"] = "f017_"+file+".dat"
@@ -445,7 +466,7 @@ for f in range(len(written_file_tags)):
 1,0                                        IPKT,ISKIP
 %(istrch)s,%(irec)s                                        ISTRCH,IREC
 %(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
-%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
+%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(current_e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
 19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
 %(current_orbitals)s  
   %(nantj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
@@ -727,27 +748,25 @@ for f in range(len(written_file_tags)) :
            
             if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
                 energies_5[s].append(np.NaN)
-            
+    else:  #input_settings["spin_or_excitation"]=="excitation":
+        try:
+            fx_energies.append(float(fx_line[0:5].strip()))
+        except NameError:
+            print("could not find an excited state with spin: " + input_settings["fx_spin"] + " in file: " + probamo_out_file_name)
+            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
+                
+        try:
+            sx_energies.append(float(sx_line[0:5].strip()))
+        except NameError:
+            print("could not find an excited state with spin: " + input_settings["sx_spin"] + " in file: " + probamo_out_file_name)
+            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
-    
-    try:
-        fx_energies.append(float(fx_line[0:5].strip()))
-    except NameError:
-        print("could not find an excited state with spin: " + input_settings["fx_spin"] + " in file: " + probamo_out_file_name)
-        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-            
-    try:
-        sx_energies.append(float(sx_line[0:5].strip()))
-    except NameError:
-        print("could not find an excited state with spin: " + input_settings["sx_spin"] + " in file: " + probamo_out_file_name)
-        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-    
-    try:
-        tx_energies.append(float(tx_line[0:5].strip()))
-    except NameError:
-        print("could not find an excited state with spin: " + input_settings["tx_spin"] + " in file: " + probamo_out_file_name)
-        # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-    
+        try:
+            tx_energies.append(float(tx_line[0:5].strip()))
+        except NameError:
+            print("could not find an excited state with spin: " + input_settings["tx_spin"] + " in file: " + probamo_out_file_name)
+            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
+        
     probamo_out_file.close()
 
 # convert collected data from string to float
@@ -996,7 +1015,7 @@ if "eps_max" in input_settings:
         plus_miss, = plt.polar(3.0, 0.2, 'k+', label="parity (+) miss")
         dot_hit, = plt.polar(3.0, 0.2, 'r.', label="parity (-) match")
         plus_hit, = plt.polar(3.0, 0.2, 'r+', label="parity (+) match")
-        exp, = plt.polar(3.0, 0.2, 'r-', label="experimental value")
+        exp, = plt.polar(3.0, 0.2, 'r-', label="experiment")
         spin, = plt.polar(3.0, 0.2, '-', color=(213/255,1,0), linewidth=2.0, 
                           label="boundary of correct\nground state spin")
         
@@ -1022,8 +1041,8 @@ if "eps_max" in input_settings:
         
         if len(annotation_handles) > 0:
             annotation_legend = ax.legend(handles=annotation_handles,  loc="upper left", bbox_to_anchor=(-0.3, 1.12))
-            annotation_legend.set_title('annotations\n----------------------')
-            plt.gca().add_artist(annotation_legend)
+            annotation_legend.set_title('annotations\n-------------')
+            plt.gca().add_artist(legend) # adding annotation_legend removed the original legend, so we have to manually add it back in
         
         
         # add title and axis labels
@@ -1251,6 +1270,147 @@ elif "line" in input_settings:                                                  
         ax.set_title('%(current_graph)s in %(nucleus)s' 
                      % input_settings, va='bottom', y=1.1)                     
         plt.xlabel("%(line)s" % input_settings)
+        plt.ylabel(data_axis_labels[g])
+        
+        # add legend (depending on what ROIs have been drawn)
+        if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
+            legend_handles=[exp, correct_spin, data, dot]
+        elif experimental_data[g]:
+            legend_handles=[exp, data]
+        else: 
+            legend_handles=[data]
+            
+        if dot_flag:
+            legend_handles.append(dot)
+        
+        if plus_flag:
+            legend_handles.append(plus)
+        
+        if input_settings["spin_or_excitation"] == "spin":
+             legend_handles.remove(data)
+             legend_handles += data_handles
+    
+        legend = ax.legend(handles = list(reversed(legend_handles)))
+        
+        if input_settings["spin_or_excitation"] == "spin":
+            legend.set_title(legend_title)
+            
+        plt.show()
+
+
+
+
+
+
+
+
+
+
+elif len(e2plus_to_test)>1:                                                  # then plot a line graph of data variation with e2plus
+
+    # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
+    correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
+    start_flag = False
+    
+    if input_settings["mark_spin"]==1:
+        for i in range(len(gs_spins)):
+            if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
+                start_flag = True
+                correct_spin_range.append(i)
+            elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
+                start_flag = False
+                correct_spin_range.append(i)
+        
+    # plot graphs
+    for g in range(len(graphs_to_print)):
+        input_settings["current_graph"] = graphs_to_print[g]
+        print("plotting graph of %(current_graph)s variation..." % input_settings)
+        
+        fig, ax = plt.subplots()                                                # create figure and axes
+        
+        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
+        dot, = plt.plot(3.0, 0.0, 'k.', label="negative parity")
+        plus, = plt.plot(3.0, 0.0, 'k+', label="positive parity")
+        
+        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
+        dot_flag = False
+        plus_flag = False
+        
+        
+        pad = 0.05*(e2plus_to_test[-1]-e2plus_to_test[0])
+        ax.set_xlim([e2plus_to_test[0]-pad, e2plus_to_test[-1]+pad]) 
+        
+        # if experimental data is available, plot it in red for easy comparison
+        if experimental_data[g]:
+            exp, = plt.plot(e2plus_to_test, 
+                   np.full(len(e2plus_to_test), float(experimental_data[g])), 
+                   'r-', label="experimental value")
+        
+        # mark the range in which the correct ground state spin was calculated
+        if input_settings["mark_spin"]==1:
+            for r in range(len(correct_spin_range)):
+                if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
+                    start_range = (e2plus_to_test[correct_spin_range[r]]-
+                                   float(input_settings["eps"][2])/2)          
+                else:
+                    start_range = np.mean([e2plus_to_test[correct_spin_range[r]-1], 
+                                           e2plus_to_test[correct_spin_range[r]]])
+                
+                correct_spin, = plt.plot([start_range, start_range], 
+                                         [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                                          max(data_matrix[g])*1.05], 
+                                         'g-', label="range of correct spin")   # this plots the front and end edges of the box
+                if r%2==0:
+                    if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
+                        end_range = (e2plus_to_test[-1]+
+                                     float(input_settings["e2plus"][2])/2)
+                    else:
+                        end_range = np.mean([e2plus_to_test[correct_spin_range[r+1]-1], 
+                                             e2plus_to_test[correct_spin_range[r+1]]])
+                    
+                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
+                              min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
+                    plt.plot([start_range, end_range], 
+                             [max(data_matrix[g])*1.05, 
+                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+            
+                
+        # now plot the actual data
+        if input_settings["spin_or_excitation"]=="excitation":
+            data, = plt.plot(e2plus_to_test, data_matrix[g], 'k-', label="ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0]))
+            for p in range(len(e2plus_to_test)):
+                if fermi_parities[p] == "-":
+                    plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
+                    dot_flag = True
+                elif fermi_parities[p] == "+":
+                    plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
+                    plus_flag = True
+                    
+        else: # input_settings["spin_or_excitation"]=="spin":
+            this_data = data_matrix[g]
+            line_colours = ['k-', 'b-', 'y-']
+            line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+            data_handles = []
+            for s in range(len(this_data)):
+                
+                data, = plt.plot(e2plus_to_test, this_data[s], line_colours[s], label=line_labels[s])
+                data_handles.append(data)
+                for p in range(len(this_data[s])):
+                    if fermi_parities[p] == "-":
+                        plt.plot(e2plus_to_test[p], this_data[s][p], 'k.', label='negative parity')
+                        dot_flag = True
+                    elif fermi_parities[p] == "+":
+                        plt.plot(e2plus_to_test[p], this_data[s][p], 'k+', label='positive parity')
+                        plus_flag = True
+            legend_title = "ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0])
+        
+            
+        
+        # add title and axis labels
+        ax.set_title('%(current_graph)s in %(nucleus)s' 
+                     % input_settings, va='bottom', y=1.1)                     
+        plt.xlabel("E2PLUS / MeV")
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
