@@ -24,21 +24,31 @@ import numpy as np                                                              
 import subprocess                                                               # for calling shell scripts to run 
 import math                                                                     # for ceil(num)
 import matplotlib.pyplot as plt                                                 # for plotting graphs
-# from matplotlib import rc                                                     # for TeX formatting
 import time                                                                     # for checking how long it took to run
 from matplotlib.ticker import FuncFormatter                                     # for formatting axis ticks
 
 plt.rcParams['figure.dpi'] = 150
-# rc('text', usetex=False)
 
-config_file_name = "../Inputs/config.txt"
+def spin_string_to_float(spin_string):
+    if spin_string[1] == "/":
+        spin_float = float(spin_string[0])/2
+    elif spin_string[2] == "/":
+        spin_float = float(spin_string[0:2])/2 
+    else:
+        raise ValueError("Cannot parse spin. \nCheck it has been input in " +
+                         "the format 'n/2' where n is an int.")
+    return spin_float
 
-                                                                 
-start_wall_time = time.time()
+def spin_float_to_string(spin_float):
+    numerator = float(spin_float)*2
+    if str(numerator)[-1] != "0":
+        raise ValueError("Cannot convert float to fraction. \nCheck it has " + 
+                         "been input as a half-integer float.")
+    else:
+        return str(int(numerator))+"/2"
 
 
 #%%
-
 
 
 ''' OPEN AND READ CONFIG FILE '''
@@ -48,151 +58,220 @@ start_wall_time = time.time()
 # outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
 # tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
+config_file_name = "../Inputs/config.txt"
 
-print("reading from config file...\n")
+print("reading from config file...")                                                          
+start_time = time.time()
 
-line_count = 0                                                                  # start a counter for lines read (not including ignored lines)
-all_lines_count = 0                                                             # start a counter for all lines  (including empty lines and comments)
-bad_lines = []                                                                  # create an empty list to store indices of bad lines, so that they can be reported
+line_count = 0                                                                  # start a counter for all lines  (including empty lines and comments)
+inputs = {}                                                                     # create an empty dictionary to hold settings for input
 
-input_settings = {}                                                             # create an empty dictionary to hold settings for input
+string_variables = ["nucleus", "mode", 
+                    "gs_spin", "fx_spin", "sx_spin", "tx_spin",
+                    "spin_or_excitation",
+                    "istrch", "nneupr", "par",
+                    "irec", "icorr", "emin", "emax", "imin", "ispin", "kmax",
+                    "e2plur", "nu", "chsi", "eta", 
+                    "nantj", "noutj", "ipout",
+                    "cutoff", "vmi"]
 
-config_file = open(config_file_name, 'r')
-for line in config_file:
+bool_variables = ["mark_spin"]
+
+int_variables = ["A", "Z", "num_to_record", "num_orbs"]
+
+float_variables = ["gs_mu", "fx_mu", 
+                   "gs_energy", "fx_energy", "sx_energy", "tx_energy"]
+
+config_file = open(config_file_name, 'r')                                       # open config file and read lines
+config_lines = config_file.readlines()
+config_file.close()
+
+del config_file_name                                                            # these variables are no longer needed; delete them to make debugging easier
+del config_file
+
+for line in config_lines:                                                              # proccess each line
+    line_count += 1
     
-    all_lines_count += 1
-    
+    # remove comments and blank lines
     line_string = line.strip()                                                  # extract text from line
     if line_string == "" : continue                                             # skip blank rows
     if line_string[0] == "*" : continue                                         # skip comment lines
-    line_count += 1 
     
     split_string = line_string.split(" ")                                       # split into name and value
         
-    for n in range(len(split_string)):
+    for n in range(len(split_string)):                                          # remove inline comments 
         word = split_string[n]
-        if word[0] == '*':                                                      # remove inline comments 
+        if word[0] == '*':             
             del split_string[n:]
             break  
     
-    if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single":
-          expected_num_words = 3                                                  # these variables have two values associated with the variable name
-    else: expected_num_words = 2                                                  # all other variables have only one value associated with the variable name
-    
     # warn if the input looks unexpected
-    if len(split_string)>expected_num_words :                                 
-        print("Line "+str(all_lines_count)+ ''' has too many words! 
-              Check var name contains no spaces, and separate list 
-              values with commas not spaces. Ignoring extra words.\n''')
-        bad_lines.append(line_count)
+    if (split_string[0]=="eps" 
+        or split_string[0]=="gamma" 
+        or split_string[0]=="single"):
+          expected_num_words = 3                                                # these variables have two values associated with the variable name
+    else: expected_num_words = 2                                                # all other variables have only one value associated with the variable name
+    
+    if len(split_string)>expected_num_words : 
+        raise ValueError("Line "+str(line_count)+ ''' has too many words! 
+              Check var name contains no spaces, and separate list values 
+              with commas not spaces. \nBad input: ''' + line_string)                                
         
     elif len(split_string)<expected_num_words :
-        print("Line "+str(all_lines_count)+''' is missing either 
-              variable name or value. Check they are both present 
-              and seperated with a space. Skipping this line.\n''')
-        continue
-        bad_lines.append(line_count)
+        raise ValueError("Line "+str(line_count)+''' is missing either 
+              variable name or value. Check they are both present
+              and seperated with a space. \nBad input: ''' + line_string)         
     
-    if split_string[0]=="e2plus":
-        input_settings["e2plus"] = split_string[1]
-        input_settings["e2plus"] = input_settings["e2plus"].split(",")
-        if len(input_settings["e2plus"]) > 1 :                                     # then a range of eps values has been input
-            e2plus_to_test =  np.arange(float(input_settings["e2plus"][0]),           # add a step to the end value (because arange function is non-inclusive)
-                                    float(input_settings["e2plus"][1])+float(input_settings["e2plus"][2]), 
-                                    float(input_settings["e2plus"][2]))
-        else : e2plus_to_test = [float(input_settings["e2plus"][0])]                  # even though it only has one element, a list is easier to input to a for loop later
-        
-    
-    # save deformation input in the input_settings dictionary
-    if split_string[0]=="eps" or split_string[0]=="gamma" or split_string[0]=="single": 
+    # save inputs that may have a range of values   
+    if (split_string[0]=="eps" 
+        or split_string[0]=="gamma" 
+        or split_string[0]=="single"):                                          # each of these methods of inputting deformation contain two values: eps/range of eps, and gamma/range of gamma
         
         # warn if multiple sets of deformation parameters have been input
-        if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print('''Deformation parameter sets have been input multiple times. 
-                  Check that config file only contains one set of deformation inputs. 
-                  Ignoring excess inputs.''')
-            continue
+        if ("deformation_input" in inputs):
+            raise ValueError("Deformation parameter sets have been input " + 
+                  "multiple times. \nCheck that config file only contains " +
+                  "one set of deformation inputs. \nAttempted: " + 
+                  split_string[0] + "\nbut already had: " + 
+                  inputs["deformation_input"]+".")
         
-        input_settings["eps"] = split_string[1]
-        input_settings["eps"] = input_settings["eps"].split(",") 
-        if len(input_settings["eps"]) > 1 :                                     # then a range of eps values has been input
-            input_settings["line"] = "eps"
-            eps_to_test =  np.arange(float(input_settings["eps"][0]),           # add a step to the end value (because arange function is non-inclusive)
-                                    float(input_settings["eps"][1])+float(input_settings["eps"][2]), 
-                                    float(input_settings["eps"][2]))
-        else : eps_to_test = [float(input_settings["eps"][0])]                  # even though it only has one element, a list is easier to input to a for loop later
+        inputs["deformation_input"] = split_string[0]
         
-        input_settings["gamma"] = split_string[2]
-        input_settings["gamma"] = input_settings["gamma"].split(",")            # same for gamma
-        if len(input_settings["gamma"]) > 1 :                                             
-            input_settings["line"] = "gamma"
-            gamma_to_test = np.arange(float(input_settings["gamma"][0]),  
-                                    float(input_settings["gamma"][1])+float(input_settings["gamma"][2]), 
-                                    float(input_settings["gamma"][2]))
-        else : gamma_to_test = [float(input_settings["gamma"][0])] 
+        # parse input
+        inputs["eps"] = [float(n) for n in split_string[1].split(",")]          
+        inputs["gamma"] = [float(n) for n in split_string[2].split(",")]
         
+        if len(inputs["eps"]) > 1 :             
+            eps_to_test =  np.arange(inputs["eps"][0],                          
+                                     inputs["eps"][1]+inputs["eps"][2], 
+                                     inputs["eps"][2])
+        else : eps_to_test = [inputs["eps"][0]]
         
+        if len(inputs["gamma"]) > 1 :                 
+            gamma_to_test = np.arange(inputs["gamma"][0],  
+                                      inputs["gamma"][1]+inputs["gamma"][2], 
+                                      inputs["gamma"][2])
+        else : gamma_to_test = [inputs["gamma"][0]] 
+        
+        # create arrays with repeated values, to cover every data point.
+        # e.g. if eps_to_test = [0.01, 0.02, 0.03] and gamma_to_test = [15]
+        # then eps_points = [0.01, 0.02, 0.03] and gamma_points = [15, 15, 15]
+        # because all three eps values will be tested at gamma = 15º.
         eps_points = []
         gamma_points = []
-        for l in range(len(eps_to_test)):
-            for p in range(len(gamma_to_test)):
-                eps_points.append(eps_to_test[l])
-                gamma_points.append(gamma_to_test[p])
+        for e in range(len(eps_to_test)):
+            for g in range(len(gamma_to_test)):
+                eps_points.append(eps_to_test[e])
+                gamma_points.append(gamma_to_test[g])
                 
-        
     elif split_string[0]=="mesh":
         
-        if "eps" in input_settings or "gamma" in input_settings or "eps_max" in input_settings:
-            print('''Deformation parameter sets have been input multiple times. 
-                  Check that config file only contains one set of deformation inputs. 
-                  Ignoring excess inputs.''')
-            continue
+        if "deformation_input" in inputs:
+            raise ValueError("Deformation parameter sets have been input " +
+                        "multiple times. \nCheck that config file only " +
+                        "contains one set of deformation inputs." +
+                        "\nAttempted: " + split_string[0] + 
+                        "\nbut already had: " + inputs["deformation_input"]+".")
         
-        input_settings["eps_max"] = split_string[1]
-        input_settings["eps_max"] = float(input_settings["eps_max"])            # convert from string to float
+        inputs["deformation_input"] = split_string[0]
         
-        # arrange a mesh of evenly distributed (eps,gamma) points to test over, such that the largest value of eps is tested with outer_points gamma values 
-        outer_points = int(input_settings["outer_points"])                      # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
-        eps_to_test = np.linspace(0.001,                                        # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
-                                  input_settings["eps_max"], num=outer_points)
+        values = split_string[1].split(",")
+        inputs["eps_max"] = float(values[0])
+        outer_points = int(values[1])                                           # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
+        del values
+        
+        # arrange a mesh of evenly distributed (eps,gamma) points to test over, 
+        # such that eps_max is tested at outer_points gamma values. 
+        eps_to_test = np.linspace(0.001, inputs["eps_max"], num=outer_points)   # start from eps=0.001 because eps=0 is not an allowed input when it comes to asyrmo
+                                   
         eps_points = []
         gamma_points = []
-        for l in range(len(eps_to_test)):
-            for p in range(l+1):
-                eps = np.round(eps_to_test[l], 3)
+        for e in range(len(eps_to_test)):
+            for g in range(e+1):
+                eps = np.round(eps_to_test[e], 3)
                 eps_points.append(eps)
-                if l==0: gamma = 0
-                else: gamma = np.round(p*(60/l)) 
+                if e==0: gamma = 0
+                else: gamma = np.round(g*(60/e), 3) 
                 gamma_points.append(gamma)
         eps_points = np.array(eps_points)
         gamma_points = np.array(gamma_points)
+        del eps
+        del gamma
         
+        
+    elif split_string[0]=="e2plus":
+        
+        inputs["e2plus"] = [float(n) for n in split_string[1].split(",")]       # split by comma delimiter in case a range of values has been input, and convert to float
+        if len(inputs["e2plus"]) > 1 :                                          # then a range of e2plus values has been input
+            e2plus_to_test =  np.arange(inputs["e2plus"][0],                    # add a step to the end value (because arange function is non-inclusive)
+                        inputs["e2plus"][1]+inputs["e2plus"][2], 
+                        inputs["e2plus"][2])
+            
+            if (not inputs["deformation_input"] == "single"):
+                raise ValueError("testing a range of e2plus values is " +
+                      "only supported \nfor a single deformation input. " +
+                      '''Check that deformation is input as "single".''')
+                
+        else : e2plus_to_test = [inputs["e2plus"][0]]                           # even though it only has one element, a list is easier to input to a loop later
+    
+    elif split_string[0] in int_variables:
+        inputs[split_string[0]] = int(split_string[1])
+        
+    elif split_string[0] in float_variables:
+        inputs[split_string[0]] = float(split_string[1])
+                                      
+    elif split_string[0] in bool_variables:                                    
+        inputs[split_string[0]] = bool(split_string[1])
+        
+    elif split_string[0] in string_variables:
+        inputs[split_string[0]] = split_string[1]
+    
     else:
-        # save other (non-deformation) parameters
-        input_settings[split_string[0]] = split_string[1]
-config_file.close()
+        raise ValueError('''Unrecognsied input, check type and hard code it!
+              Variable: ''' + split_string[0] + "\t\tLine: " + str(line_count))
     
-input_settings["A"] = int(input_settings["A"])                                  # convert A and Z from strings to ints
-input_settings["Z"] = int(input_settings["Z"])
-
-input_settings["num_orbs"] = int(input_settings["num_orbs"])       
-
-if "fx_spin" in input_settings:
-    input_settings["fx_spin"] = (str(int(float(input_settings["fx_spin"])*2))+"/2")
-else: input_settings["fx_spin"] = "0"
-if "sx_spin" in input_settings:
-    input_settings["sx_spin"] = (str(int(float(input_settings["sx_spin"])*2))+"/2")
-else: input_settings["sx_spin"] = "0"
-if "tx_spin" in input_settings:
-    input_settings["tx_spin"] = (str(int(float(input_settings["tx_spin"])*2))+"/2")
-else: input_settings["tx_spin"] = "0"
-
-
-print(input_settings)
-print("\n\nFinished reading lines: "+str(line_count))
-print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
-
+    print(split_string[0] + ": " + split_string[1])
     
+
+      
+# add float versions of the spin parameters
+if "gs_spin" in inputs:
+    inputs["gs_spin_float"] = spin_string_to_float(inputs["gs_spin"])
+
+if "fx_spin" in inputs:
+    inputs["fx_spin_float"] = spin_string_to_float(inputs["fx_spin"])
+
+if "sx_spin" in inputs:
+    inputs["sx_spin_float"] = spin_string_to_float(inputs["sx_spin"])
+
+if "tx_spin" in inputs:
+    inputs["tx_spin_float"] = spin_string_to_float(inputs["tx_spin"])
+
+
+# check that there are no eps=0 values to test - this will cause the code to hang.
+if 0.0 in eps_to_test:
+    raise ValueError("Cannot test at eps=0.0 because the code will only work" +
+                " for non-spherical deformations. \nCheck deformation inputs.")
+
+#print(inputs)
+print("\n********** Finished reading lines: "+str(line_count)+ " **********")
+
+# deallocate variables that are no longer needed
+del e
+del g
+del n
+del config_lines
+del line
+del line_string
+del split_string
+del line_count
+del word
+del expected_num_words
+del float_variables
+del string_variables
+del bool_variables
+del int_variables
+
 
 #%%
 ''' CALCULATE FERMI LEVEL '''
@@ -204,19 +283,19 @@ print(str(len(bad_lines))+" of these had unexpected formatting.\n\n")
 print("calcualting fermi level...")
 
 
-input_settings["N"] = input_settings["A"]-input_settings["Z"]                   # calculate N = A - Z
+inputs["N"] = inputs["A"]-inputs["Z"]                   # calculate N = A - Z
 
-if input_settings["nneupr"] == "1":
+if inputs["nneupr"] == "1":
     print("calculating for odd protons...")
-    input_settings["fermi_level"] = math.ceil(input_settings["Z"]/2)            # calculate fermi level orbital index
-    if input_settings["Z"]%2 == 0:
+    inputs["fermi_level"] = math.ceil(inputs["Z"]/2)            # calculate fermi level orbital index
+    if inputs["Z"]%2 == 0:
         print('''this nucleus has even Z but nneupr = 1; check inputs 
               (the code will treat this as the core and assume an odd proton on top)''')
     
-elif input_settings["nneupr"]  == "-1":    
+elif inputs["nneupr"]  == "-1":    
     print("calculating for odd neutrons...")
-    input_settings["fermi_level"] = math.ceil(input_settings["N"]/2)
-    if input_settings["N"]%2 == 0:
+    inputs["fermi_level"] = math.ceil(inputs["N"]/2)
+    if inputs["N"]%2 == 0:
         print('''this nucleus has even N but nneupr = -1; check inputs 
               (the code will treat this as the core and assume an odd neutron on top)''')
 
@@ -225,15 +304,15 @@ else:
     raise ValueError
 
 
-print("fermi level = " + str(input_settings["fermi_level"]) + "\n")
+print("fermi level = " + str(inputs["fermi_level"]) + "\n")
 
 # generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
-gampn_orbitals = input_settings["par"]
-gampn_orbitals += str(input_settings["num_orbs"])                               # e.g. orbitals_string = "4 19 20 21 22"
+gampn_orbitals = inputs["par"]
+gampn_orbitals += str(inputs["num_orbs"])                               # e.g. orbitals_string = "4 19 20 21 22"
 
-first_index = input_settings["fermi_level"]//2 - input_settings["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
-last_index = input_settings["fermi_level"]//2 + input_settings["num_orbs"]//2
-if input_settings["num_orbs"]%2 == 1:                                           # if an even number is requested, we need to add one to the final index to ensure the correct number are included
+first_index = inputs["fermi_level"]//2 - inputs["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
+last_index = inputs["fermi_level"]//2 + inputs["num_orbs"]//2
+if inputs["num_orbs"]%2 == 1:                                           # if an even number is requested, we need to add one to the final index to ensure the correct number are included
     last_index += 1
 orbitals = np.r_[first_index:last_index]                                        # generate a list of orbitals in unit steps inside this range with list slicing
                                                  
@@ -241,7 +320,7 @@ for l in orbitals:
     gampn_orbitals += " "
     gampn_orbitals += str(l)
     
-input_settings["gampn_orbitals"] = gampn_orbitals
+inputs["gampn_orbitals"] = gampn_orbitals
     
     
 #%%   
@@ -265,19 +344,19 @@ for p in range(len(gamma_points)):
         if len(e2plus_to_test)>1 and len(gamma_points)>1:
             raise ValueError("only input a range of e2plus if the deformation input is a single point")
         
-        input_settings["current_e2plus"] = e
+        inputs["current_e2plus"] = e
         
-        input_settings["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
-        input_settings["current_gamma"] = gamma_points[p]
+        inputs["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
+        inputs["current_gamma"] = gamma_points[p]
         
-        file_tag = "e%.3f_g%.1f_p%.3f_%s" % (input_settings["current_eps"], 
-                                       input_settings["current_gamma"],
-                                       input_settings["current_e2plus"],
-                                       input_settings["nucleus"])
+        file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"], 
+                                       inputs["current_gamma"],
+                                       inputs["current_e2plus"],
+                                       inputs["nucleus"])
         
-        input_settings["current_f002"] = "f002_"+file_tag+".dat"
-        input_settings["current_f016"] = "f016_"+file_tag+".dat"
-        input_settings["current_f017"] = "f017_"+file_tag+".dat"
+        inputs["current_f002"] = "f002_"+file_tag+".dat"
+        inputs["current_f016"] = "f016_"+file_tag+".dat"
+        inputs["current_f017"] = "f017_"+file_tag+".dat"
         
         try:                                                                        # only overwrite the existing input file if this code is successful
             new_input_text =     '''
@@ -304,7 +383,7 @@ for p in range(len(gamma_points)):
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
     
-        ''' % input_settings
+        ''' % inputs
                 
         except KeyError:
             print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
@@ -335,7 +414,7 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
 timer_lapse = time.time()
-print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_wall_time))
+print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_time))
 allowed_time = 0.1*write_count + 10                                            # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
@@ -393,8 +472,8 @@ for file in written_file_tags :
     
     # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
     header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
-    fermi_level_line = input_settings["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
-    if input_settings["fermi_level"] > 40:
+    fermi_level_line = inputs["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
+    if inputs["fermi_level"] > 40:
         fermi_level_line -= 40
         whole_line = lines[fermi_level_line]
         half_line = whole_line[60:-1].strip()                                   # get only the second half of the line
@@ -414,14 +493,14 @@ for file in written_file_tags :
     
     
     # generate a string that contains the number of orbitals and their indices, in the correct format for input to asyrmo
-    nu = int(input_settings["nu"])
+    nu = int(inputs["nu"])
     first_index = int(single_parity_index) - nu//2
     last_index = int(single_parity_index) + nu//2
     if nu%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
         last_index += 1
     orbitals = np.r_[first_index:last_index]
     
-    orbitals_string = fermi_parities[-1] + input_settings["nu"]                 # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
+    orbitals_string = fermi_parities[-1] + inputs["nu"]                 # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
     for l in orbitals:
         orbitals_string += " "
         orbitals_string += str(l)
@@ -440,24 +519,24 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 print("writing ASYRMO.DAT files...")
 
 # convert the nantj, noutj, ipout inputs to the correct format
-input_settings["nantj"] = input_settings["nantj"].replace(",", " ")
-input_settings["noutj"] = input_settings["noutj"].replace(",", " ")
-input_settings["ipout"] = input_settings["ipout"].replace(",", " ")
+inputs["nantj"] = inputs["nantj"].replace(",", " ")
+inputs["noutj"] = inputs["noutj"].replace(",", " ")
+inputs["ipout"] = inputs["ipout"].replace(",", " ")
 
 
 for f in range(len(written_file_tags)):
     
-    input_settings["current_orbitals"] = asyrmo_orbitals[f]
+    inputs["current_orbitals"] = asyrmo_orbitals[f]
     
     if len(e2plus_to_test)>1:
-        input_settings["current_e2plus"] = e2plus_to_test[f]
+        inputs["current_e2plus"] = e2plus_to_test[f]
     else:
-        input_settings["current_e2plus"] = e2plus_to_test[0]
+        inputs["current_e2plus"] = e2plus_to_test[0]
     
     file = written_file_tags[f]
-    input_settings["current_f016"] = "f016_"+file+".dat"
-    input_settings["current_f017"] = "f017_"+file+".dat"
-    input_settings["current_f018"] = "f018_"+file+".dat"
+    inputs["current_f016"] = "f016_"+file+".dat"
+    inputs["current_f017"] = "f017_"+file+".dat"
+    inputs["current_f018"] = "f018_"+file+".dat"
     
     try:                                                                        # only overwrite the existing input file if this code is successful
         new_input_text =     '''
@@ -473,7 +552,7 @@ for f in range(len(written_file_tags)):
   %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
   %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
 
-    ''' % input_settings
+    ''' % inputs
     
     except KeyError:
         print("Could not write ASY_"+file+".DAT because an input is missing."+
@@ -531,8 +610,8 @@ timer_lapse = new_timer_lapse
 
 for file in written_file_tags:
     
-    input_settings["current_f017"] = "f017_"+file+".dat"
-    input_settings["current_f018"] = "f018_"+file+".dat"
+    inputs["current_f017"] = "f017_"+file+".dat"
+    inputs["current_f018"] = "f018_"+file+".dat"
 
     try:
         new_input_text =     '''
@@ -544,7 +623,7 @@ for file in written_file_tags:
 0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
 0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
 
-    ''' % input_settings
+    ''' % inputs
     
     except KeyError:
         print("Could not write PROB_"+file+".DAT because an input is missing."+
@@ -608,15 +687,15 @@ timer_lapse = new_timer_lapse
 
 print("\nreading PROBAMO.OUT files...")
 
-if input_settings["spin_or_excitation"]=="excitation":
+if inputs["spin_or_excitation"]=="excitation":
     gs_mag_mom = []
     gs_spins = []
     fx_energies = []
     sx_energies = []
     tx_energies = []
     
-else: # input_settings["spin_or_excitation"]=="spin"
-    num_to_record = int(input_settings["num_to_record"])-1 
+else: # inputs["spin_or_excitation"]=="spin"
+    num_to_record = int(inputs["num_to_record"])-1 
     
     mag_mom_1 = []
     mag_mom_3 = []
@@ -644,13 +723,13 @@ for f in range(len(written_file_tags)) :
 
     probamo_out_file_name = "PROB_"+file+".OUT"
     
-    if input_settings["spin_or_excitation"]=="excitation":
+    if inputs["spin_or_excitation"]=="excitation":
         # locate the yrast (lowest energy) state of each spin
         fx_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
         sx_energy = math.inf
         tx_energy = math.inf
     
-    else: # input_settings["spin_or_excitation"]=="spin"
+    else: # inputs["spin_or_excitation"]=="spin"
         states_1 = 0 # for counting how many states of each spin have been calculated
         states_3 = 0
         states_5 = 0
@@ -684,26 +763,26 @@ for f in range(len(written_file_tags)) :
             final_energy = float(line[dash_index+3:dash_index+10].strip())
                                                                 # if this row doesn't contain data, ignore it
         
-        if input_settings["spin_or_excitation"]=="excitation":
+        if inputs["spin_or_excitation"]=="excitation":
             frac_spin = (str(int(float(spin)*2))+"/2")
             if line[0:3] == "0.0":                                                  # then this is the ground state
                 gs_mag_mom.append(float(line[-8:].strip()))                                # get the ground state magnetic moment
                 gs_spins.append(spin)                                   
             
-            elif frac_spin == input_settings["fx_spin"]:                                 # check to see if spin matches experimental first excited state
+            elif frac_spin == inputs["fx_spin"]:                                 # check to see if spin matches experimental first excited state
                 if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
                     fx_energy = this_energy
                     fx_line = line
-            elif frac_spin == input_settings["sx_spin"]:                                 # repeat for second excited state
+            elif frac_spin == inputs["sx_spin"]:                                 # repeat for second excited state
                 if this_energy < sx_energy:
                     sx_energy = this_energy
                     sx_line = line
-            elif frac_spin == input_settings["tx_spin"]:                                 # repeat for third excited state
+            elif frac_spin == inputs["tx_spin"]:                                 # repeat for third excited state
                 if this_energy < tx_energy:
                     tx_energy = this_energy
                     tx_line = line
                     
-        else: # input_settings["spin_or_excitation"]=="spin"
+        else: # inputs["spin_or_excitation"]=="spin"
             if spin == 0.5  and final_spin == 0.5 and this_energy==final_energy:        # check that this line represents an internal transition (static moment)
                 if states_1 > num_to_record: # only save the first three
                     continue
@@ -729,7 +808,7 @@ for f in range(len(written_file_tags)) :
                 
                 states_5 += 1
     
-    if input_settings["spin_or_excitation"]=="spin":
+    if inputs["spin_or_excitation"]=="spin":
         for s in range(num_to_record+1):
             if len(mag_mom_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
                 mag_mom_1[s].append(np.NaN)
@@ -748,23 +827,23 @@ for f in range(len(written_file_tags)) :
            
             if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
                 energies_5[s].append(np.NaN)
-    else:  #input_settings["spin_or_excitation"]=="excitation":
+    else:  #inputs["spin_or_excitation"]=="excitation":
         try:
             fx_energies.append(float(fx_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + input_settings["fx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["fx_spin"] + " in file: " + probamo_out_file_name)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
                 
         try:
             sx_energies.append(float(sx_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + input_settings["sx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["sx_spin"] + " in file: " + probamo_out_file_name)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
         try:
             tx_energies.append(float(tx_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + input_settings["tx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["tx_spin"] + " in file: " + probamo_out_file_name)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
     probamo_out_file.close()
@@ -788,7 +867,7 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 for r in range(len(gamma_points)):
     gamma_points[r] *= np.pi/180
 
-if input_settings["spin_or_excitation"]=="excitation":
+if inputs["spin_or_excitation"]=="excitation":
     # locate the yrast (lowest energy) state of each spin
     
     data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, 
@@ -814,25 +893,25 @@ if input_settings["spin_or_excitation"]=="excitation":
 
     experimental_data = [[], [], [], 
                          [], [], []]
-    if "gs_mu" in input_settings:
-        experimental_data[0] = float(input_settings["gs_mu"])
-    if "gs_spin" in input_settings:
-        experimental_data[3] = float(input_settings["gs_spin"])
-    if "fx_energy" in input_settings:
-        experimental_data[4] = float(input_settings["fx_energy"])
-    if "sx_energy" in input_settings:
-        experimental_data[5] = float(input_settings["sx_energy"])
+    if "gs_mu" in inputs:
+        experimental_data[0] = float(inputs["gs_mu"])
+    if "gs_spin" in inputs:
+        experimental_data[3] = float(inputs["gs_spin"])
+    if "fx_energy" in inputs:
+        experimental_data[4] = float(inputs["fx_energy"])
+    if "sx_energy" in inputs:
+        experimental_data[5] = float(inputs["sx_energy"])
         
     error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
 
 
-else: # input_settings["spin_or_excitation"]=="spin"
+else: # inputs["spin_or_excitation"]=="spin"
 
     data_matrix = [mag_mom_1, mag_mom_3, mag_mom_5, 
                    [fermi_energies], [fermi_indices], 
                    energies_1, energies_3, energies_5]
     
-    if "eps_max" in input_settings or num_to_record == 0: 
+    if "eps_max" in inputs or num_to_record == 0: 
         graphs_to_print = ["Magnetic Dipole Moment of Lowest Spin 1/2 State", "Magnetic Dipole Moment of Lowest Spin 3/2 State", "Magnetic Dipole Moment of Lowest Spin 5/2 State", 
                            "Fermi Energy", "Fermi Level Parity And Index", 
                            "Energy of Lowest Spin 1/2 State", "Energy of Lowest Spin 3/2 State", "Energy of Lowest Spin 5/2 State"]
@@ -860,35 +939,35 @@ else: # input_settings["spin_or_excitation"]=="spin"
     experimental_data = [[], [], [],
                          [], [],
                          [], [], []]
-    if "gs_mu" in input_settings:
+    if "gs_mu" in inputs:
         
-        if input_settings["gs_spin"] == "0.5":
-            experimental_data[0] = float(input_settings["gs_mu"])
-        if input_settings["gs_spin"] == "1.5":
-            experimental_data[1] = float(input_settings["gs_mu"])
-        if input_settings["gs_spin"] == "2.5":
-            experimental_data[2] = float(input_settings["gs_mu"])
+        if inputs["gs_spin"] == "0.5":
+            experimental_data[0] = float(inputs["gs_mu"])
+        if inputs["gs_spin"] == "1.5":
+            experimental_data[1] = float(inputs["gs_mu"])
+        if inputs["gs_spin"] == "2.5":
+            experimental_data[2] = float(inputs["gs_mu"])
         
-    if "fx_energy" in input_settings:
-        if input_settings["fx_spin"] == "1/2":
-            experimental_data[5] = float(input_settings["fx_energy"])
-            if "fx_mu" in input_settings:
-                experimental_data[0] = float(input_settings["fx_mu"])
-        if input_settings["fx_spin"] == "3/2":
-            experimental_data[6] = float(input_settings["fx_energy"])
-            if "fx_mu" in input_settings:
-                experimental_data[1] = float(input_settings["fx_mu"])
-        if input_settings["fx_spin"] == "5/2":
-            experimental_data[7] = float(input_settings["fx_energy"])
-            if "fx_mu" in input_settings:
-                experimental_data[2] = float(input_settings["fx_mu"])
-    if "sx_energy" in input_settings:
-        if input_settings["sx_spin"] == "1/2":
-            experimental_data[5] = float(input_settings["sx_energy"])
-        if input_settings["sx_spin"] == "3/2":
-            experimental_data[6] = float(input_settings["sx_energy"])
-        if input_settings["sx_spin"] == "5/2":
-            experimental_data[7] = float(input_settings["sx_energy"])
+    if "fx_energy" in inputs:
+        if inputs["fx_spin"] == "1/2":
+            experimental_data[5] = float(inputs["fx_energy"])
+            if "fx_mu" in inputs:
+                experimental_data[0] = float(inputs["fx_mu"])
+        if inputs["fx_spin"] == "3/2":
+            experimental_data[6] = float(inputs["fx_energy"])
+            if "fx_mu" in inputs:
+                experimental_data[1] = float(inputs["fx_mu"])
+        if inputs["fx_spin"] == "5/2":
+            experimental_data[7] = float(inputs["fx_energy"])
+            if "fx_mu" in inputs:
+                experimental_data[2] = float(inputs["fx_mu"])
+    if "sx_energy" in inputs:
+        if inputs["sx_spin"] == "1/2":
+            experimental_data[5] = float(inputs["sx_energy"])
+        if inputs["sx_spin"] == "3/2":
+            experimental_data[6] = float(inputs["sx_energy"])
+        if inputs["sx_spin"] == "5/2":
+            experimental_data[7] = float(inputs["sx_energy"])
         
     error_tolerance = [0.2, 0.2, 0.2, 0.0, 0.0, 50, 50, 50]                                #!!! these are a bit arbitrary...
 
@@ -908,15 +987,15 @@ else: # input_settings["spin_or_excitation"]=="spin"
 #   mark the experimental value in red for easy comparison
 #   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
 
-if "eps_max" in input_settings:   
+if "eps_max" in inputs:   
     
     
     agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
     
     for g in range(len(graphs_to_print)):
         
-        input_settings["current_graph"] = graphs_to_print[g]
-        print("\nplotting graph of %(current_graph)s variation..." % input_settings)
+        inputs["current_graph"] = graphs_to_print[g]
+        print("\nplotting graph of %(current_graph)s variation..." % inputs)
         
         fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
         
@@ -931,7 +1010,7 @@ if "eps_max" in input_settings:
         
         # create filled colour contour plots
         c_level_boundaries = contour_levels[g]
-        if input_settings["spin_or_excitation"] == "excitation":
+        if inputs["spin_or_excitation"] == "excitation":
             
             cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
@@ -944,7 +1023,7 @@ if "eps_max" in input_settings:
                 cbar.set_ticks(ticks)
                 cbar.set_ticklabels(cbar_ticks[g])
                 
-        else: # input_settings["spin_or_excitation"] == "spin"
+        else: # inputs["spin_or_excitation"] == "spin"
             this_data = data_matrix[g]
             
             
@@ -961,9 +1040,9 @@ if "eps_max" in input_settings:
                 
             
         # mark the range in which the correct ground state spin was calculated
-        if input_settings["mark_spin"]==1:
+        if inputs["mark_spin"]==1:
             ax.tricontour(gamma_points, eps_points, data_matrix[3], 
-                          levels=[float(input_settings["gs_spin"])-0.5,float(input_settings["gs_spin"])+0.5],  
+                          levels=[float(inputs["gs_spin"])-0.5,float(inputs["gs_spin"])+0.5],  
                           colors=[(213/255,1,0)], linewidths=1.0)
         
         
@@ -980,7 +1059,7 @@ if "eps_max" in input_settings:
             if experimental_data[g]:                                            # if the experimental data exists for comparison
                 error = abs(data_matrix[g][r] - experimental_data[g])
                 if error < error_tolerance[g]: # error/experimental_data[g] < 0.1: #!!! if they agree within 10%, plot the data point in red rather than white
-                    if g==0 and fermi_parities[r]==input_settings["par"]:       # check that the ground state parity has been reproduced
+                    if g==0 and fermi_parities[r]==inputs["par"]:       # check that the ground state parity has been reproduced
                         agreed_points.append(r)
                     if fermi_parities[r] == "-":
                         plt.polar(gamma_points[r], eps_points[r], 'r.')
@@ -1033,7 +1112,7 @@ if "eps_max" in input_settings:
         annotation_handles = []
         if experimental_data[g]:
             annotation_handles.append(exp)
-        if input_settings["mark_spin"]==1:
+        if inputs["mark_spin"]==1:
             annotation_handles.append(spin)
         
         legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 0.78))
@@ -1046,7 +1125,7 @@ if "eps_max" in input_settings:
         
         
         # add title and axis labels
-        ax.set_title('%(current_graph)s of %(nucleus)s' % input_settings, va='bottom', y=1.1)                      
+        ax.set_title('%(current_graph)s of %(nucleus)s' % inputs, va='bottom', y=1.1)                      
         plt.xlabel("ε")
         ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
         
@@ -1074,13 +1153,13 @@ if "eps_max" in input_settings:
 
 
 
-elif "line" in input_settings:                                                  # then plot a line graph of data variation with eps (or gamma)
+elif "line" in inputs:                                                  # then plot a line graph of data variation with eps (or gamma)
 
     # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
     correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
     start_flag = False
     
-    if input_settings["mark_spin"]==1:
+    if inputs["mark_spin"]==1:
         for i in range(len(gs_spins)):
             if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
                 start_flag = True
@@ -1091,8 +1170,8 @@ elif "line" in input_settings:                                                  
         
     # plot graphs
     for g in range(len(graphs_to_print)):
-        input_settings["current_graph"] = graphs_to_print[g]
-        print("plotting graph of %(current_graph)s variation..." % input_settings)
+        inputs["current_graph"] = graphs_to_print[g]
+        print("plotting graph of %(current_graph)s variation..." % inputs)
         
         fig, ax = plt.subplots()                                                # create figure and axes
         
@@ -1109,9 +1188,9 @@ elif "line" in input_settings:                                                  
         
         
         # if eps was varied and gamma was fixed:
-        if input_settings["line"] == "eps" or input_settings["line"] == "ε":
-            input_settings["line"] = "ε"
-            input_settings["fixed"] = "γ / º"
+        if inputs["line"] == "eps" or inputs["line"] == "ε":
+            inputs["line"] = "ε"
+            inputs["fixed"] = "γ / º"
             # print("plotting line graph of variation with eps...")
             
             pad = 0.05*(eps_to_test[-1]-eps_to_test[0])
@@ -1124,11 +1203,11 @@ elif "line" in input_settings:                                                  
                        'r-', label="experimental value")
             
             # mark the range in which the correct ground state spin was calculated
-            if input_settings["mark_spin"]==1:
+            if inputs["mark_spin"]==1:
                 for r in range(len(correct_spin_range)):
                     if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
                         start_range = (eps_to_test[correct_spin_range[r]]-
-                                       float(input_settings["eps"][2])/2)          
+                                       float(inputs["eps"][2])/2)          
                     else:
                         start_range = np.mean([eps_to_test[correct_spin_range[r]-1], 
                                                eps_to_test[correct_spin_range[r]]])
@@ -1140,7 +1219,7 @@ elif "line" in input_settings:                                                  
                     if r%2==0:
                         if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
                             end_range = (eps_to_test[-1]+
-                                         float(input_settings["eps"][2])/2)
+                                         float(inputs["eps"][2])/2)
                         else:
                             end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], 
                                                  eps_to_test[correct_spin_range[r+1]]])
@@ -1154,7 +1233,7 @@ elif "line" in input_settings:                                                  
                 
                 
             # now plot the actual data
-            if input_settings["spin_or_excitation"]=="excitation":
+            if inputs["spin_or_excitation"]=="excitation":
                 data, = plt.plot(eps_to_test, data_matrix[g], 'k-', label="γ = %s" % gamma_to_test[0])
                 for p in range(len(eps_to_test)):
                     if fermi_parities[p] == "-":
@@ -1164,7 +1243,7 @@ elif "line" in input_settings:                                                  
                         plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
                         plus_flag = True
                         
-            else: # input_settings["spin_or_excitation"]=="spin":
+            else: # inputs["spin_or_excitation"]=="spin":
                 this_data = data_matrix[g]
                 line_colours = ['k-', 'b-', 'y-']
                 line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
@@ -1185,9 +1264,9 @@ elif "line" in input_settings:                                                  
             
             
         # if gamma was varied and eps was fixed:   
-        else:                                                                   # input_settings["line"] == "gamma":
-            input_settings["line"] = "γ / º"
-            input_settings["fixed"] = "ε"
+        else:                                                                   # inputs["line"] == "gamma":
+            inputs["line"] = "γ / º"
+            inputs["fixed"] = "ε"
             # print("plotting line graph of variation with gamma...")
             
             pad = 0.05*(gamma_to_test[-1]-gamma_to_test[0])
@@ -1200,11 +1279,11 @@ elif "line" in input_settings:                                                  
                        'r-', linewidth=3, label="experimental value")
             
             # mark the range in which the correct ground state spin was calculated
-            if input_settings["mark_spin"]==1:
+            if inputs["mark_spin"]==1:
                 for r in range(len(correct_spin_range)):
                     if correct_spin_range[r] == 0:                                  # the first value of gamma in the range has the correct spin
                         start_range = (gamma_to_test[correct_spin_range[r]]-
-                                       float(input_settings["gamma"][2])/2)
+                                       float(inputs["gamma"][2])/2)
                     else:
                         start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], 
                                                gamma_to_test[correct_spin_range[r]]])
@@ -1217,7 +1296,7 @@ elif "line" in input_settings:                                                  
                     if r%2==0:
                         if r+1 == len(correct_spin_range):                          # the last value of gamma in the range has the correct spin
                             end_range = (gamma_to_test[-1]+
-                                         float(input_settings["gamma"][2])/2)
+                                         float(inputs["gamma"][2])/2)
                             
                             correct_spin, = plt.plot([end_range, end_range], 
                                             [min(data_matrix[g])-0.05*max(data_matrix[g]), 
@@ -1238,7 +1317,7 @@ elif "line" in input_settings:                                                  
                 
             # plot the actual data (first a line graph, then the points seperately so that the parities can be indicated by the markers)
             
-            if input_settings["spin_or_excitation"]=="excitation":
+            if inputs["spin_or_excitation"]=="excitation":
                 data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
                 for p in range(len(gamma_to_test)):
                     if fermi_parities[p] == "-":
@@ -1247,7 +1326,7 @@ elif "line" in input_settings:                                                  
                     elif fermi_parities[p] == "+":
                         plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
             
-            else: # input_settings["spin_or_excitation"]=="spin":
+            else: # inputs["spin_or_excitation"]=="spin":
                 this_data = data_matrix[g]
                 line_colours = ['k-', 'b-', 'y-', 'c-', 'm-']
                 line_labels = ["lowest energy", "second lowest energy", "third lowest energy", "fourth lowest energy", "fifth lowest energy"]
@@ -1268,12 +1347,12 @@ elif "line" in input_settings:                                                  
         
         # add title and axis labels
         ax.set_title('%(current_graph)s in %(nucleus)s' 
-                     % input_settings, va='bottom', y=1.1)                     
-        plt.xlabel("%(line)s" % input_settings)
+                     % inputs, va='bottom', y=1.1)                     
+        plt.xlabel("%(line)s" % inputs)
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
+        if correct_spin_range and experimental_data[g] and inputs["mark_spin"]==1: 
             legend_handles=[exp, correct_spin, data, dot]
         elif experimental_data[g]:
             legend_handles=[exp, data]
@@ -1286,13 +1365,13 @@ elif "line" in input_settings:                                                  
         if plus_flag:
             legend_handles.append(plus)
         
-        if input_settings["spin_or_excitation"] == "spin":
+        if inputs["spin_or_excitation"] == "spin":
              legend_handles.remove(data)
              legend_handles += data_handles
     
         legend = ax.legend(handles = list(reversed(legend_handles)))
         
-        if input_settings["spin_or_excitation"] == "spin":
+        if inputs["spin_or_excitation"] == "spin":
             legend.set_title(legend_title)
             
         plt.show()
@@ -1312,7 +1391,7 @@ elif len(e2plus_to_test)>1:                                                  # t
     correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
     start_flag = False
     
-    if input_settings["mark_spin"]==1:
+    if inputs["mark_spin"]==1:
         for i in range(len(gs_spins)):
             if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
                 start_flag = True
@@ -1323,8 +1402,8 @@ elif len(e2plus_to_test)>1:                                                  # t
         
     # plot graphs
     for g in range(len(graphs_to_print)):
-        input_settings["current_graph"] = graphs_to_print[g]
-        print("plotting graph of %(current_graph)s variation..." % input_settings)
+        inputs["current_graph"] = graphs_to_print[g]
+        print("plotting graph of %(current_graph)s variation..." % inputs)
         
         fig, ax = plt.subplots()                                                # create figure and axes
         
@@ -1347,11 +1426,11 @@ elif len(e2plus_to_test)>1:                                                  # t
                    'r-', label="experimental value")
         
         # mark the range in which the correct ground state spin was calculated
-        if input_settings["mark_spin"]==1:
+        if inputs["mark_spin"]==1:
             for r in range(len(correct_spin_range)):
                 if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
                     start_range = (e2plus_to_test[correct_spin_range[r]]-
-                                   float(input_settings["eps"][2])/2)          
+                                   float(inputs["eps"][2])/2)          
                 else:
                     start_range = np.mean([e2plus_to_test[correct_spin_range[r]-1], 
                                            e2plus_to_test[correct_spin_range[r]]])
@@ -1363,7 +1442,7 @@ elif len(e2plus_to_test)>1:                                                  # t
                 if r%2==0:
                     if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
                         end_range = (e2plus_to_test[-1]+
-                                     float(input_settings["e2plus"][2])/2)
+                                     float(inputs["e2plus"][2])/2)
                     else:
                         end_range = np.mean([e2plus_to_test[correct_spin_range[r+1]-1], 
                                              e2plus_to_test[correct_spin_range[r+1]]])
@@ -1377,7 +1456,7 @@ elif len(e2plus_to_test)>1:                                                  # t
             
                 
         # now plot the actual data
-        if input_settings["spin_or_excitation"]=="excitation":
+        if inputs["spin_or_excitation"]=="excitation":
             data, = plt.plot(e2plus_to_test, data_matrix[g], 'k-', label="ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0]))
             for p in range(len(e2plus_to_test)):
                 if fermi_parities[p] == "-":
@@ -1387,7 +1466,7 @@ elif len(e2plus_to_test)>1:                                                  # t
                     plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
                     plus_flag = True
                     
-        else: # input_settings["spin_or_excitation"]=="spin":
+        else: # inputs["spin_or_excitation"]=="spin":
             this_data = data_matrix[g]
             line_colours = ['k-', 'b-', 'y-']
             line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
@@ -1409,12 +1488,12 @@ elif len(e2plus_to_test)>1:                                                  # t
         
         # add title and axis labels
         ax.set_title('%(current_graph)s in %(nucleus)s' 
-                     % input_settings, va='bottom', y=1.1)                     
+                     % inputs, va='bottom', y=1.1)                     
         plt.xlabel("E2PLUS / MeV")
         plt.ylabel(data_axis_labels[g])
         
         # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range and experimental_data[g] and input_settings["mark_spin"]==1: 
+        if correct_spin_range and experimental_data[g] and inputs["mark_spin"]==1: 
             legend_handles=[exp, correct_spin, data, dot]
         elif experimental_data[g]:
             legend_handles=[exp, data]
@@ -1427,13 +1506,13 @@ elif len(e2plus_to_test)>1:                                                  # t
         if plus_flag:
             legend_handles.append(plus)
         
-        if input_settings["spin_or_excitation"] == "spin":
+        if inputs["spin_or_excitation"] == "spin":
              legend_handles.remove(data)
              legend_handles += data_handles
     
         legend = ax.legend(handles = list(reversed(legend_handles)))
         
-        if input_settings["spin_or_excitation"] == "spin":
+        if inputs["spin_or_excitation"] == "spin":
             legend.set_title(legend_title)
             
         plt.show()
@@ -1441,7 +1520,7 @@ elif len(e2plus_to_test)>1:                                                  # t
 # note how long it took
 new_timer_lapse = time.time()
 print("finished plotting graphs in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-print("total runtime = %.2f seconds" % (new_timer_lapse-start_wall_time))
+print("total runtime = %.2f seconds" % (new_timer_lapse-start_time))
 
 
 
