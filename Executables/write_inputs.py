@@ -46,6 +46,17 @@ def spin_float_to_string(spin_float):
                          "been input as a half-integer float.")
     else:
         return str(int(numerator))+"/2"
+    
+def range_to_list(range_string):
+    split_range = [float(n) for n in range_string.split(",")]
+    
+    if len(split_range) > 1 :             
+        range_list =  np.arange(split_range[0],                          
+                                 split_range[1]+split_range[2], 
+                                 split_range[2])
+    else : range_list = [split_range[0]]
+    
+    return range_list
 
 
 #%%
@@ -138,20 +149,9 @@ for line in config_lines:                                                       
         inputs["deformation_input"] = split_string[0]
         
         # parse input
-        inputs["eps"] = [float(n) for n in split_string[1].split(",")]          
-        inputs["gamma"] = [float(n) for n in split_string[2].split(",")]
+        eps_to_test = range_to_list(split_string[1])
+        gamma_to_test = range_to_list(split_string[2])
         
-        if len(inputs["eps"]) > 1 :             
-            eps_to_test =  np.arange(inputs["eps"][0],                          
-                                     inputs["eps"][1]+inputs["eps"][2], 
-                                     inputs["eps"][2])
-        else : eps_to_test = [inputs["eps"][0]]
-        
-        if len(inputs["gamma"]) > 1 :                 
-            gamma_to_test = np.arange(inputs["gamma"][0],  
-                                      inputs["gamma"][1]+inputs["gamma"][2], 
-                                      inputs["gamma"][2])
-        else : gamma_to_test = [inputs["gamma"][0]] 
         
         # create arrays with repeated values, to cover every data point.
         # e.g. if eps_to_test = [0.01, 0.02, 0.03] and gamma_to_test = [15]
@@ -201,19 +201,13 @@ for line in config_lines:                                                       
         
     elif split_string[0]=="e2plus":
         
-        inputs["e2plus"] = [float(n) for n in split_string[1].split(",")]       # split by comma delimiter in case a range of values has been input, and convert to float
-        if len(inputs["e2plus"]) > 1 :                                          # then a range of e2plus values has been input
-            e2plus_to_test =  np.arange(inputs["e2plus"][0],                    # add a step to the end value (because arange function is non-inclusive)
-                        inputs["e2plus"][1]+inputs["e2plus"][2], 
-                        inputs["e2plus"][2])
-            
-            if (not inputs["deformation_input"] == "single"):
-                raise ValueError("testing a range of e2plus values is " +
+        e2plus_to_test = range_to_list(split_string[1])
+        
+        if (len(e2plus_to_test)>1 and not inputs["deformation_input"] == "single"):
+            raise ValueError("testing a range of e2plus values is " +
                       "only supported \nfor a single deformation input. " +
                       '''Check that deformation is input as "single".''')
-                
-        else : e2plus_to_test = [inputs["e2plus"][0]]                           # even though it only has one element, a list is easier to input to a loop later
-    
+          
     elif split_string[0] in int_variables:
         inputs[split_string[0]] = int(split_string[1])
         
