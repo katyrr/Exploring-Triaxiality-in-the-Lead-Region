@@ -86,11 +86,11 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 
 * single 0.001 0 ***** eps gamma
 
-* gamma 0.156 0,60,1 *** eps min_gamma,max_gamma,step
+gamma 0.001 0,60,3 *** eps min_gamma,max_gamma,step
 * eps 0.001,0.2,0.001 0 *** min_eps,max_eps,step gamma
 
 
-mesh 0.5,20 ********* max_eps,outer_points ** 
+* mesh 0.5,20 ********* max_eps,outer_points ** 
         
 
 

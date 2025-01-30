@@ -95,7 +95,7 @@ def write_script_batch(file_tag_batch, program, batch_number, file_path):
     for file in file_tag_batch :
         script_text += ("\n./../../../Executables/MO/" + program + 
                       " < ../Inputs/" + abr + "_" + file + ".DAT")
-        script_text += ("\ncp " + program.capitalize() + ".out " + 
+        script_text += ("\ncp " + program.upper() + ".out " + 
                       abr + "_" + file + ".OUT")                                # copy GAMPN.out to a new txt file with a more descriptive name
     
     #script_text += ("\nrm f002_*")                          # delete the f002 output, as it is empty and not used
@@ -406,19 +406,21 @@ timer_lapse = time.time()
 
 allowed_time = 0.1*len(file_tags) + 10                                          #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
-num_batches = 8                                                                 # = number of cores for maximum efficiency with large data sets
-batch_size = math.ceil(len(file_tags)/num_batches)
+batch_num = 8                                                                 # = number of cores for maximum efficiency with large data sets
+batch_size = math.ceil(len(file_tags)/batch_num)
 if batch_size < 20:
-    num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/20)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
+    batch_size = 8
+    batch_num = math.ceil(len(e2plus_to_test)*len(eps_points)/batch_size)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
 subprocesses = {}
 
-for b in range(num_batches):
+for b in range(batch_num):
     file_path = "../RunGAMPN_"+str(b+1)+".sh"
-    write_script_batch(file_tags[b:(b+batch_size)], "gampn", b+1, file_path)
+    batch_file_tags = file_tags[b:(b+batch_size)]
+    write_script_batch(batch_file_tags, "gampn", b+1, file_path)
     subprocesses[("gampn_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
 
-for b in range(num_batches):
+for b in range(batch_num):
     subprocesses[("gampn_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
 
 timer_lapse_new = time.time()
@@ -439,9 +441,12 @@ del [b, file_path]
 print("\nreading GAMPN.OUT files...")
 
 asyrmo_orbitals    = []                                                         # an empty array to store inputs for asyrmo.dat
+
 fermi_energies     = []                                                         # for the fermi energy at each deformation
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
+
+output_data = {}
 
 for file in file_tags :
     
