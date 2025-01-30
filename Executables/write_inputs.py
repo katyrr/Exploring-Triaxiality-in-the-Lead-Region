@@ -406,8 +406,10 @@ timer_lapse = time.time()
 
 allowed_time = 0.1*len(file_tags) + 10                                          #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
-batch_size = 20
-num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/batch_size)
+num_batches = 8                                                                 # = number of cores for maximum efficiency with large data sets
+batch_size = math.ceil(len(file_tags)/num_batches)
+if batch_size < 20:
+    num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/20)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
 subprocesses = {}
 
