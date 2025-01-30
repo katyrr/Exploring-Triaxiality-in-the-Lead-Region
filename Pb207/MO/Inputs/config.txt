@@ -106,7 +106,7 @@ mode MO **** either MO or WS (not yet implemented WS)
 istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
 ************* also used in asyrmo
 
-nneupr -1 *** protons (1) neutrons (-1) or both (2)
+***** nneupr -1 *** protons (1) neutrons (-1) or both (2) *** calculated in macro code
 par - ******* the parity calculated in gampn and displayed in probamo
 
 irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)

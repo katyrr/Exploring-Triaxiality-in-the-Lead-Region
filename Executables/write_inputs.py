@@ -58,6 +58,29 @@ def range_to_list(range_string):
     
     return range_list
 
+gampn_template = '''
+'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
+%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
+9,%(nneupr)s                            NKAMY,NNEUPR
+0.120,0.00,0.120,0.00
+0.120,0.00,0.120,0.00
+0.105,0.00,0.105,0.00
+0.090,0.30,0.090,0.25
+0.065,0.57,0.070,0.39
+0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
+0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0
+0.054,0.69,0.062,0.26
+0,1,1,0                       NUU,IPKT,NOYES,ITRANS
+%(emin)s,%(emax)s
+%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
+%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
+%(Z)s,%(A)s                                                Z,A
+%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
+(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
+'''
 
 #%%
 
@@ -72,7 +95,7 @@ def range_to_list(range_string):
 config_file_name = "../Inputs/config.txt"
 
 print("reading from config file...")                                                          
-start_time = time.time()
+timer_start = time.time()
 
 line_count = 0                                                                  # start a counter for all lines  (including empty lines and comments)
 inputs = {}                                                                     # create an empty dictionary to hold settings for input
@@ -80,7 +103,7 @@ inputs = {}                                                                     
 string_variables = ["nucleus", "mode", 
                     "gs_spin", "fx_spin", "sx_spin", "tx_spin",
                     "spin_or_excitation",
-                    "istrch", "nneupr", "par",
+                    "istrch", "par",
                     "irec", "icorr", "emin", "emax", "imin", "ispin", "kmax",
                     "e2plur", "nu", "chsi", "eta", 
                     "nantj", "noutj", "ipout",
@@ -195,8 +218,7 @@ for line in config_lines:                                                       
                 gamma_points.append(gamma)
         eps_points = np.array(eps_points)
         gamma_points = np.array(gamma_points)
-        del eps
-        del gamma
+        del [eps, gamma, outer_points]
         
         
     elif split_string[0]=="e2plus":
@@ -225,9 +247,30 @@ for line in config_lines:                                                       
               Variable: ''' + split_string[0] + "\t\tLine: " + str(line_count))
     
     print(split_string[0] + ": " + split_string[1])
-    
 
-      
+
+# check that there are no eps=0 values to test - this will cause the code to hang.
+if 0.0 in eps_to_test:
+    raise ValueError("Cannot test at eps=0.0 because the code will only work" +
+                " for non-spherical deformations. \nCheck deformation inputs.")
+
+#print(inputs)
+print("********** Finished reading lines: "+str(line_count)+ " **********")
+
+# deallocate variables that are no longer needed
+del [e,g,n, line_count, expected_num_words] 
+del [config_lines, line, line_string, split_string, word]
+del [float_variables, string_variables, bool_variables, int_variables]
+
+
+#%%
+''' PROCESS INPUTS '''
+# conver input fractional spins to floats and save separately
+# using input A and Z, work out which is odd, to determine the nneupr input
+# half and ceiling for the overall index of the fermi level orbital
+# generate the orbitals input for gampn (e.g. orbitals_string = "+4 19 20 21 22")
+
+
 # add float versions of the spin parameters
 if "gs_spin" in inputs:
     inputs["gs_spin_float"] = spin_string_to_float(inputs["gs_spin"])
@@ -240,82 +283,43 @@ if "sx_spin" in inputs:
 
 if "tx_spin" in inputs:
     inputs["tx_spin_float"] = spin_string_to_float(inputs["tx_spin"])
-
-
-# check that there are no eps=0 values to test - this will cause the code to hang.
-if 0.0 in eps_to_test:
-    raise ValueError("Cannot test at eps=0.0 because the code will only work" +
-                " for non-spherical deformations. \nCheck deformation inputs.")
-
-#print(inputs)
-print("\n********** Finished reading lines: "+str(line_count)+ " **********")
-
-# deallocate variables that are no longer needed
-del e
-del g
-del n
-del config_lines
-del line
-del line_string
-del split_string
-del line_count
-del word
-del expected_num_words
-del float_variables
-del string_variables
-del bool_variables
-del int_variables
-
-
-#%%
-''' CALCULATE FERMI LEVEL '''
-# using input A and Z, work out which is odd
-# check that the odd particle matches the input of nneupr (the input nneupr will take precedence, but a mismatch may indicate an input error)
-# half and ceiling for the overall index of the fermi level orbital
-# generate the orbitals input for gampn (e.g. orbitals_string = "+4 19 20 21 22")
-
-print("calcualting fermi level...")
-
-
-inputs["N"] = inputs["A"]-inputs["Z"]                   # calculate N = A - Z
-
-if inputs["nneupr"] == "1":
-    print("calculating for odd protons...")
-    inputs["fermi_level"] = math.ceil(inputs["Z"]/2)            # calculate fermi level orbital index
-    if inputs["Z"]%2 == 0:
-        print('''this nucleus has even Z but nneupr = 1; check inputs 
-              (the code will treat this as the core and assume an odd proton on top)''')
     
-elif inputs["nneupr"]  == "-1":    
-    print("calculating for odd neutrons...")
+# determine nneupr and calculate fermi level
+inputs["N"] = inputs["A"]-inputs["Z"]
+    
+
+if inputs["Z"]%2 == 0:
+    inputs["nneupr"] = "1" 
+    inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
+    print("calculating for odd protons...")                 
+elif inputs["N"]%2 == 0:
+    inputs["nneupr"] = "-1"
     inputs["fermi_level"] = math.ceil(inputs["N"]/2)
-    if inputs["N"]%2 == 0:
-        print('''this nucleus has even N but nneupr = -1; check inputs 
-              (the code will treat this as the core and assume an odd neutron on top)''')
-
+    print("calculating for odd neutrons...")
 else:
-    print("missing nneupr input")
-    raise ValueError
+    raise ValueError('''Input nucleus is even-even, 
+                     but this code only applies to odd-mass nuclei.''')
 
-
-print("fermi level = " + str(inputs["fermi_level"]) + "\n")
 
 # generate a string that contains the number of orbitals and their indices, in the correct format for input to gampn
 gampn_orbitals = inputs["par"]
-gampn_orbitals += str(inputs["num_orbs"])                               # e.g. orbitals_string = "4 19 20 21 22"
+gampn_orbitals += str(inputs["num_orbs"])                                       # e.g. orbitals_string = "4 19 20 21 22"
 
-first_index = inputs["fermi_level"]//2 - inputs["num_orbs"]//2  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
+first_index = inputs["fermi_level"]//2 - inputs["num_orbs"]//2                  # select [num_orbs] orbitals (the fermi level plus [num_orbs//2] either side)
 last_index = inputs["fermi_level"]//2 + inputs["num_orbs"]//2
-if inputs["num_orbs"]%2 == 1:                                           # if an even number is requested, we need to add one to the final index to ensure the correct number are included
+if inputs["num_orbs"]%2 == 1:                                                   # if an even number is requested, we need to add one to the final index to ensure the correct number are included
     last_index += 1
 orbitals = np.r_[first_index:last_index]                                        # generate a list of orbitals in unit steps inside this range with list slicing
-                                                 
+
+
 for l in orbitals:
     gampn_orbitals += " "
     gampn_orbitals += str(l)
     
 inputs["gampn_orbitals"] = gampn_orbitals
-    
+
+del [l, first_index, last_index, gampn_orbitals, orbitals]
+
     
 #%%   
 ''' WRITE GAMPN.DAT FILES USING DICT '''
@@ -329,73 +333,39 @@ inputs["gampn_orbitals"] = gampn_orbitals
 
 print("writing GAMPN.DAT files...")
 
-write_count = 0                                                                 # start counting how many files get written
-written_file_tags = []                                                          # create a list to record which files were written
+file_tags = []                                                          # create a list to record which files were written
 
 for p in range(len(gamma_points)):
-    for e in e2plus_to_test:
-        
-        if len(e2plus_to_test)>1 and len(gamma_points)>1:
-            raise ValueError("only input a range of e2plus if the deformation input is a single point")
-        
-        inputs["current_e2plus"] = e
-        
-        inputs["current_eps"] = eps_points[p]                               # store eps in the dict for ease of use when string formatting below
+    for etp in e2plus_to_test:
+         
+        inputs["current_e2plus"] = etp
+        inputs["current_eps"] = eps_points[p]                                   # store eps in the dict for ease of use when string formatting below
         inputs["current_gamma"] = gamma_points[p]
         
         file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"], 
                                        inputs["current_gamma"],
                                        inputs["current_e2plus"],
                                        inputs["nucleus"])
-        
         inputs["current_f002"] = "f002_"+file_tag+".dat"
         inputs["current_f016"] = "f016_"+file_tag+".dat"
         inputs["current_f017"] = "f017_"+file_tag+".dat"
         
-        try:                                                                        # only overwrite the existing input file if this code is successful
-            new_input_text =     '''
-        
-'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
-%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
-9,%(nneupr)s                            NKAMY,NNEUPR
-0.120,0.00,0.120,0.00
-0.120,0.00,0.120,0.00
-0.105,0.00,0.105,0.00
-0.090,0.30,0.090,0.25
-0.065,0.57,0.070,0.39
-0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
-0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0
-0.054,0.69,0.062,0.26
-0,1,1,0                       NUU,IPKT,NOYES,ITRANS
-%(emin)s,%(emax)s
-%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
-%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
-%(Z)s,%(A)s                                                Z,A
-%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
-(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
+        gampn_dat_text = gampn_template % inputs
+               
+        gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
+        gampn_dat_file = open(gampn_dat_file_path, 'w')
+        gampn_dat_file.write(gampn_dat_text)
+        gampn_dat_file.close()     
     
-        ''' % inputs
-                
-        except KeyError:
-            print("Could not write GAM_"+file_tag+".DAT because an input is missing."+
-                  " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-            raise
-            
-        else: 
-            gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
-            gampn_dat_file = open(gampn_dat_file_path, 'w')
-            gampn_dat_file.write(new_input_text)
-            gampn_dat_file.close()     
-    
-        write_count += 1
-        written_file_tags.append(file_tag)
+        file_tags.append(file_tag)
 
 print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" 
-      % (write_count, eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
+      % (len(file_tags), eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
+timer_lapse = time.time()
+print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-timer_start))
+
+del [etp, p, file_tag, gampn_dat_file, gampn_dat_file_path, gampn_dat_text]
 
 
 
@@ -407,12 +377,11 @@ print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma
 
 
 shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
-timer_lapse = time.time()
-print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-start_time))
-allowed_time = 0.1*write_count + 10                                            # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+
+allowed_time = 0.1*len(file_tags) + 10                                            # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
 new_shell_script_text = ""
-for file in written_file_tags :
+for file in file_tags :
     new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
     new_shell_script_text += ("\ncp GAMPN.out GAM_"+file+".OUT")                # copy GAMPN.out to a new txt file with a more descriptive name
 
@@ -452,7 +421,7 @@ fermi_energies     = []                                                         
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
 
-for file in written_file_tags :
+for file in file_tags :
     
     # open the file and read
     gampn_out_file_name = "GAM_"+file+".OUT"
@@ -518,7 +487,7 @@ inputs["noutj"] = inputs["noutj"].replace(",", " ")
 inputs["ipout"] = inputs["ipout"].replace(",", " ")
 
 
-for f in range(len(written_file_tags)):
+for f in range(len(file_tags)):
     
     inputs["current_orbitals"] = asyrmo_orbitals[f]
     
@@ -527,13 +496,13 @@ for f in range(len(written_file_tags)):
     else:
         inputs["current_e2plus"] = e2plus_to_test[0]
     
-    file = written_file_tags[f]
+    file = file_tags[f]
     inputs["current_f016"] = "f016_"+file+".dat"
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
     
     try:                                                                        # only overwrite the existing input file if this code is successful
-        new_input_text =     '''
+        asyrmo_dat_text =     '''
 
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
@@ -556,7 +525,7 @@ for f in range(len(written_file_tags)):
     else: 
         asyrmo_dat_file_path = "../Inputs/ASY_"+file+".DAT" 
         asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
-        asyrmo_dat_file.write(new_input_text)
+        asyrmo_dat_file.write(asyrmo_dat_text)
         asyrmo_dat_file.close()     
     
 
@@ -575,7 +544,7 @@ print("finished writing %d ASY.DAT files" % (f+1))
 shell_script_file_path = "../RunASYRMO.sh"                                      # this is where the shell script will be created
 
 new_shell_script_text = ""
-for file in written_file_tags :
+for file in file_tags :
     
     new_gampn_out_file_name = "ASY_"+file+".OUT"
     
@@ -602,13 +571,13 @@ timer_lapse = new_timer_lapse
 ''' WRITING PROBAMO.DAT FILE '''
 # for each deformation, writes a .DAT file for PROBAMO, using the file tag to name, and the provided example as a base
 
-for file in written_file_tags:
+for file in file_tags:
     
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
 
     try:
-        new_input_text =     '''
+        probamo_dat_text =     '''
 
 '%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
 1,0                               ipkt,iskip
@@ -627,7 +596,7 @@ for file in written_file_tags:
     else: 
         probamo_dat_file_path = "../Inputs/PROB_"+file+".DAT" 
         probamo_dat_file = open(probamo_dat_file_path, 'w')
-        probamo_dat_file.write(new_input_text)
+        probamo_dat_file.write(probamo_dat_text)
         probamo_dat_file.close()     
     
 
@@ -648,7 +617,7 @@ print("finished writing PROB.DAT files")
 shell_script_file_path = "../RunPROBAMO.sh"                                     # this is where the shell script will be created
 new_shell_script_text = ""
 
-for file in written_file_tags :
+for file in file_tags :
     
     new_gampn_out_file_name = "PROB_"+file+".OUT"
     
@@ -711,9 +680,9 @@ else: # inputs["spin_or_excitation"]=="spin"
     
 
 
-for f in range(len(written_file_tags)) :
+for f in range(len(file_tags)) :
     
-    file = written_file_tags[f]
+    file = file_tags[f]
 
     probamo_out_file_name = "PROB_"+file+".OUT"
     
@@ -1514,8 +1483,7 @@ elif len(e2plus_to_test)>1:                                                  # t
 # note how long it took
 new_timer_lapse = time.time()
 print("finished plotting graphs in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-print("total runtime = %.2f seconds" % (new_timer_lapse-start_time))
-
+print("total runtime = %.2f seconds" % (new_timer_lapse-timer_start))
 
 
 
