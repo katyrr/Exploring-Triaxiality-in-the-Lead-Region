@@ -29,6 +29,30 @@ from matplotlib.ticker import FuncFormatter                                     
 
 plt.rcParams['figure.dpi'] = 150
 
+gampn_template = '''
+'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
+%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
+9,%(nneupr)s                            NKAMY,NNEUPR
+0.120,0.00,0.120,0.00
+0.120,0.00,0.120,0.00
+0.105,0.00,0.105,0.00
+0.090,0.30,0.090,0.25
+0.065,0.57,0.070,0.39
+0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
+0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
+0
+0.054,0.69,0.062,0.26
+0,1,1,0                       NUU,IPKT,NOYES,ITRANS
+%(emin)s,%(emax)s
+%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
+%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
+%(Z)s,%(A)s                                                Z,A
+%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
+(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
+'''
+
 def spin_string_to_float(spin_string):
     if spin_string[1] == "/":
         spin_float = float(spin_string[0])/2
@@ -58,29 +82,32 @@ def range_to_list(range_string):
     
     return range_list
 
-gampn_template = '''
-'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
-%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
-9,%(nneupr)s                            NKAMY,NNEUPR
-0.120,0.00,0.120,0.00
-0.120,0.00,0.120,0.00
-0.105,0.00,0.105,0.00
-0.090,0.30,0.090,0.25
-0.065,0.57,0.070,0.39
-0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
-0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0
-0.054,0.69,0.062,0.26
-0,1,1,0                       NUU,IPKT,NOYES,ITRANS
-%(emin)s,%(emax)s
-%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
-%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
-%(Z)s,%(A)s                                                Z,A
-%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
-(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
-'''
+
+def write_script_batch(file_tag_batch, program, batch_number, file_path):
+    
+    script_text = ""
+    
+    if program == "gampn": abr = "GAM"
+    elif program == "asyrmo": abr = "ASY"
+    elif program == "probamo": abr = "PROB"
+    else: raise ValueError("Input program [" + program + "] not supported.")
+        
+    for file in file_tag_batch :
+        script_text += ("\n./../../../Executables/MO/" + program + 
+                      " < ../Inputs/" + abr + "_" + file + ".DAT")
+        script_text += ("\ncp " + program.capitalize() + ".out " + 
+                      abr + "_" + file + ".OUT")                                # copy GAMPN.out to a new txt file with a more descriptive name
+    
+    #script_text += ("\nrm f002_*")                          # delete the f002 output, as it is empty and not used
+    script_text += ("\n\necho message from terminal: " +
+                    "finished running gampn batch " + str(batch_number))
+    
+    script_file = open(file_path, 'w')
+    script_file.write(script_text)
+    script_file.close() 
+
+
+
 
 #%%
 
@@ -375,35 +402,28 @@ del [etp, p, file_tag, gampn_dat_file, gampn_dat_file_path, gampn_dat_text]
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
 
+timer_lapse = time.time()
 
-shell_script_file_path = "../RunGAMPN.sh"                                       # this is where the shell script will be created
+allowed_time = 0.1*len(file_tags) + 10                                          #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
-allowed_time = 0.1*len(file_tags) + 10                                            # each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+batch_size = 20
+num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/batch_size)
 
-new_shell_script_text = ""
-for file in file_tags :
-    new_shell_script_text += ("\n./../../../Executables/MO/gampn < ../Inputs/GAM_"+file+".DAT")
-    new_shell_script_text += ("\ncp GAMPN.out GAM_"+file+".OUT")                # copy GAMPN.out to a new txt file with a more descriptive name
+subprocesses = {}
 
-new_shell_script_text += "\n\necho message from terminal: finished running gampn"
+for b in range(num_batches):
+    file_path = "../RunGAMPN_"+str(b+1)+".sh"
+    write_script_batch(file_tags[b:(b+batch_size)], "gampn", b+1, file_path)
+    subprocesses[("gampn_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
 
-shell_script_file = open(shell_script_file_path, 'w')
-shell_script_file.write(new_shell_script_text)
-shell_script_file.close()                                                       
+for b in range(num_batches):
+    subprocesses[("gampn_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
 
-gampn = subprocess.Popen(["sh", "./../RunGAMPN.sh"])                            # start gampn as a subprocess (#!!! asynchronous - potential for parallelisation??)
-gampn.wait(allowed_time)                                                        # wait to ensure it has finished before starting to read outputs, if it takes longer than 10 seconds, timeout (#!!! may need to allow a longer timeout for larger datasets)
+timer_lapse_new = time.time()
+print("finished running gampn in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
+timer_lapse = timer_lapse_new
 
-
-new_timer_lapse = time.time()
-print("finished running gampn in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-timer_lapse = new_timer_lapse
-
-
-
-                                                       
-
-
+del [b, file_path]
 
 
 
@@ -560,9 +580,9 @@ shell_script_file.close()
 asyrmo = subprocess.Popen(["sh", "./../RunASYRMO.sh"])
 asyrmo.wait(allowed_time)
 
-new_timer_lapse = time.time()
-print("finished running asyrmo in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-timer_lapse = new_timer_lapse
+timer_lapse_new = time.time()
+print("finished running asyrmo in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
+timer_lapse = timer_lapse_new
 
 
 
@@ -633,10 +653,10 @@ shell_script_file.close()
 probamo = subprocess.Popen(["sh", "./../RunPROBAMO.sh"])
 probamo.wait(allowed_time)
 
-new_timer_lapse = time.time()
+timer_lapse_new = time.time()
 print("finished running probamo in time = %.2f seconds" 
-      % (new_timer_lapse-timer_lapse))
-timer_lapse = new_timer_lapse
+      % (timer_lapse_new-timer_lapse))
+timer_lapse = timer_lapse_new
 
 #%%
 
@@ -1481,9 +1501,9 @@ elif len(e2plus_to_test)>1:                                                  # t
         plt.show()
 
 # note how long it took
-new_timer_lapse = time.time()
-print("finished plotting graphs in time = %.2f seconds" % (new_timer_lapse-timer_lapse))
-print("total runtime = %.2f seconds" % (new_timer_lapse-timer_start))
+timer_lapse_new = time.time()
+print("finished plotting graphs in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
+print("total runtime = %.2f seconds" % (timer_lapse_new-timer_start))
 
 
 
