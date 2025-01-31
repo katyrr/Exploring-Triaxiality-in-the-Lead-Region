@@ -83,9 +83,10 @@ variable_types["bool"] = ["mark_spin"]
 
 variable_types["int"] = ["A", "Z", "num_to_record", "num_orbs", "nu"]
 
-variable_types["float"] = ["gs_energy", "fx_energy", "sx_energy", "tx_energy",
-                           "gs_mu", "fx_mu"]
+variable_types["float"] = ["gs_energy", "x1_energy", "x2_energy", "x3_energy",
+                           "gs_mu", "x1_mu"]
 
+timer_data = {}
 
 #%%
 
@@ -178,11 +179,12 @@ def configure_script_writer(file_tags,  num_batches,
 # outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
 # tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
-timer_start = time.time()
+timer_data["start"] = time.time()
 
 print("reading from config file...") 
 with open("../Inputs/config.txt", 'r') as f:
     config_lines = f.readlines()
+del f
 
 line_count = 0                                                                  # start a counter for all lines  (including empty lines and comments)
 inputs = {}                                                                     # create an empty dictionary to hold settings for input
@@ -315,6 +317,12 @@ for line in config_lines:                                                       
 if 0.0 in eps_to_test:
     raise ValueError("Cannot test at eps=0.0 because the code will only work" +
                 " for non-spherical deformations. \nCheck deformation inputs.")
+    
+data_points = {}
+data_points["eps"] = eps_points
+data_points["gamma"] = gamma_points
+del [eps_points, gamma_points]
+
 
 #print(inputs)
 print("********** Finished reading lines: "+str(line_count)+ " **********\n")
@@ -336,14 +344,14 @@ del [config_lines, line, line_string, split_string, word]
 if "gs_spin" in inputs:
     inputs["gs_spin_float"] = spin_string_to_float(inputs["gs_spin"])
 
-if "fx_spin" in inputs:
-    inputs["fx_spin_float"] = spin_string_to_float(inputs["fx_spin"])
+if "x1_spin" in inputs:
+    inputs["x1_spin_float"] = spin_string_to_float(inputs["x1_spin"])
 
-if "sx_spin" in inputs:
-    inputs["sx_spin_float"] = spin_string_to_float(inputs["sx_spin"])
+if "x2_spin" in inputs:
+    inputs["x2_spin_float"] = spin_string_to_float(inputs["x2_spin"])
 
-if "tx_spin" in inputs:
-    inputs["tx_spin_float"] = spin_string_to_float(inputs["tx_spin"])
+if "x3_spin" in inputs:
+    inputs["x3_spin_float"] = spin_string_to_float(inputs["x3_spin"])
 
 
 # convert the nantj, noutj, ipout inputs to the correct format
@@ -401,12 +409,12 @@ print("writing GAMPN.DAT files...")
 
 file_tags = []                                                          # create a list to record which files were written
 
-for p in range(len(gamma_points)):
+for p in range(len(data_points["eps"])):
     for etp in e2plus_to_test:
          
         inputs["current_e2plus"] = etp
-        inputs["current_eps"] = eps_points[p]                                   # store eps in the dict for ease of use when string formatting below
-        inputs["current_gamma"] = gamma_points[p]
+        inputs["current_eps"] = data_points["eps"][p]                                   # store eps in the dict for ease of use when string formatting below
+        inputs["current_gamma"] = data_points["gamma"][p]
         
         file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"], 
                                        inputs["current_gamma"],
@@ -420,15 +428,17 @@ for p in range(len(gamma_points)):
                
         with open(("../Inputs/GAM_"+file_tag+".DAT"), 'w') as f:
             f.write(gampn_dat_text)
+        del f
 
         file_tags.append(file_tag)
 
 print('''%d input files were written, 
       for eps in range [%.3f, %.3f],
       and gamma in range [%.1f, %.1f].'''
-      % (len(file_tags), eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
+      % (len(file_tags), data_points["eps"][0], data_points["eps"][-1], data_points["gamma"][0], data_points["gamma"][-1]))
 
-del [etp, p, file_tag, gampn_dat_text]
+data_points["file_tags"] = file_tags
+del [etp, p, file_tag, file_tags, gampn_dat_text]
 
 
 
@@ -438,23 +448,30 @@ del [etp, p, file_tag, gampn_dat_text]
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
 
-timer_lapse = time.time()
+timer_data["lapse"] = time.time()
+batch_settings = {}
 
-allowed_time = 0.1*len(file_tags) + 10                                          #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
+batch_settings["allowed_time"] = 0.1*len(data_points["file_tags"]) + 10         #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
-num_batches = 8                                                                   # = number of cores for maximum efficiency with large data sets
-num_per_batch = math.ceil(len(file_tags)/num_batches)
-if num_per_batch < 20:
-    num_per_batch = 3
-    num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/num_per_batch)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
+batch_settings["num_batches"] = 8                                               # = number of cores for maximum efficiency with large data sets
+batch_settings["num_per_batch"] = math.ceil(len(data_points["file_tags"])/
+                                            batch_settings["num_batches"])
+if batch_settings["num_per_batch"] < 20:
+    batch_settings["num_per_batch"] = 20
+    batch_settings["num_batches"] = math.ceil(len(e2plus_to_test)*
+                                              len(data_points["eps"])/
+                                              batch_settings["num_per_batch"])             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
-run_program = configure_script_writer(file_tags, num_batches, num_per_batch, allowed_time)
+run_program = configure_script_writer(data_points["file_tags"], 
+                                      batch_settings["num_batches"], 
+                                      batch_settings["num_per_batch"], 
+                                      batch_settings["allowed_time"])
 
 run_program("gampn")
 
-timer_lapse_new = time.time()
-print("finished running gampn in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
-timer_lapse = timer_lapse_new
+timer_data["lapse_end"] = time.time()
+print("finished running gampn in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
+timer_data["lapse"] = timer_data["lapse_end"]
 
 
 
@@ -475,11 +492,11 @@ fermi_energies_mev = []
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
 
-for file in file_tags :
-    
-    # open the file and read
+for file in data_points["file_tags"] :
+
     with open(("GAM_"+file+".OUT"), 'r') as f:
         lines = f.readlines()
+    del f
     
     # get the EFAC value (conversion factor from hw to MeV)
     efac_line = lines.index("     KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC\n")
@@ -528,12 +545,14 @@ output_data["fermi_parities"] = fermi_parities
 output_data["fermi_energies_hw"] = fermi_energies_hw
 output_data["fermi_energies_mev"] = fermi_energies_mev
 output_data["fermi_indices"] = fermi_indices
+
+data_points["asyrmo_orbitals"] = asyrmo_orbitals
 print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 del [efac_line, levels_header_line, fermi_level_line, first_index, last_index]
 del [file, half_line, hash_index, l]
 del [lines, orbitals_string, single_parity_index, whole_line, orbitals]
-del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities]
+del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities, asyrmo_orbitals]
 
 
 
@@ -545,23 +564,24 @@ del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities]
 print("writing ASYRMO.DAT files...")
 
 
-for t in range(len(file_tags)):
+for t in range(len(data_points["file_tags"])):
 
-    inputs["current_orbitals"] = asyrmo_orbitals[t]
+    inputs["current_orbitals"] = data_points["asyrmo_orbitals"][t]
     
     if len(e2plus_to_test)>1:
         inputs["current_e2plus"] = e2plus_to_test[t]
     else:
         inputs["current_e2plus"] = e2plus_to_test[0]
 
-    inputs["current_f016"] = "f016_"+file_tags[t]+".dat"
-    inputs["current_f017"] = "f017_"+file_tags[t]+".dat"
-    inputs["current_f018"] = "f018_"+file_tags[t]+".dat"
+    inputs["current_f016"] = "f016_"+data_points["file_tags"][t]+".dat"
+    inputs["current_f017"] = "f017_"+data_points["file_tags"][t]+".dat"
+    inputs["current_f018"] = "f018_"+data_points["file_tags"][t]+".dat"
     
     asyrmo_dat_text = templates["asyrmo"] % inputs
    
-    with open(("../Inputs/ASY_"+file_tags[t]+".DAT"), 'w') as f:
+    with open(("../Inputs/ASY_"+data_points["file_tags"][t]+".DAT"), 'w') as f:
         f.write(asyrmo_dat_text)
+    del f
     
 print("finished writing %d ASY.DAT files" % (t+1))
 del [t, asyrmo_dat_text]
@@ -574,13 +594,13 @@ del [t, asyrmo_dat_text]
 # after each one is run, the output file ASYRMO.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
-timer_lapse = time.time()
+timer_data["lapse"] = time.time()
 
 run_program("asyrmo")
 
-timer_lapse_new = time.time()
-print("finished running asyrmo in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
-timer_lapse = timer_lapse_new
+timer_data["lapse_end"] = time.time()
+print("finished running asyrmo in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
+timer_data["lapse"] = timer_data["lapse_end"]
 
 
 
@@ -589,7 +609,7 @@ timer_lapse = timer_lapse_new
 ''' WRITING PROBAMO.DAT FILE '''
 # for each deformation, writes a .DAT file for PROBAMO, using the file tag to name, and the provided example as a base
 
-for file in file_tags:
+for file in data_points["file_tags"]:
     
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
@@ -598,6 +618,7 @@ for file in file_tags:
     
     with open(("../Inputs/PROB_"+file+".DAT"), 'w') as f:
         f.write(probamo_dat_text)    
+    del f
 
 
 print("finished writing PROB.DAT files")
@@ -612,14 +633,14 @@ del [probamo_dat_text, file]
 # so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
 
 
-timer_lapse = time.time()
+timer_data["lapse"] = time.time()
 
 run_program("probamo")
 
-timer_lapse_new = time.time()
+timer_data["lapse_end"] = time.time()
 print("finished running probamo in time = %.2f seconds" 
-      % (timer_lapse_new-timer_lapse))
-timer_lapse = timer_lapse_new
+      % (timer_data["lapse_end"]-timer_data["lapse"]))
+timer_data["lapse"] = timer_data["lapse_end"]
 
 #%%
 
@@ -636,9 +657,9 @@ print("\nreading PROBAMO.OUT files...")
 if inputs["spin_or_excitation"]=="excitation":
     gs_mag_mom = []
     gs_spins = []
-    fx_energies = []
-    sx_energies = []
-    tx_energies = []
+    x1_energies = []
+    x2_energies = []
+    x3_energies = []
     
 else: # inputs["spin_or_excitation"]=="spin"
     num_to_record = int(inputs["num_to_record"])-1 
@@ -663,25 +684,26 @@ else: # inputs["spin_or_excitation"]=="spin"
     
 
 
-for f in range(len(file_tags)) :
+for t in range(len(data_points["file_tags"])):
     
-    file = file_tags[f]
-
-    probamo_out_file_name = "PROB_"+file+".OUT"
+    file = data_points["file_tags"][t]
+    
+    with open(("PROB_"+file+".OUT"), 'r') as f:
+        lines = f.readlines()
+    del f
     
     if inputs["spin_or_excitation"]=="excitation":
         # locate the yrast (lowest energy) state of each spin
-        fx_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
-        sx_energy = math.inf
-        tx_energy = math.inf
+        x1_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
+        x2_energy = math.inf
+        x3_energy = math.inf
     
     else: # inputs["spin_or_excitation"]=="spin"
         states_1 = 0 # for counting how many states of each spin have been calculated
         states_3 = 0
         states_5 = 0
-    
-    probamo_out_file = open(probamo_out_file_name, 'r')
-    for line in probamo_out_file:
+
+    for line in lines:
         line = line.strip()
         
         try:                                                                    # determine whether this line is a data row of the table (if a ' - ' is present (with a space either side!), then it is)
@@ -715,18 +737,18 @@ for f in range(len(file_tags)) :
                 gs_mag_mom.append(float(line[-8:].strip()))                                # get the ground state magnetic moment
                 gs_spins.append(spin)                                   
             
-            elif frac_spin == inputs["fx_spin"]:                                 # check to see if spin matches experimental first excited state
-                if this_energy < fx_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
-                    fx_energy = this_energy
-                    fx_line = line
-            elif frac_spin == inputs["sx_spin"]:                                 # repeat for second excited state
-                if this_energy < sx_energy:
-                    sx_energy = this_energy
-                    sx_line = line
-            elif frac_spin == inputs["tx_spin"]:                                 # repeat for third excited state
-                if this_energy < tx_energy:
-                    tx_energy = this_energy
-                    tx_line = line
+            elif frac_spin == inputs["x1_spin"]:                                 # check to see if spin matches experimental first excited state
+                if this_energy < x1_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
+                    x1_energy = this_energy
+                    x1_line = line
+            elif frac_spin == inputs["x2_spin"]:                                 # repeat for second excited state
+                if this_energy < x2_energy:
+                    x2_energy = this_energy
+                    x2_line = line
+            elif frac_spin == inputs["x3_spin"]:                                 # repeat for third excited state
+                if this_energy < x3_energy:
+                    x3_energy = this_energy
+                    x3_line = line
                     
         else: # inputs["spin_or_excitation"]=="spin"
             if spin == 0.5  and final_spin == 0.5 and this_energy==final_energy:        # check that this line represents an internal transition (static moment)
@@ -756,49 +778,47 @@ for f in range(len(file_tags)) :
     
     if inputs["spin_or_excitation"]=="spin":
         for s in range(num_to_record+1):
-            if len(mag_mom_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(mag_mom_1[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 mag_mom_1[s].append(np.NaN)
                     
-            if len(mag_mom_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(mag_mom_3[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 mag_mom_3[s].append(np.NaN)
            
-            if len(mag_mom_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(mag_mom_5[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 mag_mom_5[s].append(np.NaN)
             
-            if len(energies_1[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(energies_1[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 energies_1[s].append(np.NaN)
                     
-            if len(energies_3[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(energies_3[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 energies_3[s].append(np.NaN)
            
-            if len(energies_5[s]) == f: # then this state couldn't be found in this file, so placehold with NaN
+            if len(energies_5[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
                 energies_5[s].append(np.NaN)
     else:  #inputs["spin_or_excitation"]=="excitation":
         try:
-            fx_energies.append(float(fx_line[0:5].strip()))
+            x1_energies.append(float(x1_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + inputs["fx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["x1_spin"] + " in file: " + file)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
                 
         try:
-            sx_energies.append(float(sx_line[0:5].strip()))
+            x2_energies.append(float(x2_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + inputs["sx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["x2_spin"] + " in file: " + file)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
         try:
-            tx_energies.append(float(tx_line[0:5].strip()))
+            x3_energies.append(float(x3_line[0:5].strip()))
         except NameError:
-            print("could not find an excited state with spin: " + inputs["tx_spin"] + " in file: " + probamo_out_file_name)
+            print("could not find an excited state with spin: " + inputs["x3_spin"] + " in file: " + file)
             # raise ValueError("could not find the excited states (no states of the appropriate spins)")
         
-    probamo_out_file.close()
+    
 
 # convert collected data from string to float
 #gs_mag_mom = [float(n) for n in gs_mag_mom]
 #gs_spins = [float(n[0])/2 for n in gs_spins]
-
-print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 #%%
 
@@ -810,14 +830,14 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 #       experimental data to compare results to, absolute error tolerance, 
 #       and whether the data set is continuous or discrete.
 
-for r in range(len(gamma_points)):
-    gamma_points[r] *= np.pi/180
+for r in range(len(data_points["eps"])):
+    data_points["gamma"][r] *= np.pi/180
 
 if inputs["spin_or_excitation"]=="excitation":
     # locate the yrast (lowest energy) state of each spin
     
     data_matrix = [gs_mag_mom, output_data["fermi_energies_mev"], output_data["fermi_indices"], 
-                   gs_spins, fx_energies, sx_energies, tx_energies]
+                   gs_spins, x1_energies, x2_energies, x3_energies]
 
     graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
                        "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
@@ -843,10 +863,10 @@ if inputs["spin_or_excitation"]=="excitation":
         experimental_data[0] = inputs["gs_mu"]
     if "gs_spin" in inputs:
         experimental_data[3] = inputs["gs_spin_float"]
-    if "fx_energy" in inputs:
-        experimental_data[4] = inputs["fx_energy"]
-    if "sx_energy" in inputs:
-        experimental_data[5] = inputs["sx_energy"]
+    if "x1_energy" in inputs:
+        experimental_data[4] = inputs["x1_energy"]
+    if "x2_energy" in inputs:
+        experimental_data[5] = inputs["x2_energy"]
         
     error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
 
@@ -894,26 +914,26 @@ else: # inputs["spin_or_excitation"]=="spin"
         if inputs["gs_spin"] == "2.5":
             experimental_data[2] = float(inputs["gs_mu"])
         
-    if "fx_energy" in inputs:
-        if inputs["fx_spin"] == "1/2":
-            experimental_data[5] = float(inputs["fx_energy"])
-            if "fx_mu" in inputs:
-                experimental_data[0] = float(inputs["fx_mu"])
-        if inputs["fx_spin"] == "3/2":
-            experimental_data[6] = float(inputs["fx_energy"])
-            if "fx_mu" in inputs:
-                experimental_data[1] = float(inputs["fx_mu"])
-        if inputs["fx_spin"] == "5/2":
-            experimental_data[7] = float(inputs["fx_energy"])
-            if "fx_mu" in inputs:
-                experimental_data[2] = float(inputs["fx_mu"])
-    if "sx_energy" in inputs:
-        if inputs["sx_spin"] == "1/2":
-            experimental_data[5] = float(inputs["sx_energy"])
-        if inputs["sx_spin"] == "3/2":
-            experimental_data[6] = float(inputs["sx_energy"])
-        if inputs["sx_spin"] == "5/2":
-            experimental_data[7] = float(inputs["sx_energy"])
+    if "x1_energy" in inputs:
+        if inputs["x1_spin"] == "1/2":
+            experimental_data[5] = float(inputs["x1_energy"])
+            if "x1_mu" in inputs:
+                experimental_data[0] = float(inputs["x1_mu"])
+        if inputs["x1_spin"] == "3/2":
+            experimental_data[6] = float(inputs["x1_energy"])
+            if "x1_mu" in inputs:
+                experimental_data[1] = float(inputs["x1_mu"])
+        if inputs["x1_spin"] == "5/2":
+            experimental_data[7] = float(inputs["x1_energy"])
+            if "x1_mu" in inputs:
+                experimental_data[2] = float(inputs["x1_mu"])
+    if "x2_energy" in inputs:
+        if inputs["x2_spin"] == "1/2":
+            experimental_data[5] = float(inputs["x2_energy"])
+        if inputs["x2_spin"] == "3/2":
+            experimental_data[6] = float(inputs["x2_energy"])
+        if inputs["x2_spin"] == "5/2":
+            experimental_data[7] = float(inputs["x2_energy"])
         
     error_tolerance = [0.2, 0.2, 0.2, 0.0, 0.0, 50, 50, 50]                                #!!! these are a bit arbitrary...
 
@@ -958,10 +978,10 @@ if inputs["deformation_input"] == "mesh":
         c_level_boundaries = contour_levels[g]
         if inputs["spin_or_excitation"] == "excitation":
             
-            cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+            cax = ax.tricontourf(data_points["gamma"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(gamma_points, eps_points, data_matrix[g], levels=c_level_boundaries)
+                cax = ax.tricontourf(data_points["gamma"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
                 cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         
                 ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
@@ -973,10 +993,10 @@ if inputs["deformation_input"] == "mesh":
             this_data = data_matrix[g]
             
             
-            cax = ax.tricontourf(gamma_points, eps_points, this_data[0], levels=c_level_boundaries)
+            cax = ax.tricontourf(data_points["gamma"], data_points["eps"], this_data[0], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(gamma_points, eps_points, this_data[0], levels=c_level_boundaries)
+                cax = ax.tricontourf(data_points["gamma"], data_points["eps"], this_data[0], levels=c_level_boundaries)
                 cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         
                 ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
@@ -987,7 +1007,7 @@ if inputs["deformation_input"] == "mesh":
             
         # mark the range in which the correct ground state spin was calculated
         if inputs["mark_spin"]==1:
-            ax.tricontour(gamma_points, eps_points, data_matrix[3], 
+            ax.tricontour(data_points["gamma"], data_points["eps"], data_matrix[3], 
                           levels=[float(inputs["gs_spin"])-0.5,float(inputs["gs_spin"])+0.5],  
                           colors=[(213/255,1,0)], linewidths=1.0)
         
@@ -1001,36 +1021,36 @@ if inputs["deformation_input"] == "mesh":
         plus_flag = False
         
         # plot the data point markers, and check which deformations give a result that matches experiment
-        for r in range(len(gamma_points)):
+        for r in range(len(data_points["eps"])):
             if experimental_data[g]:                                            # if the experimental data exists for comparison
                 error = abs(data_matrix[g][r] - experimental_data[g])
                 if error < error_tolerance[g]: # error/experimental_data[g] < 0.1: #!!! if they agree within 10%, plot the data point in red rather than white
                     if g==0 and output_data["fermi_parities"][r]==inputs["par"]:       # check that the ground state parity has been reproduced
                         agreed_points.append(r)
                     if output_data["fermi_parities"][r] == "-":
-                        plt.polar(gamma_points[r], eps_points[r], 'r.')
+                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'r.')
                         dot_hit_flag = True
    
                     elif output_data["fermi_parities"][r] == "+":
-                        plt.polar(gamma_points[r], eps_points[r], 'r+')
+                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'r+')
                         plus_hit_flag = True
                 else:
                     if r in agreed_points:
                         del agreed_points[agreed_points.index(r)]               # this point is no longer in agreement, so remove it from the list
                     if output_data["fermi_parities"][r] == "-":
-                        plt.polar(gamma_points[r], eps_points[r], 'w.')
+                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w.')
                         dot_miss_flag = True
                     else: # fermi_parities[r] == "+":
-                        plt.polar(gamma_points[r], eps_points[r], 'w+')
+                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w+')
                         plus_miss_flag = True
                 exp, = cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
                         
             # if there is no experimental data available for comparison, just plot all points in white            
             elif output_data["fermi_parities"][r] == "-":
-                plt.polar(gamma_points[r], eps_points[r], 'w.')
+                plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w.')
                 dot_flag = True
             else: # fermi_parities[r] == "+":
-                plt.polar(gamma_points[r], eps_points[r],'w+')
+                plt.polar(data_points["gamma"][r], data_points["eps"][r],'w+')
                 plus_flag = True
                 
         # plot four data points (unseen outside the data range) with desired formatting to use for the legend
@@ -1084,7 +1104,7 @@ if inputs["deformation_input"] == "mesh":
     print("\n")
     for p in agreed_points:
         print("point %d: ε=%.3f, γ=%d" 
-              % (p, eps_points[p], gamma_points[p]*180/np.pi))
+              % (p, data_points["eps"][p], data_points["gamma"][p]*180/np.pi))
     print("\n")
         
 
@@ -1464,9 +1484,9 @@ elif len(e2plus_to_test)>1:                                                  # t
         plt.show()
 
 # note how long it took
-timer_lapse_new = time.time()
-print("finished plotting graphs in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
-print("total runtime = %.2f seconds" % (timer_lapse_new-timer_start))
+timer_data["lapse_end"] = time.time()
+print("finished plotting graphs in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
+print("total runtime = %.2f seconds" % (timer_data["lapse_end"]-timer_data["start"]))
 
 
 

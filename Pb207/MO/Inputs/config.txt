@@ -29,17 +29,17 @@ gs_spin 1/2
 gs_energy 0.0 ********* keV
 
 *** first excited state energy and spin:
-fx_energy 569.7 ******* keV
-fx_spin 5/2
-fx_mu 0.80 ************ μN
+x1_energy 569.7 ******* keV
+x1_spin 5/2
+x1_mu 0.80 ************ μN
 
 *** second excited state energy and spin:
-sx_energy 897.7 ******* keV
-sx_spin 3/2 
+x2_energy 897.7 ******* keV
+x2_spin 3/2 
 
 *** third excited state energy and spin:
-tx_energy 2339.9 ****** keV ***** 
-tx_spin 7/2
+x3_energy 2339.9 ****** keV ***** 
+x3_spin 7/2
 
 
 
