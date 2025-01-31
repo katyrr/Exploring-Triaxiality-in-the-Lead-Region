@@ -135,15 +135,16 @@ def configure_script_writer(file_tags,  num_batches,
         
         def write_script_batch(file_tag_batch, batch_index, file_path):         # a sub-function, called in the loop below
             
+            batch_folder = "Batch"+str(batch_index)
             script_text = ""
             
             for file in file_tag_batch :
-                script_text += ("\n./../../../Executables/MO/" + program + 
-                              " < ../Inputs/" + abr + "_" + file + ".DAT")
-                script_text += ("\ncp " + program.upper() + ".out " + 
-                              abr + "_" + file + ".OUT")                        # copy GAMPN.out to a new txt file with a more descriptive name
+                script_text += ("\n(cd "+batch_folder+
+                                "; ./../../../../Executables/MO/" + program + 
+                                " < ../../Inputs/" +abr + "_" +file + ".DAT)")
+                script_text += ("\ncp "+batch_folder+"/"+program.upper()+
+                                ".out "+abr+"_"+file+".OUT")                        # copy GAMPN.out to a new txt file with a more descriptive name
             
-            #script_text += ("\nrm f002_*")                                     #!!! delete the f002 output, as it is empty and not used
             script_text += ("\n\necho message from terminal: " +
                             "finished running " + program + " batch " + str(batch_index))
             
@@ -444,7 +445,7 @@ allowed_time = 0.1*len(file_tags) + 10                                          
 num_batches = 8                                                                   # = number of cores for maximum efficiency with large data sets
 num_per_batch = math.ceil(len(file_tags)/num_batches)
 if num_per_batch < 20:
-    num_per_batch = 11
+    num_per_batch = 3
     num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/num_per_batch)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
 run_program = configure_script_writer(file_tags, num_batches, num_per_batch, allowed_time)
