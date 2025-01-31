@@ -29,8 +29,9 @@ from matplotlib.ticker import FuncFormatter                                     
 
 plt.rcParams['figure.dpi'] = 150
         
+templates = {}
 
-gampn_template = '''
+templates["gampn"] = '''
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
 %(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
 9,%(nneupr)s                            NKAMY,NNEUPR
@@ -53,7 +54,8 @@ gampn_template = '''
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
 '''
-asyrmo_template = '''
+
+templates["asyrmo"] = '''
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
 %(istrch)s,%(irec)s                                        ISTRCH,IREC
@@ -65,8 +67,8 @@ asyrmo_template = '''
   %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
   %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
 '''
-probamo_template = ""
-probamo_template = '''
+
+templates["probamo"] = '''
 '%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
 1,0                               ipkt,iskip
 %(istrch)s                                 isrtch
@@ -74,9 +76,22 @@ probamo_template = '''
 0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
 0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
 '''
-templates = {"gampn": gampn_template, "asyrmo": asyrmo_template, "probamo": probamo_template}
 
-del[gampn_template, asyrmo_template, probamo_template]
+variable_types = {}
+
+variable_types["bool"] = ["mark_spin"]
+
+variable_types["int"] = ["A", "Z", "num_to_record", "num_orbs", "nu"]
+
+variable_types["float"] = ["gs_energy", "fx_energy", "sx_energy", "tx_energy",
+                           "gs_mu", "fx_mu"]
+
+
+#%%
+
+''' DEFINE FUNCTIONS '''
+
+
 
 def spin_string_to_float(spin_string):
     if spin_string[1] == "/":
@@ -108,16 +123,17 @@ def range_to_list(range_string):
     return range_list
 
 
-def configure_script_writer(file_tags,  num_batches, num_per_batch, allowed_time): # these arguments will be the same throughout the execution, so we can define a family of script writers (one for each of gam/asy/prob)
+def configure_script_writer(file_tags,  num_batches, 
+                            num_per_batch, allowed_time):                       # these arguments will be the same throughout the execution, so we can define a family of script writers (one for each of gam/asy/prob)
     
-    def run_script_batches(program): # after configuring the script writer family, this is what we actually call (it's a "closure" function)
+    def run_script_batches(program):                                            # after configuring the script writer family, this is what we actually call (it's a "closure" function)
         
         if program == "gampn": abr = "GAM"
         elif program == "asyrmo": abr = "ASY"
         elif program == "probamo": abr = "PROB"
-        else: raise ValueError("Input program [" + program + "] not supported.")
+        else: raise ValueError("Input program ["+ program +"] not supported.")
         
-        def write_script_batch(file_tag_batch, batch_index, file_path):         # called in the loop below
+        def write_script_batch(file_tag_batch, batch_index, file_path):         # a sub-function, called in the loop below
             
             script_text = ""
             
@@ -127,9 +143,9 @@ def configure_script_writer(file_tags,  num_batches, num_per_batch, allowed_time
                 script_text += ("\ncp " + program.upper() + ".out " + 
                               abr + "_" + file + ".OUT")                        # copy GAMPN.out to a new txt file with a more descriptive name
             
-            #script_text += ("\nrm f002_*")                          #!!! delete the f002 output, as it is empty and not used
+            #script_text += ("\nrm f002_*")                                     #!!! delete the f002 output, as it is empty and not used
             script_text += ("\n\necho message from terminal: " +
-                            "finished running" + program + " batch " + str(batch_index))
+                            "finished running " + program + " batch " + str(batch_index))
             
             script_file = open(file_path, 'w')
             script_file.write(script_text)
@@ -151,19 +167,6 @@ def configure_script_writer(file_tags,  num_batches, num_per_batch, allowed_time
 
 
 
-'''
-def configure_func(a, b):
-    
-    def closure_func(x):
-        
-        print(x+a+b)
-    
-    return closure_func
-
-func_ab = configure_func("a", "b")
-
-func_ab("x")'''
-
 #%%
 
 
@@ -174,36 +177,14 @@ func_ab("x")'''
 # outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
 # tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
-config_file_name = "../Inputs/config.txt"
-
-print("reading from config file...")                                                          
 timer_start = time.time()
+
+print("reading from config file...") 
+with open("../Inputs/config.txt", 'r') as f:
+    config_lines = f.readlines()
 
 line_count = 0                                                                  # start a counter for all lines  (including empty lines and comments)
 inputs = {}                                                                     # create an empty dictionary to hold settings for input
-
-string_variables = ["nucleus", "mode", 
-                    "gs_spin", "fx_spin", "sx_spin", "tx_spin",
-                    "spin_or_excitation",
-                    "istrch", "par",
-                    "irec", "icorr", "emin", "emax", "imin", "ispin", "kmax",
-                    "e2plur", "nu", "chsi", "eta", 
-                    "nantj", "noutj", "ipout",
-                    "cutoff", "vmi"]
-
-bool_variables = ["mark_spin"]
-
-int_variables = ["A", "Z", "num_to_record", "num_orbs"]
-
-float_variables = ["gs_mu", "fx_mu", 
-                   "gs_energy", "fx_energy", "sx_energy", "tx_energy"]
-
-config_file = open(config_file_name, 'r')                                       # open config file and read lines
-config_lines = config_file.readlines()
-config_file.close()
-
-del config_file_name                                                            # these variables are no longer needed; delete them to make debugging easier
-del config_file
 
 for line in config_lines:                                                              # proccess each line
     line_count += 1
@@ -283,7 +264,6 @@ for line in config_lines:                                                       
         values = split_string[1].split(",")
         inputs["eps_max"] = float(values[0])
         outer_points = int(values[1])                                           # the total number of data points generated = 0.5*outer_points*(outer_points + 1)
-        del values
         
         # arrange a mesh of evenly distributed (eps,gamma) points to test over, 
         # such that eps_max is tested at outer_points gamma values. 
@@ -300,7 +280,8 @@ for line in config_lines:                                                       
                 gamma_points.append(gamma)
         eps_points = np.array(eps_points)
         gamma_points = np.array(gamma_points)
-        del [eps, gamma, outer_points]
+        
+        del [eps, gamma, outer_points, values]
         
         
     elif split_string[0]=="e2plus":
@@ -312,23 +293,21 @@ for line in config_lines:                                                       
                       "only supported \nfor a single deformation input. " +
                       '''Check that deformation is input as "single".''')
           
-    elif split_string[0] in int_variables:
+    elif split_string[0] in variable_types["int"]:
         inputs[split_string[0]] = int(split_string[1])
         
-    elif split_string[0] in float_variables:
+    elif split_string[0] in variable_types["float"]:
         inputs[split_string[0]] = float(split_string[1])
                                       
-    elif split_string[0] in bool_variables:                                    
+    elif split_string[0] in variable_types["bool"]:                                    
         inputs[split_string[0]] = bool(split_string[1])
         
-    elif split_string[0] in string_variables:
+    else: # string
         inputs[split_string[0]] = split_string[1]
+
     
-    else:
-        raise ValueError('''Unrecognsied input, check type and hard code it!
-              Variable: ''' + split_string[0] + "\t\tLine: " + str(line_count))
+    print(split_string[0] + ": \t" + split_string[1])
     
-    print(split_string[0] + ": " + split_string[1])
 
 
 # check that there are no eps=0 values to test - this will cause the code to hang.
@@ -337,12 +316,11 @@ if 0.0 in eps_to_test:
                 " for non-spherical deformations. \nCheck deformation inputs.")
 
 #print(inputs)
-print("********** Finished reading lines: "+str(line_count)+ " **********")
+print("********** Finished reading lines: "+str(line_count)+ " **********\n")
 
 # deallocate variables that are no longer needed
 del [e,g,n, line_count, expected_num_words] 
 del [config_lines, line, line_string, split_string, word]
-del [float_variables, string_variables, bool_variables, int_variables]
 
 
 #%%
@@ -375,7 +353,6 @@ inputs["ipout"] = inputs["ipout"].replace(",", " ")
 # determine nneupr and calculate fermi level
 inputs["N"] = inputs["A"]-inputs["Z"]
     
-
 if inputs["Z"]%2 == 0:
     inputs["nneupr"] = "1" 
     inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
@@ -400,13 +377,13 @@ if inputs["num_orbs"]%2 == 1:                                                   
 orbitals = np.r_[first_index:last_index]                                        # generate a list of orbitals in unit steps inside this range with list slicing
 
 
-for l in orbitals:
+for i in orbitals:
     gampn_orbitals += " "
-    gampn_orbitals += str(l)
+    gampn_orbitals += str(i)
     
 inputs["gampn_orbitals"] = gampn_orbitals
 
-del [l, first_index, last_index, gampn_orbitals, orbitals]
+del [i, first_index, last_index, gampn_orbitals, orbitals]
 
     
 #%%   
@@ -440,20 +417,17 @@ for p in range(len(gamma_points)):
         
         gampn_dat_text = templates["gampn"] % inputs
                
-        gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
-        gampn_dat_file = open(gampn_dat_file_path, 'w')
-        gampn_dat_file.write(gampn_dat_text)
-        gampn_dat_file.close()     
-    
+        with open(("../Inputs/GAM_"+file_tag+".DAT"), 'w') as f:
+            f.write(gampn_dat_text)
+
         file_tags.append(file_tag)
 
-print("%d input files were written, \nfor eps in range [%.3f, %.3f], \nand gamma in range [%d, %d].\n" 
+print('''%d input files were written, 
+      for eps in range [%.3f, %.3f],
+      and gamma in range [%.1f, %.1f].'''
       % (len(file_tags), eps_points[0], eps_points[-1], gamma_points[0], gamma_points[-1]))
 
-timer_lapse = time.time()
-print("running gampn; time so far elapsed = %.2f seconds" % (timer_lapse-timer_start))
-
-del [etp, p, file_tag, gampn_dat_file, gampn_dat_file_path, gampn_dat_text]
+del [etp, p, file_tag, gampn_dat_text]
 
 
 
@@ -470,7 +444,7 @@ allowed_time = 0.1*len(file_tags) + 10                                          
 num_batches = 8                                                                   # = number of cores for maximum efficiency with large data sets
 num_per_batch = math.ceil(len(file_tags)/num_batches)
 if num_per_batch < 20:
-    num_per_batch = 8
+    num_per_batch = 11
     num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/num_per_batch)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
 run_program = configure_script_writer(file_tags, num_batches, num_per_batch, allowed_time)
@@ -500,23 +474,20 @@ fermi_energies_mev = []
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
 
-output_data = {}
-
 for file in file_tags :
     
     # open the file and read
-    gampn_out_file_name = "GAM_"+file+".OUT"
-    gampn_out_file = open(gampn_out_file_name, 'r')
-    lines = gampn_out_file.readlines()
-    gampn_out_file.close()
+    with open(("GAM_"+file+".OUT"), 'r') as f:
+        lines = f.readlines()
     
     # get the EFAC value (conversion factor from hw to MeV)
     efac_line = lines.index("     KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC\n")
     inputs["efac"] = float(lines[efac_line+1][85:95].strip())
     
-    # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
+    # locate the fermi level
     levels_header_line = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
-    fermi_level_line = inputs["fermi_level"]+levels_header_line+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
+    fermi_level_line = inputs["fermi_level"]+levels_header_line+1               # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
+    
     if inputs["fermi_level"] > 40:
         fermi_level_line -= 40
         whole_line = lines[fermi_level_line]
@@ -525,31 +496,32 @@ for file in file_tags :
         whole_line = lines[fermi_level_line]
         half_line = whole_line[0:60].strip()                                    # get only the first half of the line
         
-    # from the half-line containing data on the fermi level orbital, read the parity, single-parity-index, and energy
+    # get data from the half-line containing data on the fermi level orbital
     hash_index = half_line.index("#")                                           # use the index of '#' as a reference point 
     fermi_parities.append(half_line[hash_index-2])                              
     fermi_energies_hw.append(float(half_line[hash_index-10 : hash_index-4]))   
-    fermi_energies_mev.append(float(half_line[hash_index-10 : hash_index-4])*inputs["efac"])
+    fermi_energies_mev.append(fermi_energies_hw[-1]*inputs["efac"])
 
     single_parity_index = half_line[hash_index+1 : hash_index+3]
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit, ignore the ")" that will have been caught
         single_parity_index = single_parity_index[0]
     fermi_indices.append(int(single_parity_index))
     
-    
-    # generate a string that contains the number of orbitals and their indices, in the correct format for input to asyrmo
-    nu = int(inputs["nu"])
-    first_index = int(single_parity_index) - nu//2
-    last_index = int(single_parity_index) + nu//2
-    if nu%2 == 1:                                                               # then we need to add one to the final index to ensure the correct number are included
+    # generate the orbitals input for asyrmo
+    first_index = int(single_parity_index) - inputs["nu"]//2
+    last_index = int(single_parity_index) + inputs["nu"]//2
+    if inputs["nu"]%2 == 1:                                                     # then we need to add one to the final index to ensure the correct number are included
         last_index += 1
     orbitals = np.r_[first_index:last_index]
     
-    orbitals_string = fermi_parities[-1] + inputs["nu"]                         # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
+    orbitals_string = fermi_parities[-1] + str(inputs["nu"])                    # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29"
     for l in orbitals:
         orbitals_string += " "
         orbitals_string += str(l)
     asyrmo_orbitals.append(orbitals_string)
+
+
+output_data = {}
 
 output_data["fermi_parities"] = fermi_parities
 output_data["fermi_energies_hw"] = fermi_energies_hw
@@ -558,7 +530,7 @@ output_data["fermi_indices"] = fermi_indices
 print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 del [efac_line, levels_header_line, fermi_level_line, first_index, last_index]
-del [file, gampn_out_file, gampn_out_file_name, half_line, hash_index, l, nu]
+del [file, half_line, hash_index, l]
 del [lines, orbitals_string, single_parity_index, whole_line, orbitals]
 del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities]
 
@@ -572,32 +544,28 @@ del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities]
 print("writing ASYRMO.DAT files...")
 
 
-for f in range(len(file_tags)):
-    
-    file = file_tags[f]
-    inputs["current_orbitals"] = asyrmo_orbitals[f]
+for t in range(len(file_tags)):
+
+    inputs["current_orbitals"] = asyrmo_orbitals[t]
     
     if len(e2plus_to_test)>1:
-        inputs["current_e2plus"] = e2plus_to_test[f]
+        inputs["current_e2plus"] = e2plus_to_test[t]
     else:
         inputs["current_e2plus"] = e2plus_to_test[0]
 
-    inputs["current_f016"] = "f016_"+file+".dat"
-    inputs["current_f017"] = "f017_"+file+".dat"
-    inputs["current_f018"] = "f018_"+file+".dat"
+    inputs["current_f016"] = "f016_"+file_tags[t]+".dat"
+    inputs["current_f017"] = "f017_"+file_tags[t]+".dat"
+    inputs["current_f018"] = "f018_"+file_tags[t]+".dat"
     
     asyrmo_dat_text = templates["asyrmo"] % inputs
    
-    asyrmo_dat_file_path = "../Inputs/ASY_"+file+".DAT" 
-    asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
-    asyrmo_dat_file.write(asyrmo_dat_text)
-    asyrmo_dat_file.close()     
+    with open(("../Inputs/ASY_"+file_tags[t]+".DAT"), 'w') as f:
+        f.write(asyrmo_dat_text)
     
+print("finished writing %d ASY.DAT files" % (t+1))
+del [t, asyrmo_dat_text]
 
-print("finished writing %d ASY.DAT files" % (f+1))
 
-
-del [file, f, asyrmo_dat_file, asyrmo_dat_file_path, asyrmo_dat_text]
 
 #%%
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
@@ -625,26 +593,15 @@ for file in file_tags:
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
 
-    try:
-        probamo_dat_text = templates["probamo"] % inputs
+    probamo_dat_text = templates["probamo"] % inputs
     
-    except KeyError:
-        print("Could not write PROB_"+file+".DAT because an input is missing."+
-              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-        raise
-        
-    else: 
-        probamo_dat_file_path = "../Inputs/PROB_"+file+".DAT" 
-        probamo_dat_file = open(probamo_dat_file_path, 'w')
-        probamo_dat_file.write(probamo_dat_text)
-        probamo_dat_file.close()     
-    
+    with open(("../Inputs/PROB_"+file+".DAT"), 'w') as f:
+        f.write(probamo_dat_text)    
+
 
 print("finished writing PROB.DAT files")
 
-
-
-
+del [probamo_dat_text, file]
 
 
 #%%
@@ -654,24 +611,9 @@ print("finished writing PROB.DAT files")
 # so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
 
 
-shell_script_file_path = "../RunPROBAMO.sh"                                     # this is where the shell script will be created
-new_shell_script_text = ""
+timer_lapse = time.time()
 
-for file in file_tags :
-    
-    new_gampn_out_file_name = "PROB_"+file+".OUT"
-    
-    new_shell_script_text += ("\n./../../../Executables/MO/probamo < ../Inputs/PROB_"+file+".DAT")
-    new_shell_script_text += ("\ncp PROBAMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
-
-new_shell_script_text += "\n\necho messgae from terminal: finished running probamo"
-
-shell_script_file = open(shell_script_file_path, 'w')
-shell_script_file.write(new_shell_script_text)
-shell_script_file.close()                                                       
-
-probamo = subprocess.Popen(["sh", "./../RunPROBAMO.sh"])
-probamo.wait(allowed_time)
+run_program("probamo")
 
 timer_lapse_new = time.time()
 print("finished running probamo in time = %.2f seconds" 
