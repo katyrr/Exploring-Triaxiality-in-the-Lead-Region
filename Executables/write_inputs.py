@@ -28,6 +28,7 @@ import time                                                                     
 from matplotlib.ticker import FuncFormatter                                     # for formatting axis ticks
 
 plt.rcParams['figure.dpi'] = 150
+        
 
 gampn_template = '''
 '%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
@@ -107,43 +108,61 @@ def range_to_list(range_string):
     return range_list
 
 
-def write_script_batch(batch_file_tags, program, batch_number, file_path):
+def configure_script_writer(file_tags,  num_batches, num_per_batch, allowed_time): # these arguments will be the same throughout the execution, so we can define a family of script writers (one for each of gam/asy/prob)
     
-    script_text = ""
-    
-    if program == "gampn": abr = "GAM"
-    elif program == "asyrmo": abr = "ASY"
-    elif program == "probamo": abr = "PROB"
-    else: raise ValueError("Input program [" + program + "] not supported.")
+    def run_script_batches(program): # after configuring the script writer family, this is what we actually call (it's a "closure" function)
         
-    for file in batch_file_tags :
-        script_text += ("\n./../../../Executables/MO/" + program + 
-                      " < ../Inputs/" + abr + "_" + file + ".DAT")
-        script_text += ("\ncp " + program.upper() + ".out " + 
-                      abr + "_" + file + ".OUT")                                # copy GAMPN.out to a new txt file with a more descriptive name
-    
-    #script_text += ("\nrm f002_*")                          #!!! delete the f002 output, as it is empty and not used
-    script_text += ("\n\necho message from terminal: " +
-                    "finished running gampn batch " + str(batch_number))
-    
-    script_file = open(file_path, 'w')
-    script_file.write(script_text)
-    script_file.close() 
-
-def run_script_batches(file_tags, program, num_batches, num_per_batch, allowed_time):
-    
-    subprocesses = {}
-
-    for b in range(num_batches):
-        file_path = "../Run"+program.upper()+"_"+str(b+1)+".sh"
-        batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
-        write_script_batch(batch_file_tags, program, b+1, file_path)
-        subprocesses[(program+"_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
-
-    for b in range(num_batches):
-        subprocesses[(program+"_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
+        if program == "gampn": abr = "GAM"
+        elif program == "asyrmo": abr = "ASY"
+        elif program == "probamo": abr = "PROB"
+        else: raise ValueError("Input program [" + program + "] not supported.")
         
+        def write_script_batch(file_tag_batch, batch_index, file_path):         # called in the loop below
+            
+            script_text = ""
+            
+            for file in file_tag_batch :
+                script_text += ("\n./../../../Executables/MO/" + program + 
+                              " < ../Inputs/" + abr + "_" + file + ".DAT")
+                script_text += ("\ncp " + program.upper() + ".out " + 
+                              abr + "_" + file + ".OUT")                        # copy GAMPN.out to a new txt file with a more descriptive name
+            
+            #script_text += ("\nrm f002_*")                          #!!! delete the f002 output, as it is empty and not used
+            script_text += ("\n\necho message from terminal: " +
+                            "finished running" + program + " batch " + str(batch_index))
+            
+            script_file = open(file_path, 'w')
+            script_file.write(script_text)
+            script_file.close() 
 
+
+        subprocesses = {}
+
+        for b in range(num_batches):
+            file_path = "../Run"+program.upper()+"_"+str(b+1)+".sh"
+            batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
+            write_script_batch(batch_file_tags, b+1, file_path)
+            subprocesses[(program+"_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
+
+        for b in range(num_batches):
+            subprocesses[(program+"_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
+            
+    return run_script_batches
+
+
+
+'''
+def configure_func(a, b):
+    
+    def closure_func(x):
+        
+        print(x+a+b)
+    
+    return closure_func
+
+func_ab = configure_func("a", "b")
+
+func_ab("x")'''
 
 #%%
 
@@ -454,7 +473,10 @@ if num_per_batch < 20:
     num_per_batch = 8
     num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/num_per_batch)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
-run_script_batches(file_tags, "gampn", num_batches, num_per_batch, allowed_time)
+run_program = configure_script_writer(file_tags, num_batches, num_per_batch, allowed_time)
+
+run_program("gampn")
+
 timer_lapse_new = time.time()
 print("finished running gampn in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
 timer_lapse = timer_lapse_new
@@ -585,7 +607,7 @@ del [file, f, asyrmo_dat_file, asyrmo_dat_file_path, asyrmo_dat_text]
 
 timer_lapse = time.time()
 
-run_script_batches(file_tags, "asyrmo", num_batches, num_per_batch, allowed_time)
+run_program("asyrmo")
 
 timer_lapse_new = time.time()
 print("finished running asyrmo in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
