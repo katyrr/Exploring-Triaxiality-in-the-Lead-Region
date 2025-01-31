@@ -52,6 +52,30 @@ gampn_template = '''
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
 '''
+asyrmo_template = '''
+'%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
+1,0                                        IPKT,ISKIP
+%(istrch)s,%(irec)s                                        ISTRCH,IREC
+%(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
+%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(current_e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
+19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
+%(current_orbitals)s  
+  %(nantj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+  %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
+'''
+probamo_template = ""
+probamo_template = '''
+'%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
+1,0                               ipkt,iskip
+%(istrch)s                                 isrtch
+%(Z)s,%(A)s                           Z,AA
+0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
+0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
+'''
+templates = {"gampn": gampn_template, "asyrmo": asyrmo_template, "probamo": probamo_template}
+
+del[gampn_template, asyrmo_template, probamo_template]
 
 def spin_string_to_float(spin_string):
     if spin_string[1] == "/":
@@ -83,7 +107,7 @@ def range_to_list(range_string):
     return range_list
 
 
-def write_script_batch(file_tag_batch, program, batch_number, file_path):
+def write_script_batch(batch_file_tags, program, batch_number, file_path):
     
     script_text = ""
     
@@ -92,13 +116,13 @@ def write_script_batch(file_tag_batch, program, batch_number, file_path):
     elif program == "probamo": abr = "PROB"
     else: raise ValueError("Input program [" + program + "] not supported.")
         
-    for file in file_tag_batch :
+    for file in batch_file_tags :
         script_text += ("\n./../../../Executables/MO/" + program + 
                       " < ../Inputs/" + abr + "_" + file + ".DAT")
         script_text += ("\ncp " + program.upper() + ".out " + 
                       abr + "_" + file + ".OUT")                                # copy GAMPN.out to a new txt file with a more descriptive name
     
-    #script_text += ("\nrm f002_*")                          # delete the f002 output, as it is empty and not used
+    #script_text += ("\nrm f002_*")                          #!!! delete the f002 output, as it is empty and not used
     script_text += ("\n\necho message from terminal: " +
                     "finished running gampn batch " + str(batch_number))
     
@@ -106,7 +130,19 @@ def write_script_batch(file_tag_batch, program, batch_number, file_path):
     script_file.write(script_text)
     script_file.close() 
 
+def run_script_batches(file_tags, program, num_batches, num_per_batch, allowed_time):
+    
+    subprocesses = {}
 
+    for b in range(num_batches):
+        file_path = "../Run"+program.upper()+"_"+str(b+1)+".sh"
+        batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
+        write_script_batch(batch_file_tags, program, b+1, file_path)
+        subprocesses[(program+"_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
+
+    for b in range(num_batches):
+        subprocesses[(program+"_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
+        
 
 
 #%%
@@ -310,7 +346,13 @@ if "sx_spin" in inputs:
 
 if "tx_spin" in inputs:
     inputs["tx_spin_float"] = spin_string_to_float(inputs["tx_spin"])
-    
+
+
+# convert the nantj, noutj, ipout inputs to the correct format
+inputs["nantj"] = inputs["nantj"].replace(",", " ")
+inputs["noutj"] = inputs["noutj"].replace(",", " ")
+inputs["ipout"] = inputs["ipout"].replace(",", " ")
+
 # determine nneupr and calculate fermi level
 inputs["N"] = inputs["A"]-inputs["Z"]
     
@@ -377,7 +419,7 @@ for p in range(len(gamma_points)):
         inputs["current_f016"] = "f016_"+file_tag+".dat"
         inputs["current_f017"] = "f017_"+file_tag+".dat"
         
-        gampn_dat_text = gampn_template % inputs
+        gampn_dat_text = templates["gampn"] % inputs
                
         gampn_dat_file_path = "../Inputs/GAM_"+file_tag+".DAT" 
         gampn_dat_file = open(gampn_dat_file_path, 'w')
@@ -406,28 +448,17 @@ timer_lapse = time.time()
 
 allowed_time = 0.1*len(file_tags) + 10                                          #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
 
-batch_num = 8                                                                 # = number of cores for maximum efficiency with large data sets
-batch_size = math.ceil(len(file_tags)/batch_num)
-if batch_size < 20:
-    batch_size = 8
-    batch_num = math.ceil(len(e2plus_to_test)*len(eps_points)/batch_size)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
+num_batches = 8                                                                   # = number of cores for maximum efficiency with large data sets
+num_per_batch = math.ceil(len(file_tags)/num_batches)
+if num_per_batch < 20:
+    num_per_batch = 8
+    num_batches = math.ceil(len(e2plus_to_test)*len(eps_points)/num_per_batch)             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
-subprocesses = {}
-
-for b in range(batch_num):
-    file_path = "../RunGAMPN_"+str(b+1)+".sh"
-    batch_file_tags = file_tags[b:(b+batch_size)]
-    write_script_batch(batch_file_tags, "gampn", b+1, file_path)
-    subprocesses[("gampn_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
-
-for b in range(batch_num):
-    subprocesses[("gampn_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
-
+run_script_batches(file_tags, "gampn", num_batches, num_per_batch, allowed_time)
 timer_lapse_new = time.time()
 print("finished running gampn in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
 timer_lapse = timer_lapse_new
 
-del [b, file_path]
 
 
 
@@ -442,7 +473,8 @@ print("\nreading GAMPN.OUT files...")
 
 asyrmo_orbitals    = []                                                         # an empty array to store inputs for asyrmo.dat
 
-fermi_energies     = []                                                         # for the fermi energy at each deformation
+fermi_energies_hw  = []                                                         # for the fermi energy at each deformation
+fermi_energies_mev = []
 fermi_indices      = []                                                         # for the index and parity of the fermi level
 fermi_parities     = [] 
 
@@ -457,12 +489,12 @@ for file in file_tags :
     gampn_out_file.close()
     
     # get the EFAC value (conversion factor from hw to MeV)
-    efac_header = lines.index("     KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC\n")
-    efac = float(lines[efac_header+1][85:95].strip())
+    efac_line = lines.index("     KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC\n")
+    inputs["efac"] = float(lines[efac_line+1][85:95].strip())
     
     # locate the header line of the table of single particle levels, and calculate the location of the fermi level relative to the header line
-    header = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
-    fermi_level_line = inputs["fermi_level"]+header+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
+    levels_header_line = lines.index("   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n")
+    fermi_level_line = inputs["fermi_level"]+levels_header_line+1                   # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
     if inputs["fermi_level"] > 40:
         fermi_level_line -= 40
         whole_line = lines[fermi_level_line]
@@ -471,11 +503,12 @@ for file in file_tags :
         whole_line = lines[fermi_level_line]
         half_line = whole_line[0:60].strip()                                    # get only the first half of the line
         
-    # from the half-line containing data on the fermi level orbital, extract the parity, single-parity-index, and energy
+    # from the half-line containing data on the fermi level orbital, read the parity, single-parity-index, and energy
     hash_index = half_line.index("#")                                           # use the index of '#' as a reference point 
-    fermi_parities.append(half_line[hash_index-2])                              #!!! rather than reading the parity out like this, just set it as a parameter? 
-    fermi_energies.append(float(half_line[hash_index-10 : hash_index-4])*efac)              #!!! convert to float here? and convert to MeV (read EFAC conversion factor from output)
-    
+    fermi_parities.append(half_line[hash_index-2])                              
+    fermi_energies_hw.append(float(half_line[hash_index-10 : hash_index-4]))   
+    fermi_energies_mev.append(float(half_line[hash_index-10 : hash_index-4])*inputs["efac"])
+
     single_parity_index = half_line[hash_index+1 : hash_index+3]
     if single_parity_index[1] == ")":                                           # in case the index is only a single digit, ignore the ")" that will have been caught
         single_parity_index = single_parity_index[0]
@@ -490,14 +523,22 @@ for file in file_tags :
         last_index += 1
     orbitals = np.r_[first_index:last_index]
     
-    orbitals_string = fermi_parities[-1] + inputs["nu"]                 # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
+    orbitals_string = fermi_parities[-1] + inputs["nu"]                         # e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
     for l in orbitals:
         orbitals_string += " "
         orbitals_string += str(l)
     asyrmo_orbitals.append(orbitals_string)
 
+output_data["fermi_parities"] = fermi_parities
+output_data["fermi_energies_hw"] = fermi_energies_hw
+output_data["fermi_energies_mev"] = fermi_energies_mev
+output_data["fermi_indices"] = fermi_indices
 print("finished reading %d files\n" % len(asyrmo_orbitals))
 
+del [efac_line, levels_header_line, fermi_level_line, first_index, last_index]
+del [file, gampn_out_file, gampn_out_file_name, half_line, hash_index, l, nu]
+del [lines, orbitals_string, single_parity_index, whole_line, orbitals]
+del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities]
 
 
 
@@ -508,58 +549,33 @@ print("finished reading %d files\n" % len(asyrmo_orbitals))
 
 print("writing ASYRMO.DAT files...")
 
-# convert the nantj, noutj, ipout inputs to the correct format
-inputs["nantj"] = inputs["nantj"].replace(",", " ")
-inputs["noutj"] = inputs["noutj"].replace(",", " ")
-inputs["ipout"] = inputs["ipout"].replace(",", " ")
-
 
 for f in range(len(file_tags)):
     
+    file = file_tags[f]
     inputs["current_orbitals"] = asyrmo_orbitals[f]
     
     if len(e2plus_to_test)>1:
         inputs["current_e2plus"] = e2plus_to_test[f]
     else:
         inputs["current_e2plus"] = e2plus_to_test[0]
-    
-    file = file_tags[f]
+
     inputs["current_f016"] = "f016_"+file+".dat"
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
     
-    try:                                                                        # only overwrite the existing input file if this code is successful
-        asyrmo_dat_text =     '''
-
-'%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
-1,0                                        IPKT,ISKIP
-%(istrch)s,%(irec)s                                        ISTRCH,IREC
-%(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
-%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(current_e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
-19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
-%(current_orbitals)s  
-  %(nantj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
-
-    ''' % inputs
-    
-    except KeyError:
-        print("Could not write ASY_"+file+".DAT because an input is missing."+
-              " Check config file is correct (and saved!) Will not attempt to overwrite existing file.")
-        raise
-        
-    else: 
-        asyrmo_dat_file_path = "../Inputs/ASY_"+file+".DAT" 
-        asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
-        asyrmo_dat_file.write(asyrmo_dat_text)
-        asyrmo_dat_file.close()     
+    asyrmo_dat_text = templates["asyrmo"] % inputs
+   
+    asyrmo_dat_file_path = "../Inputs/ASY_"+file+".DAT" 
+    asyrmo_dat_file = open(asyrmo_dat_file_path, 'w')
+    asyrmo_dat_file.write(asyrmo_dat_text)
+    asyrmo_dat_file.close()     
     
 
 print("finished writing %d ASY.DAT files" % (f+1))
 
 
-
+del [file, f, asyrmo_dat_file, asyrmo_dat_file_path, asyrmo_dat_text]
 
 #%%
 ''' WRITE AND RUN BASH SCRIPT TO EXECUTE ASYRMO '''
@@ -567,25 +583,9 @@ print("finished writing %d ASY.DAT files" % (f+1))
 # after each one is run, the output file ASYRMO.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
+timer_lapse = time.time()
 
-shell_script_file_path = "../RunASYRMO.sh"                                      # this is where the shell script will be created
-
-new_shell_script_text = ""
-for file in file_tags :
-    
-    new_gampn_out_file_name = "ASY_"+file+".OUT"
-    
-    new_shell_script_text += ("\n./../../../Executables/MO/asyrmo < ../Inputs/ASY_"+file+".DAT")
-    new_shell_script_text += ("\ncp ASYRMO.out "+new_gampn_out_file_name)        # copy ASYRMO.out to a new txt file with a more descriptive name
-
-new_shell_script_text += "\n\necho message from terminal: finished running asyrmo"
-
-shell_script_file = open(shell_script_file_path, 'w')
-shell_script_file.write(new_shell_script_text)
-shell_script_file.close()                                                       
-
-asyrmo = subprocess.Popen(["sh", "./../RunASYRMO.sh"])
-asyrmo.wait(allowed_time)
+run_script_batches(file_tags, "asyrmo", num_batches, num_per_batch, allowed_time)
 
 timer_lapse_new = time.time()
 print("finished running asyrmo in time = %.2f seconds" % (timer_lapse_new-timer_lapse))
@@ -604,16 +604,7 @@ for file in file_tags:
     inputs["current_f018"] = "f018_"+file+".dat"
 
     try:
-        probamo_dat_text =     '''
-
-'%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
-1,0                               ipkt,iskip
-%(istrch)s                                 isrtch
-%(Z)s,%(A)s                           Z,AA
-0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
-0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
-
-    ''' % inputs
+        probamo_dat_text = templates["probamo"] % inputs
     
     except KeyError:
         print("Could not write PROB_"+file+".DAT because an input is missing."+
@@ -860,18 +851,18 @@ for r in range(len(gamma_points)):
 if inputs["spin_or_excitation"]=="excitation":
     # locate the yrast (lowest energy) state of each spin
     
-    data_matrix = [gs_mag_mom, fermi_energies, fermi_indices, 
+    data_matrix = [gs_mag_mom, output_data["fermi_energies_mev"], output_data["fermi_indices"], 
                    gs_spins, fx_energies, sx_energies, tx_energies]
 
     graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
                        "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
 
-    fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
+    fermi_index_colour_levels = np.arange(min(output_data["fermi_indices"])-0.5, max(output_data["fermi_indices"])+1.5, 1.0) 
     gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
     contour_levels = [8, 10, fermi_index_colour_levels, 
                       gs_spin_colour_levels, 10, 10]
 
-    fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
+    fermi_index_cbar_ticks = np.arange(min(output_data["fermi_indices"]), max(output_data["fermi_indices"])+1.0, 1.0)
     fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
     gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
     gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
@@ -884,13 +875,13 @@ if inputs["spin_or_excitation"]=="excitation":
     experimental_data = [[], [], [], 
                          [], [], []]
     if "gs_mu" in inputs:
-        experimental_data[0] = float(inputs["gs_mu"])
+        experimental_data[0] = inputs["gs_mu"]
     if "gs_spin" in inputs:
-        experimental_data[3] = float(inputs["gs_spin"])
+        experimental_data[3] = inputs["gs_spin_float"]
     if "fx_energy" in inputs:
-        experimental_data[4] = float(inputs["fx_energy"])
+        experimental_data[4] = inputs["fx_energy"]
     if "sx_energy" in inputs:
-        experimental_data[5] = float(inputs["sx_energy"])
+        experimental_data[5] = inputs["sx_energy"]
         
     error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
 
@@ -898,7 +889,7 @@ if inputs["spin_or_excitation"]=="excitation":
 else: # inputs["spin_or_excitation"]=="spin"
 
     data_matrix = [mag_mom_1, mag_mom_3, mag_mom_5, 
-                   [fermi_energies], [fermi_indices], 
+                   [output_data["fermi_energies_mev"]], [output_data["fermi_indices"]], 
                    energies_1, energies_3, energies_5]
     
     if "eps_max" in inputs or num_to_record == 0: 
@@ -911,12 +902,12 @@ else: # inputs["spin_or_excitation"]=="spin"
                            "Fermi Energy", "Fermi Level Parity And Index", 
                            "Energies of Spin 1/2 States", "Energies of Spin 3/2 States", "Energies of Spin 5/2 States"]
 
-    fermi_index_colour_levels = np.arange(min(fermi_indices)-0.5, max(fermi_indices)+1.5, 1.0) 
+    fermi_index_colour_levels = np.arange(min(output_data["fermi_indices"])-0.5, max(output_data["fermi_indices"])+1.5, 1.0) 
     contour_levels = [8, 8, 8, 
                       10, fermi_index_colour_levels, 
                       10, 10, 10]
 
-    fermi_index_cbar_ticks = np.arange(min(fermi_indices), max(fermi_indices)+1.0, 1.0)
+    fermi_index_cbar_ticks = np.arange(min(output_data["fermi_indices"]), max(output_data["fermi_indices"])+1.0, 1.0)
     fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
     cbar_ticks = [0,0,0,
                   0,fermi_index_cbar_ticks, 
@@ -977,7 +968,7 @@ else: # inputs["spin_or_excitation"]=="spin"
 #   mark the experimental value in red for easy comparison
 #   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
 
-if "eps_max" in inputs:   
+if inputs["deformation_input"] == "mesh":   
     
     
     agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
@@ -1049,19 +1040,19 @@ if "eps_max" in inputs:
             if experimental_data[g]:                                            # if the experimental data exists for comparison
                 error = abs(data_matrix[g][r] - experimental_data[g])
                 if error < error_tolerance[g]: # error/experimental_data[g] < 0.1: #!!! if they agree within 10%, plot the data point in red rather than white
-                    if g==0 and fermi_parities[r]==inputs["par"]:       # check that the ground state parity has been reproduced
+                    if g==0 and output_data["fermi_parities"][r]==inputs["par"]:       # check that the ground state parity has been reproduced
                         agreed_points.append(r)
-                    if fermi_parities[r] == "-":
+                    if output_data["fermi_parities"][r] == "-":
                         plt.polar(gamma_points[r], eps_points[r], 'r.')
                         dot_hit_flag = True
    
-                    elif fermi_parities[r] == "+":
+                    elif output_data["fermi_parities"][r] == "+":
                         plt.polar(gamma_points[r], eps_points[r], 'r+')
                         plus_hit_flag = True
                 else:
                     if r in agreed_points:
                         del agreed_points[agreed_points.index(r)]               # this point is no longer in agreement, so remove it from the list
-                    if fermi_parities[r] == "-":
+                    if output_data["fermi_parities"][r] == "-":
                         plt.polar(gamma_points[r], eps_points[r], 'w.')
                         dot_miss_flag = True
                     else: # fermi_parities[r] == "+":
@@ -1070,7 +1061,7 @@ if "eps_max" in inputs:
                 exp, = cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
                         
             # if there is no experimental data available for comparison, just plot all points in white            
-            elif fermi_parities[r] == "-":
+            elif output_data["fermi_parities"][r] == "-":
                 plt.polar(gamma_points[r], eps_points[r], 'w.')
                 dot_flag = True
             else: # fermi_parities[r] == "+":
@@ -1143,7 +1134,7 @@ if "eps_max" in inputs:
 
 
 
-elif "line" in inputs:                                                  # then plot a line graph of data variation with eps (or gamma)
+elif inputs["deformation_input"] == "eps" or inputs["deformation_input"] == "gamma":                                              # then plot a line graph of data variation with eps (or gamma)
 
     # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
     correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
@@ -1178,7 +1169,7 @@ elif "line" in inputs:                                                  # then p
         
         
         # if eps was varied and gamma was fixed:
-        if inputs["line"] == "eps" or inputs["line"] == "ε":
+        if inputs["deformation_input"] == "eps" :
             inputs["line"] = "ε"
             inputs["fixed"] = "γ / º"
             # print("plotting line graph of variation with eps...")
@@ -1226,10 +1217,10 @@ elif "line" in inputs:                                                  # then p
             if inputs["spin_or_excitation"]=="excitation":
                 data, = plt.plot(eps_to_test, data_matrix[g], 'k-', label="γ = %s" % gamma_to_test[0])
                 for p in range(len(eps_to_test)):
-                    if fermi_parities[p] == "-":
+                    if output_data["fermi_parities"][p] == "-":
                         plt.plot(eps_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
                         dot_flag = True
-                    elif fermi_parities[p] == "+":
+                    elif output_data["fermi_parities"][p] == "+":
                         plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
                         plus_flag = True
                         
@@ -1243,10 +1234,10 @@ elif "line" in inputs:                                                  # then p
                     data, = plt.plot(eps_to_test, this_data[s], line_colours[s], label=line_labels[s])
                     data_handles.append(data)
                     for p in range(len(this_data[s])):
-                        if fermi_parities[p] == "-":
+                        if output_data["fermi_parities"][p] == "-":
                             plt.plot(eps_to_test[p], this_data[s][p], 'k.', label='negative parity')
                             dot_flag = True
-                        elif fermi_parities[p] == "+":
+                        elif output_data["fermi_parities"][p] == "+":
                             plt.plot(eps_to_test[p], this_data[s][p], 'k+', label='positive parity')
                             plus_flag = True
                 legend_title = "γ = %s" % gamma_to_test[0]
@@ -1310,10 +1301,10 @@ elif "line" in inputs:                                                  # then p
             if inputs["spin_or_excitation"]=="excitation":
                 data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
                 for p in range(len(gamma_to_test)):
-                    if fermi_parities[p] == "-":
+                    if output_data["fermi_parities"][p] == "-":
                         dot, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
     
-                    elif fermi_parities[p] == "+":
+                    elif output_data["fermi_parities"][p] == "+":
                         plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
             
             else: # inputs["spin_or_excitation"]=="spin":
@@ -1326,10 +1317,10 @@ elif "line" in inputs:                                                  # then p
                     data, = plt.plot(gamma_to_test, this_data[s], line_colours[s], label=line_labels[s])
                     data_handles.append(data)
                     for p in range(len(this_data[s])):
-                        if fermi_parities[p] == "-":
+                        if output_data["fermi_parities"][p] == "-":
                             dot, = plt.plot(gamma_to_test[p], this_data[s][p], 'k.', label='negative parity')
         
-                        elif fermi_parities[p] == "+":
+                        elif output_data["fermi_parities"][p] == "+":
                             plus, = plt.plot(gamma_to_test[p], this_data[s][p], 'k+', label='positive parity')
                 legend_title = "ε = %s" % eps_to_test[0]
                 
@@ -1449,10 +1440,10 @@ elif len(e2plus_to_test)>1:                                                  # t
         if inputs["spin_or_excitation"]=="excitation":
             data, = plt.plot(e2plus_to_test, data_matrix[g], 'k-', label="ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0]))
             for p in range(len(e2plus_to_test)):
-                if fermi_parities[p] == "-":
+                if output_data["fermi_parities"][p] == "-":
                     plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
                     dot_flag = True
-                elif fermi_parities[p] == "+":
+                elif output_data["fermi_parities"][p] == "+":
                     plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
                     plus_flag = True
                     
@@ -1466,10 +1457,10 @@ elif len(e2plus_to_test)>1:                                                  # t
                 data, = plt.plot(e2plus_to_test, this_data[s], line_colours[s], label=line_labels[s])
                 data_handles.append(data)
                 for p in range(len(this_data[s])):
-                    if fermi_parities[p] == "-":
+                    if output_data["fermi_parities"][p] == "-":
                         plt.plot(e2plus_to_test[p], this_data[s][p], 'k.', label='negative parity')
                         dot_flag = True
-                    elif fermi_parities[p] == "+":
+                    elif output_data["fermi_parities"][p] == "+":
                         plt.plot(e2plus_to_test[p], this_data[s][p], 'k+', label='positive parity')
                         plus_flag = True
             legend_title = "ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0])
