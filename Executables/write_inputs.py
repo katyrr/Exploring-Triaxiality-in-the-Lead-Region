@@ -320,7 +320,8 @@ if 0.0 in eps_to_test:
     
 data_points = {}
 data_points["eps"] = eps_points
-data_points["gamma"] = gamma_points
+data_points["gamma_degrees"] = gamma_points
+data_points["gamma_radians"] = [n*np.pi/180 for n in gamma_points]
 del [eps_points, gamma_points]
 
 
@@ -414,7 +415,7 @@ for p in range(len(data_points["eps"])):
          
         inputs["current_e2plus"] = etp
         inputs["current_eps"] = data_points["eps"][p]                                   # store eps in the dict for ease of use when string formatting below
-        inputs["current_gamma"] = data_points["gamma"][p]
+        inputs["current_gamma"] = data_points["gamma_degrees"][p]
         
         file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"], 
                                        inputs["current_gamma"],
@@ -435,7 +436,7 @@ for p in range(len(data_points["eps"])):
 print('''%d input files were written, 
       for eps in range [%.3f, %.3f],
       and gamma in range [%.1f, %.1f].'''
-      % (len(file_tags), data_points["eps"][0], data_points["eps"][-1], data_points["gamma"][0], data_points["gamma"][-1]))
+      % (len(file_tags), data_points["eps"][0], data_points["eps"][-1], data_points["gamma_degrees"][0], data_points["gamma_degrees"][-1]))
 
 data_points["file_tags"] = file_tags
 del [etp, p, file_tag, file_tags, gampn_dat_text]
@@ -652,173 +653,99 @@ timer_data["lapse"] = timer_data["lapse_end"]
 # the "first excitation energy" is recorded
 # similarly for the second and third experimental excited states
 
+def read_data(line):
+    line = line.strip()
+    
+    try:                                                                    # determine whether this line is a data row of the table (if ' - ' is present then it is)
+        dash_index = line.index(" - ")
+    except ValueError:
+        return False # continue to next line
+    
+    spin_string = line[dash_index-4:dash_index].strip()
+    final_spin_string = line[dash_index+11:dash_index+16].strip()              # get the spin of the final state (after transition)
+    
+    if not(spin_string == final_spin_string):
+        return False
+
+    spin_float = spin_string_to_float(spin_string)
+    
+    try:
+        this_energy = float(line[:6].strip())
+    except ValueError: # could not convert string to float: '0.0  1'
+        this_energy = float(line[:5].strip())
+    
+    final_energy = float(line[dash_index+3:dash_index+10].strip())
+                         
+    if not(this_energy == final_energy):
+        return False
+    
+    mag_moment = float(line[-8:].strip())
+    line_data = {'spin_string': spin_string, 'spin_float':spin_float, 
+                 'energy':this_energy, 'mag_moment':mag_moment}
+    
+    return line_data
+
+def sort_by_spin(line_data, file_data):
+    
+    spin = "spin_"+line_data["spin_string"]
+    
+    if (spin+"_energies") in file_data:
+        file_data[(spin+"_energies")].append(line_data["energy"])
+        file_data[(spin+"_mag_moments")].append(line_data["mag_moment"])
+        
+    else:
+        file_data[(spin+"_energies")] = [line_data["energy"]]
+        file_data[(spin+"_mag_moments")] = [line_data["mag_moment"]]
+
+    return file_data
+
+def fill_gaps(file_data): 
+    
+    for i in range(int(inputs["ispin"])+1):
+        
+        if i%2 == 0:
+            continue # only half-int spins are calculated
+        
+        spin = "spin_"+str(i)+"/2"
+        
+        if not(spin+"_energies" in file_data):
+            file_data[(spin+"_energies")] = [np.NaN]
+            file_data[(spin+"_mag_moments")] = [np.NaN]
+
+        
+    return file_data
+            
+    
+    
 print("\nreading PROBAMO.OUT files...")
 
-if inputs["spin_or_excitation"]=="excitation":
-    gs_mag_mom = []
-    gs_spins = []
-    x1_energies = []
-    x2_energies = []
-    x3_energies = []
-    
-else: # inputs["spin_or_excitation"]=="spin"
-    num_to_record = int(inputs["num_to_record"])-1 
-    
-    mag_mom_1 = []
-    mag_mom_3 = []
-    mag_mom_5 = []
-    
-    energies_1 = []
-    energies_3 = []
-    energies_5 = []
-    
-    for i in range(num_to_record+1):
-        mag_mom_1.append([])
-        mag_mom_3.append([])
-        mag_mom_5.append([])
-        
-        energies_1.append([])
-        energies_3.append([])
-        energies_5.append([])
-    
-    
 
+# start reading files 
+
+all_data = []
 
 for t in range(len(data_points["file_tags"])):
-    
     file = data_points["file_tags"][t]
+    file_data = {}
     
     with open(("PROB_"+file+".OUT"), 'r') as f:
         lines = f.readlines()
     del f
-    
-    if inputs["spin_or_excitation"]=="excitation":
-        # locate the yrast (lowest energy) state of each spin
-        x1_energy = math.inf                                                        # initialise to a large value so that the first '<' comparison will be true
-        x2_energy = math.inf
-        x3_energy = math.inf
-    
-    else: # inputs["spin_or_excitation"]=="spin"
-        states_1 = 0 # for counting how many states of each spin have been calculated
-        states_3 = 0
-        states_5 = 0
 
     for line in lines:
-        line = line.strip()
         
-        try:                                                                    # determine whether this line is a data row of the table (if a ' - ' is present (with a space either side!), then it is)
-            dash_index = line.index(" - ")
-        except ValueError:
-            continue    
-        else:
-            spin_string = line[dash_index-4:dash_index].strip()
-            if spin_string[1] == "/":
-                spin = float(spin_string[0])/2                        # get the spin of this row
-            else: 
-                spin = float(spin_string[:2])/2
-                
-            final_spin_string = line[dash_index+11:dash_index+16].strip()              # get the spin of the final state (after transition)
-            if final_spin_string[1] == "/":
-                final_spin = float(final_spin_string[0])/2                        # get the spin of this row
-            else: 
-                final_spin = float(final_spin_string[:2])/2
-            
-            try:
-                this_energy = float(line[:6].strip())
-            except ValueError: # could not convert string to float: '0.0  1'
-                this_energy = float(line[:5].strip())
-            
-            final_energy = float(line[dash_index+3:dash_index+10].strip())
-                                                                # if this row doesn't contain data, ignore it
+        line_data = read_data(line)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
         
-        if inputs["spin_or_excitation"]=="excitation":
-            frac_spin = (str(int(float(spin)*2))+"/2")
-            if line[0:3] == "0.0":                                                  # then this is the ground state
-                gs_mag_mom.append(float(line[-8:].strip()))                                # get the ground state magnetic moment
-                gs_spins.append(spin)                                   
-            
-            elif frac_spin == inputs["x1_spin"]:                                 # check to see if spin matches experimental first excited state
-                if this_energy < x1_energy:                                         # this will eventually locate the yrast state of this spin (i.e. the first excited state)
-                    x1_energy = this_energy
-                    x1_line = line
-            elif frac_spin == inputs["x2_spin"]:                                 # repeat for second excited state
-                if this_energy < x2_energy:
-                    x2_energy = this_energy
-                    x2_line = line
-            elif frac_spin == inputs["x3_spin"]:                                 # repeat for third excited state
-                if this_energy < x3_energy:
-                    x3_energy = this_energy
-                    x3_line = line
-                    
-        else: # inputs["spin_or_excitation"]=="spin"
-            if spin == 0.5  and final_spin == 0.5 and this_energy==final_energy:        # check that this line represents an internal transition (static moment)
-                if states_1 > num_to_record: # only save the first three
-                    continue
-                mag_mom_1[states_1].append(float(line[-8:].strip()))                                 
-                energies_1[states_1].append(float(line[0:6].strip())) 
-                
-                states_1 += 1
-                                             
-            
-            elif spin == 1.5 and final_spin == 1.5 and this_energy==final_energy:
-                if states_3 > num_to_record:
-                    continue
-                mag_mom_3[states_3].append(float(line[-8:].strip()))                                 
-                energies_3[states_3].append(float(line[0:6].strip()))   
-                
-                states_3 += 1
-                
-            elif spin == 2.5 and final_spin == 2.5 and this_energy==final_energy:
-                if states_5 > num_to_record:
-                    continue
-                mag_mom_5[states_5].append(float(line[-8:].strip()))                                 
-                energies_5[states_5].append(float(line[0:6].strip()))   
-                
-                states_5 += 1
+        if not(line_data):
+            continue # to next line in file
+        
+        # sort line_data into file_data according to its spin
+        file_data = sort_by_spin(line_data, file_data)
     
-    if inputs["spin_or_excitation"]=="spin":
-        for s in range(num_to_record+1):
-            if len(mag_mom_1[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                mag_mom_1[s].append(np.NaN)
-                    
-            if len(mag_mom_3[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                mag_mom_3[s].append(np.NaN)
-           
-            if len(mag_mom_5[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                mag_mom_5[s].append(np.NaN)
-            
-            if len(energies_1[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                energies_1[s].append(np.NaN)
-                    
-            if len(energies_3[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                energies_3[s].append(np.NaN)
-           
-            if len(energies_5[s]) == t: # then this state couldn't be found in this file, so placehold with NaN
-                energies_5[s].append(np.NaN)
-    else:  #inputs["spin_or_excitation"]=="excitation":
-        try:
-            x1_energies.append(float(x1_line[0:5].strip()))
-        except NameError:
-            print("could not find an excited state with spin: " + inputs["x1_spin"] + " in file: " + file)
-            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-                
-        try:
-            x2_energies.append(float(x2_line[0:5].strip()))
-        except NameError:
-            print("could not find an excited state with spin: " + inputs["x2_spin"] + " in file: " + file)
-            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-        
-        try:
-            x3_energies.append(float(x3_line[0:5].strip()))
-        except NameError:
-            print("could not find an excited state with spin: " + inputs["x3_spin"] + " in file: " + file)
-            # raise ValueError("could not find the excited states (no states of the appropriate spins)")
-        
+    file_data = fill_gaps(file_data)
+    all_data.append(file_data)
     
 
-# convert collected data from string to float
-#gs_mag_mom = [float(n) for n in gs_mag_mom]
-#gs_spins = [float(n[0])/2 for n in gs_spins]
 
 #%%
 
@@ -830,8 +757,6 @@ for t in range(len(data_points["file_tags"])):
 #       experimental data to compare results to, absolute error tolerance, 
 #       and whether the data set is continuous or discrete.
 
-for r in range(len(data_points["eps"])):
-    data_points["gamma"][r] *= np.pi/180
 
 if inputs["spin_or_excitation"]=="excitation":
     # locate the yrast (lowest energy) state of each spin
@@ -877,7 +802,7 @@ else: # inputs["spin_or_excitation"]=="spin"
                    [output_data["fermi_energies_mev"]], [output_data["fermi_indices"]], 
                    energies_1, energies_3, energies_5]
     
-    if "eps_max" in inputs or num_to_record == 0: 
+    if "eps_max" in inputs or inputs["num_to_record"] == 1: 
         graphs_to_print = ["Magnetic Dipole Moment of Lowest Spin 1/2 State", "Magnetic Dipole Moment of Lowest Spin 3/2 State", "Magnetic Dipole Moment of Lowest Spin 5/2 State", 
                            "Fermi Energy", "Fermi Level Parity And Index", 
                            "Energy of Lowest Spin 1/2 State", "Energy of Lowest Spin 3/2 State", "Energy of Lowest Spin 5/2 State"]
@@ -978,10 +903,10 @@ if inputs["deformation_input"] == "mesh":
         c_level_boundaries = contour_levels[g]
         if inputs["spin_or_excitation"] == "excitation":
             
-            cax = ax.tricontourf(data_points["gamma"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
+            cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(data_points["gamma"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
+                cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
                 cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         
                 ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
@@ -993,10 +918,10 @@ if inputs["deformation_input"] == "mesh":
             this_data = data_matrix[g]
             
             
-            cax = ax.tricontourf(data_points["gamma"], data_points["eps"], this_data[0], levels=c_level_boundaries)
+            cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], this_data[0], levels=c_level_boundaries)
             cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
             if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(data_points["gamma"], data_points["eps"], this_data[0], levels=c_level_boundaries)
+                cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], this_data[0], levels=c_level_boundaries)
                 cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
         
                 ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
@@ -1007,7 +932,7 @@ if inputs["deformation_input"] == "mesh":
             
         # mark the range in which the correct ground state spin was calculated
         if inputs["mark_spin"]==1:
-            ax.tricontour(data_points["gamma"], data_points["eps"], data_matrix[3], 
+            ax.tricontour(data_points["gamma_degrees"], data_points["eps"], data_matrix[3], 
                           levels=[float(inputs["gs_spin"])-0.5,float(inputs["gs_spin"])+0.5],  
                           colors=[(213/255,1,0)], linewidths=1.0)
         
@@ -1028,29 +953,29 @@ if inputs["deformation_input"] == "mesh":
                     if g==0 and output_data["fermi_parities"][r]==inputs["par"]:       # check that the ground state parity has been reproduced
                         agreed_points.append(r)
                     if output_data["fermi_parities"][r] == "-":
-                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'r.')
+                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'r.')
                         dot_hit_flag = True
    
                     elif output_data["fermi_parities"][r] == "+":
-                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'r+')
+                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'r+')
                         plus_hit_flag = True
                 else:
                     if r in agreed_points:
                         del agreed_points[agreed_points.index(r)]               # this point is no longer in agreement, so remove it from the list
                     if output_data["fermi_parities"][r] == "-":
-                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w.')
+                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w.')
                         dot_miss_flag = True
                     else: # fermi_parities[r] == "+":
-                        plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w+')
+                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w+')
                         plus_miss_flag = True
                 exp, = cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
                         
             # if there is no experimental data available for comparison, just plot all points in white            
             elif output_data["fermi_parities"][r] == "-":
-                plt.polar(data_points["gamma"][r], data_points["eps"][r], 'w.')
+                plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w.')
                 dot_flag = True
             else: # fermi_parities[r] == "+":
-                plt.polar(data_points["gamma"][r], data_points["eps"][r],'w+')
+                plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r],'w+')
                 plus_flag = True
                 
         # plot four data points (unseen outside the data range) with desired formatting to use for the legend
@@ -1104,7 +1029,7 @@ if inputs["deformation_input"] == "mesh":
     print("\n")
     for p in agreed_points:
         print("point %d: ε=%.3f, γ=%d" 
-              % (p, data_points["eps"][p], data_points["gamma"][p]*180/np.pi))
+              % (p, data_points["eps"][p], data_points["gamma_degrees"][p]*180/np.pi))
     print("\n")
         
 
