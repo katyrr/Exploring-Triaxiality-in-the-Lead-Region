@@ -115,13 +115,20 @@ def spin_float_to_string(spin_float):
 def range_to_list(range_string):
     split_range = [float(n) for n in range_string.split(",")]
     
-    if len(split_range) > 1 :             
+    
+    if len(split_range) > 1 :  
+        step = split_range[2]           
         range_list =  np.arange(split_range[0],                          
-                                 split_range[1]+split_range[2], 
-                                 split_range[2])
+                                 split_range[1]+step, 
+                                 step)
     else : range_list = [split_range[0]]
     
     return range_list
+
+def get_range_step(range_string):
+    split_range = [float(n) for n in range_string.split(",")]
+    return split_range[2]     
+    
 
 
 def configure_script_writer(file_tags,  num_batches, 
@@ -240,6 +247,12 @@ for line in config_lines:                                                       
         # parse input
         eps_to_test = range_to_list(split_string[1])
         gamma_to_test = range_to_list(split_string[2])
+        
+        if len(eps_to_test) > 1:
+            inputs["step"] = get_range_step(split_string[1])
+        elif len(gamma_to_test) > 1:
+            inputs["step"] = get_range_step(split_string[2])
+        else: raise ValueError("cannot vary both eps and gamma linearly; choose one or use mesh")
         
         
         # create arrays with repeated values, to cover every data point.
@@ -723,7 +736,7 @@ def sort_by_expectation(line_data, file_data):
     
     return file_data
             
-def fill_gaps(file_data): 
+def missing_data(file_data): 
     
     for i in range(int(inputs["ispin"])+1):
         
@@ -813,6 +826,19 @@ def restructure_data(old_data):
     
 print("\nreading PROBAMO.OUT files...")
 
+def fill_gaps(multi_level_data):
+    
+    num_levels = [len(n) for n in multi_level_data]
+    max_num = max(num_levels)
+    
+    for d in range(len(multi_level_data)):
+        while len(multi_level_data[d]) < max_num:
+            multi_level_data[d].append(np.NaN)
+        
+    return multi_level_data
+    
+            
+
 
 # start reading files 
 
@@ -839,12 +865,19 @@ for t in range(len(data_points["file_tags"])):
         # separately save data that corresponds to the experimental ground state and input excited states
         file_data = sort_by_expectation(line_data, file_data)
     
-    file_data = fill_gaps(file_data)
+    file_data = missing_data(file_data)
     data_points["property_data"].append(file_data)
 
-output_data = _output_data | restructure_data(data_points["property_data"])
     
-del [file, file_data, line, line_data, lines, t]
+output_data = _output_data | restructure_data(data_points["property_data"])
+
+transposed_data = {}
+for d in output_data:
+    if isinstance(output_data[d][0], list):
+        output_data[d] = fill_gaps(output_data[d])
+        transposed_data[d] = np.transpose(np.array(output_data[d]))
+    
+del [file, file_data, line, line_data, lines, t, d]
 
 _output_data_dict = output_data # save a copy of the original before it's overwritten
 
@@ -862,9 +895,13 @@ def calc_contour_levels(data):
     max_contour = max(data)+1.5
     return np.arange(min_contour, max_contour, 1.0)
 
-def calc_cbar_ticks(data):
+def calc_cbar_tick_labels(data):
     cbar_ticks = np.arange(min(data), max(data)+1.0, 1.0)
     return [spin_float_to_string(n) for n in cbar_ticks]
+
+def calc_cbar_ticks(contours):
+    num = len(contours) - 1
+    return [(contours[i] + contours[i+1]) / 2 for i in range(num)]                                # Calculate midpoints of levels for tick placement
 
 def try_experimental(inputs, key, tolerance):
     try:
@@ -874,52 +911,62 @@ def try_experimental(inputs, key, tolerance):
 
 class PropertyData:
     
+    plot = False # don't plot by default
+    
     def __init__(self, data): #(self, title, data, contour_levels, cbar_ticks, axis_label, experimental_data, error_tolerance):
-        # self.title = title
+        
         self.data = data
+        
+        # self.title = title
         # self.contour_levels = contour_levels
         # self.cbar_ticks = cbar_ticks
         # self.axis_label = axis_label
         # self.experimental_data = experimental_data
         # self.error_tolerance = error_tolerance
 
+def sort_property(name):
+    
+    if name[0:4] == "spin":
+        num = name[5:9]
+        if num[-1] == "_": num = num[0:3]
+        prop = name[9:] 
+        if prop[0] == "_": prop = prop[1:]
+        sort = "Spin "
+        
+    elif name[0] == "x":
+        num = name[1]
+        prop = name[3:]
+        sort = "Excited State "
+        
+    elif name[0:2] == "gs":
+        num = ""
+        prop = name[3:]
+        sort = "Ground"
+    
+    elif name[0:5] == "fermi":
+        num = ""
+        prop = name[6:14]
+        sort = "Fermi"
+        
+    else: raise ValueError("property not regonised: " + name)
+    
+    return num, prop, sort
+    
 # convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
 output_data = {}
 for p in _output_data_dict:
     
     output_data[p] = PropertyData(_output_data_dict[p])
     
-    # work out what kind of property it is
-    if p[0:4] == "spin":
-        num = p[5:9]
-        if num[-1] == "_": num = num[0:3]
-        prop = p[9:] 
-        if prop[0] == "_": prop = prop[1:]
-        sort = "Spin "
-        
-    elif p[0] == "x":
-        num = p[1]
-        prop = p[3:]
-        sort = "Excited State "
-        
-    elif p[0:2] == "gs":
-        num = ""
-        prop = p[3:]
-        sort = "Ground"
-    
-    elif p[0:5] == "fermi":
-        num = ""
-        prop = p[6:14]
-        sort = "Fermi"
-        
-    else: raise ValueError("property not regonised: " + p)
+    # work out what kind of property it is from its name
+    num, prop, sort = sort_property(p)
     
     
     # determine graph plotting attributes
     if prop == "energies" and not(sort=="Fermi"): 
         output_data[p].title = "Energies of "+ sort + num + " States"
         output_data[p].contour_levels = 10
-        output_data[p].cbar_ticks = 0
+        output_data[p].cbar_tick_labels = 0
         output_data[p].axis_label = output_data[p].title + " / keV"
         
         
@@ -937,7 +984,7 @@ for p in _output_data_dict:
         output_data[p].title = "Magnetic Dipole Moments of " + sort + num + " States"
         output_data[p].contour_levels = 8
         output_data[p].axis_label = output_data[p].title + r' / $μ_{N}$'
-        output_data[p].cbar_ticks = 0
+        output_data[p].cbar_tick_labels = 0
             
         if sort == "Excited State ":
             output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "x" + num + "_mu", 0.2)
@@ -960,7 +1007,9 @@ for p in _output_data_dict:
             output_data[p].axis_label = output_data[p].title
             
             output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_spin_string", 0.2)
-            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].data)
+            output_data[p].cbar_tick_labels = calc_cbar_tick_labels(output_data[p].data)
+            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].contour_levels)
+            
         elif prop == "spin_strings": continue
     
     elif sort == "Fermi":
@@ -970,21 +1019,23 @@ for p in _output_data_dict:
             output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
             
             output_data[p].axis_label = output_data[p].title
-            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].data)
+            output_data[p].cbar_tick_labels = calc_cbar_tick_labels(output_data[p].data)
+            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].contour_levels)
+            
         
         elif prop == "energies":
         
             output_data[p].title = "Fermi Energies"
             output_data[p].contour_levels = 10
             output_data[p].axis_label = output_data[p].title + p[-3:-1]
-            output_data[p].cbar_ticks = 0
+            output_data[p].cbar_tick_labels = 0
         
         elif prop == "parities":
         
             output_data[p].title = "Fermi Parities"
             output_data[p].contour_levels = 2
             output_data[p].axis_label = output_data[p].title
-            output_data[p].cbar_ticks = 0
+            output_data[p].cbar_tick_labels = 0
         
         else: raise ValueError("property not recognised: " + p)
             
@@ -992,9 +1043,15 @@ for p in _output_data_dict:
         output_data[p].error_tolerance = np.NaN
     
     else: raise ValueError("property not recognised: " + p)
-        
+    
+    output_data[p].sort = sort
+    output_data[p].prop = prop
+    output_data[p].num = num
+    
+    
         
 
+del [sort, prop, p, num]
 
 #%%
 
@@ -1011,18 +1068,18 @@ for p in _output_data_dict:
 #   mark the experimental value in red for easy comparison
 #   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
 
-if inputs["deformation_input"] == "mesh":   
+
+# set which graphs to plot:
+output_data["gs_mag_moments"].plot = True
+output_data["gs_spin_floats"].plot = True
+output_data["spin_1/2_energies"].plot = True
+
+data_points["agreed"] = [0]*len(data_points["eps"])
+
+
+def configure_axis(isPolar, ax, title, **kwargs):
     
-    
-    agreed_points = [] # an array to store a list of points that have properties in agreement with the experimental data
-    
-    for g in range(len(graphs_to_print)):
-        
-        inputs["current_graph"] = graphs_to_print[g]
-        print("\nplotting graph of %(current_graph)s variation..." % inputs)
-        
-        fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-        
+    if isPolar:
         ax.set_thetamin(0)   
         ax.set_thetamax(60)  
         ax.set_rmax(1.0)
@@ -1030,523 +1087,218 @@ if inputs["deformation_input"] == "mesh":
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))    # set the number of decimal places 
+        
+        plt.xlabel("ε")
+        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
+        
+        ax.set_title(prop.title, va='bottom', y=1.1)  
+        
+    else: # is not polar
+        
+        varied = kwargs.get("varied", None)
+        x_label = kwargs.get("x_label", None)
+        y_label = kwargs.get("y_label", None)
+    
+        pad = 0.05*(varied[-1]-varied[0])
+        ax.set_xlim([varied[0]-pad, varied[-1]+pad]) 
+        
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
 
+def draw_contour_plot(ax, prop, data_points):
+    
+    if isinstance(prop.contour_levels, list):                                   # then format for discrete values
         
-        # create filled colour contour plots
-        c_level_boundaries = contour_levels[g]
-        if inputs["spin_or_excitation"] == "excitation":
+        cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], 
+                             prop.data, levels=prop.contour_levels)
+        
+        cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+
+        cbar.set_ticks(prop.ticks)
+        cbar.set_ticklabels(prop.cbar_tick_labels)
+    
+    else:
+        
+        cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], 
+                             prop.data, levels=prop.contour_levels)
+        
+        cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+        
+    return cax, cbar
+
+def find_correct_spin(gs_spins, experimental_value):
+    correct_spin_range = []                                             
+    start_flag = False
+    
+    for i in range(len(gs_spins)):
+        if gs_spins[i] == experimental_value and not start_flag:  # correct, and range hasn't started yet
+            start_flag = True
+            correct_spin_range.append(i)
             
-            cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
-            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-            if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], data_matrix[g], levels=c_level_boundaries)
-                cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+        elif gs_spins[i] != experimental_value and start_flag:    # incorrect, and range has started
+            start_flag = False
+            correct_spin_range.append(i)
+    
+    return correct_spin_range
+
+def plot_correct_spin(correct_spin_range, var, step, prop):
+    
+    for r in range(len(correct_spin_range)):
+        if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
+            start_range = (var[correct_spin_range[r]]- step/2)          
+        else:
+            start_range = np.mean([var[correct_spin_range[r]-1], 
+                                   var[correct_spin_range[r]]])
         
-                ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
-                         for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
-                cbar.set_ticks(ticks)
-                cbar.set_ticklabels(cbar_ticks[g])
-                
-        else: # inputs["spin_or_excitation"] == "spin"
-            this_data = data_matrix[g]
+        correct_spin, = plt.plot([start_range, start_range], 
+                                [min(prop.data)+0.05*max(prop.data), 
+                                 max(prop.data)*1.05], 
+                                'g-', label="range of correct spin")   # this plots the front and end edges of the box
+        if r%2==0:
+            if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
+                end_range = (var[-1]+step/2)
+            else:
+                end_range = np.mean([var[correct_spin_range[r+1]-1], 
+                                     var[correct_spin_range[r+1]]])
             
-            
-            cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], this_data[0], levels=c_level_boundaries)
-            cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
-            if isinstance(c_level_boundaries, list):                                # then format for discrete values
-                cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], this_data[0], levels=c_level_boundaries)
-                cbar = plt.colorbar(cax, pad=0.1, label=data_axis_labels[g])
+            plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
+                     [min(prop.data)+0.05*max(prop.data), 
+                      min(prop.data)+0.05*max(prop.data)], 'g-')
+            plt.plot([start_range, end_range], 
+                     [max(prop.data)*1.05, 
+                      max(prop.data)*1.05], 'g-')                  # this plots the top edge of the box
+    return correct_spin
+
+for g in output_data:
+    
+    prop = output_data[g]
+    if not(prop.plot):
+        continue
+    inputs["current_graph"] = prop.title # makes several inputs more efficient
+    print("plotting graph: %(current_graph)s" % inputs) 
+    
+    if inputs["deformation_input"] == "mesh":  
         
-                ticks = [(c_level_boundaries[i] + c_level_boundaries[i+1]) / 2 
-                         for i in range(len(c_level_boundaries) - 1)]               # Calculate midpoints of levels for tick placement
-                cbar.set_ticks(ticks)
-                cbar.set_ticklabels(cbar_ticks[g])
-                
-            
-        # mark the range in which the correct ground state spin was calculated
-        if inputs["mark_spin"]==1:
-            ax.tricontour(data_points["gamma_degrees"], data_points["eps"], data_matrix[3], 
-                          levels=[float(inputs["gs_spin"])-0.5,float(inputs["gs_spin"])+0.5],  
-                          colors=[(213/255,1,0)], linewidths=1.0)
-        
-        
-        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
-        dot_hit_flag = False
-        plus_hit_flag = False
-        dot_miss_flag = False
-        plus_miss_flag = False
-        dot_flag = False
-        plus_flag = False
+        fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+        configure_axis(True, ax, '%(current_graph)s of %(nucleus)s' % inputs)
+        cax, cbar = draw_contour_plot(ax, prop, data_points)
         
         # plot the data point markers, and check which deformations give a result that matches experiment
         for r in range(len(data_points["eps"])):
-            if experimental_data[g]:                                            # if the experimental data exists for comparison
-                error = abs(data_matrix[g][r] - experimental_data[g])
-                if error < error_tolerance[g]: # error/experimental_data[g] < 0.1: #!!! if they agree within 10%, plot the data point in red rather than white
-                    if g==0 and output_data["fermi_parities"][r]==inputs["par"]:       # check that the ground state parity has been reproduced
-                        agreed_points.append(r)
-                    if output_data["fermi_parities"][r] == "-":
-                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'r.')
-                        dot_hit_flag = True
-   
-                    elif output_data["fermi_parities"][r] == "+":
-                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'r+')
-                        plus_hit_flag = True
+            if not(np.isNaN(prop.experimental_data)):                           # if the experimental data exists for comparison
+                error = abs(prop.data[r] - prop.experimental_data)
+                if error < prop.error_tolerance: 
+                    data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
+                    hit, = plt.polar(data_points["gamma_degrees"][r], 
+                              data_points["eps"][r], 'rx')
+                    legend_handles=[hit]
+
                 else:
-                    if r in agreed_points:
-                        del agreed_points[agreed_points.index(r)]               # this point is no longer in agreement, so remove it from the list
-                    if output_data["fermi_parities"][r] == "-":
-                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w.')
-                        dot_miss_flag = True
-                    else: # fermi_parities[r] == "+":
-                        plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w+')
-                        plus_miss_flag = True
-                exp, = cbar.ax.plot([0, 1], [experimental_data[g], experimental_data[g]], 'r-')
-                        
-            # if there is no experimental data available for comparison, just plot all points in white            
-            elif output_data["fermi_parities"][r] == "-":
-                plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r], 'w.')
-                dot_flag = True
-            else: # fermi_parities[r] == "+":
-                plt.polar(data_points["gamma_degrees"][r], data_points["eps"][r],'w+')
-                plus_flag = True
+                    miss, = plt.polar(data_points["gamma_degrees"][r], 
+                              data_points["eps"][r], 'wx')
+                    legend_handles=[miss]
+                    
+                exp, = cbar.ax.plot([0, 1], [prop.data, prop.data], 'r-')
+                legend_handles.append(exp)
                 
-        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
-        dot, = plt.polar(3.0, 0.2, 'k.', label="negative parity")
-        plus, = plt.polar(3.0, 0.2, 'k+', label="positive parity")
-        dot_miss, = plt.polar(3.0, 0.2, 'k.', label="parity (-) miss")
-        plus_miss, = plt.polar(3.0, 0.2, 'k+', label="parity (+) miss")
-        dot_hit, = plt.polar(3.0, 0.2, 'r.', label="parity (-) match")
-        plus_hit, = plt.polar(3.0, 0.2, 'r+', label="parity (+) match")
-        exp, = plt.polar(3.0, 0.2, 'r-', label="experiment")
-        spin, = plt.polar(3.0, 0.2, '-', color=(213/255,1,0), linewidth=2.0, 
-                          label="boundary of correct\nground state spin")
-        
-        
-        legend_handles=[dot, plus]
-        '''
-        if dot_hit_flag: legend_handles.append(dot_hit)
-        if plus_hit_flag: legend_handles.append(plus_hit)
-        if dot_miss_flag: legend_handles.append(dot_miss)
-        if plus_miss_flag: legend_handles.append(plus_miss)
-        if dot_flag: legend_handles.append(dot)
-        if dot_flag: legend_handles.append(plus)
-        '''
-        
-        annotation_handles = []
-        if experimental_data[g]:
-            annotation_handles.append(exp)
         if inputs["mark_spin"]==1:
-            annotation_handles.append(spin)
-        
-        legend = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(-0.3, 0.78))
-        legend.set_title("data points\n---------------")
-        
-        if len(annotation_handles) > 0:
-            annotation_legend = ax.legend(handles=annotation_handles,  loc="upper left", bbox_to_anchor=(-0.3, 1.12))
-            annotation_legend.set_title('annotations\n-------------')
-            plt.gca().add_artist(legend) # adding annotation_legend removed the original legend, so we have to manually add it back in
+            spin, = ax.tricontour(data_points["gamma_degrees"], data_points["eps"], 
+                          output_data["gs_spin_floats"], 
+                          levels=[inputs["gs_spin_float"]-0.5, 
+                                  inputs["gs_spin_float"]+0.5],  
+                          colors=[(213/255,1,0)], linewidths=1.0)
+            legend_handles.append(spin)
         
         
-        # add title and axis labels
-        ax.set_title('%(current_graph)s of %(nucleus)s' % inputs, va='bottom', y=1.1)                      
-        plt.xlabel("ε")
-        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
+        legend = ax.legend(handles=legend_handles, loc="upper left", 
+                           bbox_to_anchor=(-0.3, 0.78))
         
         
         
         plt.show()
         
-    print("\n\nnumber of points that agreed with experimental data: " +
-          str(len(agreed_points)))
-    print("\n")
-    for p in agreed_points:
-        print("point %d: ε=%.3f, γ=%d" 
-              % (p, data_points["eps"][p], data_points["gamma_degrees"][p]*180/np.pi))
-    print("\n")
-        
-
-
-
-
-
-
-
-
-
-
-
-
-elif inputs["deformation_input"] == "eps" or inputs["deformation_input"] == "gamma":                                              # then plot a line graph of data variation with eps (or gamma)
-
-    # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
-    correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
-    start_flag = False
-    
-    if inputs["mark_spin"]==1:
-        for i in range(len(gs_spins)):
-            if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
-                start_flag = True
-                correct_spin_range.append(i)
-            elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
-                start_flag = False
-                correct_spin_range.append(i)
-        
-    # plot graphs
-    for g in range(len(graphs_to_print)):
-        inputs["current_graph"] = graphs_to_print[g]
-        print("plotting graph of %(current_graph)s variation..." % inputs)
-        
-        fig, ax = plt.subplots()                                                # create figure and axes
-        
-        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
-        dot, = plt.plot(3.0, 0.0, 'k.', label="negative parity")
-        plus, = plt.plot(3.0, 0.0, 'k+', label="positive parity")
-        
-        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
-        dot_flag = False
-        plus_flag = False
-        
-          
-        
+        print("\n\nAgreement of each data point with experimental data: ")
+        print("\t" + data_points["agreed"])
+       
+    elif (inputs["deformation_input"] ==  "gamma" 
+          or inputs["deformation_input"] == "eps"
+          or len(e2plus_to_test) > 1):
         
         
         # if eps was varied and gamma was fixed:
         if inputs["deformation_input"] == "eps" :
-            inputs["line"] = "ε"
-            inputs["fixed"] = "γ / º"
-            # print("plotting line graph of variation with eps...")
             
-            pad = 0.05*(eps_to_test[-1]-eps_to_test[0])
-            ax.set_xlim([eps_to_test[0]-pad, eps_to_test[-1]+pad]) 
+            var_sym = "ε"
+            var = data_points["eps"]
+            fix_sym = "γ"
+            fix = data_points["gamma_degrees"]
             
-            # if experimental data is available, plot it in red for easy comparison
-            if experimental_data[g]:
-                exp, = plt.plot(eps_to_test, 
-                       np.full(len(eps_to_test), float(experimental_data[g])), 
-                       'r-', label="experimental value")
+        elif inputs["deformation_input"] == "gamma" :
             
-            # mark the range in which the correct ground state spin was calculated
-            if inputs["mark_spin"]==1:
-                for r in range(len(correct_spin_range)):
-                    if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
-                        start_range = (eps_to_test[correct_spin_range[r]]-
-                                       float(inputs["eps"][2])/2)          
-                    else:
-                        start_range = np.mean([eps_to_test[correct_spin_range[r]-1], 
-                                               eps_to_test[correct_spin_range[r]]])
-                    
-                    correct_spin, = plt.plot([start_range, start_range], 
-                                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                                              max(data_matrix[g])*1.05], 
-                                             'g-', label="range of correct spin")   # this plots the front and end edges of the box
-                    if r%2==0:
-                        if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
-                            end_range = (eps_to_test[-1]+
-                                         float(inputs["eps"][2])/2)
-                        else:
-                            end_range = np.mean([eps_to_test[correct_spin_range[r+1]-1], 
-                                                 eps_to_test[correct_spin_range[r+1]]])
-                        
-                        plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                                 [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                                  min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
-                        plt.plot([start_range, end_range], 
-                                 [max(data_matrix[g])*1.05, 
-                                  max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
+            var_sym = "γ / º"
+            var = data_points["gamma_degrees"]
+            fix_sym = "ε"
+            fix = data_points["eps"]
+            
+        elif len(e2plus_to_test) > 1:
+            
+            var_sym = "E2PLUS / MeV"
+            var = e2plus_to_test
+            fix_sym = "(ε, γ)"
+            fix = []
+            
+        else: raise ValueError("unrecognised graph request")
+        
+        fig, ax = plt.subplots() 
+        configure_axis(False, ax, '%(current_graph)s in %(nucleus)s' % inputs, 
+                       varied=var, x_label=var_sym, y_label=prop.axis_label)
+        
+        legend_handles = []
+        # now plot the actual data
+        if prop.sort == "Spin ":
+        
+            data_by_line = np.transpose(prop.data)
+            line_colours = ['k-x', 'b-x', 'y-x']
+            line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+            
+            for s in range(min(len(line_labels), np.size(data_by_line,0))):
                 
+                data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s])
+                legend_handles.append(data)
                 
-            # now plot the actual data
-            if inputs["spin_or_excitation"]=="excitation":
-                data, = plt.plot(eps_to_test, data_matrix[g], 'k-', label="γ = %s" % gamma_to_test[0])
-                for p in range(len(eps_to_test)):
-                    if output_data["fermi_parities"][p] == "-":
-                        plt.plot(eps_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
-                        dot_flag = True
-                    elif output_data["fermi_parities"][p] == "+":
-                        plt.plot(eps_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
-                        plus_flag = True
-                        
-            else: # inputs["spin_or_excitation"]=="spin":
-                this_data = data_matrix[g]
-                line_colours = ['k-', 'b-', 'y-']
-                line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
-                data_handles = []
-                for s in range(len(this_data)):
-                    
-                    data, = plt.plot(eps_to_test, this_data[s], line_colours[s], label=line_labels[s])
-                    data_handles.append(data)
-                    for p in range(len(this_data[s])):
-                        if output_data["fermi_parities"][p] == "-":
-                            plt.plot(eps_to_test[p], this_data[s][p], 'k.', label='negative parity')
-                            dot_flag = True
-                        elif output_data["fermi_parities"][p] == "+":
-                            plt.plot(eps_to_test[p], this_data[s][p], 'k+', label='positive parity')
-                            plus_flag = True
-                legend_title = "γ = %s" % gamma_to_test[0]
-            
-            
-            
-        # if gamma was varied and eps was fixed:   
-        else:                                                                   # inputs["line"] == "gamma":
-            inputs["line"] = "γ / º"
-            inputs["fixed"] = "ε"
-            # print("plotting line graph of variation with gamma...")
-            
-            pad = 0.05*(gamma_to_test[-1]-gamma_to_test[0])
-            ax.set_xlim([gamma_to_test[0]-pad, gamma_to_test[-1]+pad])
-            
-            # if experimental data is available, plot it in red for easy comparison
-            if experimental_data[g]:
-                exp, = plt.plot(gamma_to_test, 
-                       np.full(len(gamma_to_test), float(experimental_data[g])), 
-                       'r-', linewidth=3, label="experimental value")
-            
-            # mark the range in which the correct ground state spin was calculated
-            if inputs["mark_spin"]==1:
-                for r in range(len(correct_spin_range)):
-                    if correct_spin_range[r] == 0:                                  # the first value of gamma in the range has the correct spin
-                        start_range = (gamma_to_test[correct_spin_range[r]]-
-                                       float(inputs["gamma"][2])/2)
-                    else:
-                        start_range = np.mean([gamma_to_test[correct_spin_range[r]-1], 
-                                               gamma_to_test[correct_spin_range[r]]])
-                        
-                    correct_spin, = plt.plot([start_range, start_range], 
-                                             [min(data_matrix[g])-0.05*max(data_matrix[g]), 
-                                              max(data_matrix[g])*1.05], 
-                                             'g-', label="range of correct spin")
-                    
-                    if r%2==0:
-                        if r+1 == len(correct_spin_range):                          # the last value of gamma in the range has the correct spin
-                            end_range = (gamma_to_test[-1]+
-                                         float(inputs["gamma"][2])/2)
-                            
-                            correct_spin, = plt.plot([end_range, end_range], 
-                                            [min(data_matrix[g])-0.05*max(data_matrix[g]), 
-                                             max(data_matrix[g])*1.05], 
-                                            'g-', label="range of correct spin")    # this plots the front and end edges of the box
-                           
-                        else:
-                            end_range = np.mean([gamma_to_test[correct_spin_range[r+1]-1], 
-                                                 gamma_to_test[correct_spin_range[r+1]]])
-                        
-                        plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                                 [min(data_matrix[g])-0.05*max(data_matrix[g]),
-                                  min(data_matrix[g])-0.05*max(data_matrix[g])], 'g-')
-                        plt.plot([start_range, end_range], 
-                                 [max(data_matrix[g])*1.05, 
-                                  max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
-                
-                
-            # plot the actual data (first a line graph, then the points seperately so that the parities can be indicated by the markers)
-            
-            if inputs["spin_or_excitation"]=="excitation":
-                data, = plt.plot(gamma_to_test, data_matrix[g], 'k-', label="ε = %s" % eps_to_test[0])
-                for p in range(len(gamma_to_test)):
-                    if output_data["fermi_parities"][p] == "-":
-                        dot, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
-    
-                    elif output_data["fermi_parities"][p] == "+":
-                        plus, = plt.plot(gamma_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
-            
-            else: # inputs["spin_or_excitation"]=="spin":
-                this_data = data_matrix[g]
-                line_colours = ['k-', 'b-', 'y-', 'c-', 'm-']
-                line_labels = ["lowest energy", "second lowest energy", "third lowest energy", "fourth lowest energy", "fifth lowest energy"]
-                data_handles = []
-                for s in range(len(this_data)):
-                    
-                    data, = plt.plot(gamma_to_test, this_data[s], line_colours[s], label=line_labels[s])
-                    data_handles.append(data)
-                    for p in range(len(this_data[s])):
-                        if output_data["fermi_parities"][p] == "-":
-                            dot, = plt.plot(gamma_to_test[p], this_data[s][p], 'k.', label='negative parity')
+            legend_title = "%s = %s" % (fix_sym, fix[0])
         
-                        elif output_data["fermi_parities"][p] == "+":
-                            plus, = plt.plot(gamma_to_test[p], this_data[s][p], 'k+', label='positive parity')
-                legend_title = "ε = %s" % eps_to_test[0]
-                
-            
-        
-        # add title and axis labels
-        ax.set_title('%(current_graph)s in %(nucleus)s' 
-                     % inputs, va='bottom', y=1.1)                     
-        plt.xlabel("%(line)s" % inputs)
-        plt.ylabel(data_axis_labels[g])
-        
-        # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range and experimental_data[g] and inputs["mark_spin"]==1: 
-            legend_handles=[exp, correct_spin, data, dot]
-        elif experimental_data[g]:
-            legend_handles=[exp, data]
-        else: 
-            legend_handles=[data]
-            
-        if dot_flag:
-            legend_handles.append(dot)
-        
-        if plus_flag:
-            legend_handles.append(plus)
-        
-        if inputs["spin_or_excitation"] == "spin":
-             legend_handles.remove(data)
-             legend_handles += data_handles
-    
-        legend = ax.legend(handles = list(reversed(legend_handles)))
-        
-        if inputs["spin_or_excitation"] == "spin":
-            legend.set_title(legend_title)
-            
-        plt.show()
-
-
-
-
-
-
-
-
-
-
-elif len(e2plus_to_test)>1:                                                  # then plot a line graph of data variation with e2plus
-
-    # locate the range in which the excitation energy data is meaningful (the range in which the ground state spin is correct)
-    correct_spin_range = []                                                     #!!! do this with a mask instead? would allow easy combination of conditions (parity) by multiplication...
-    start_flag = False
-    
-    if inputs["mark_spin"]==1:
-        for i in range(len(gs_spins)):
-            if gs_spins[i] == experimental_data[3] and not start_flag:              # correct, and range hasn't started yet
-                start_flag = True
-                correct_spin_range.append(i)
-            elif gs_spins[i] != experimental_data[3] and start_flag:                # incorrect, and range has started
-                start_flag = False
-                correct_spin_range.append(i)
-        
-    # plot graphs
-    for g in range(len(graphs_to_print)):
-        inputs["current_graph"] = graphs_to_print[g]
-        print("plotting graph of %(current_graph)s variation..." % inputs)
-        
-        fig, ax = plt.subplots()                                                # create figure and axes
-        
-        # plot four data points (unseen outside the data range) with desired formatting to use for the legend
-        dot, = plt.plot(3.0, 0.0, 'k.', label="negative parity")
-        plus, = plt.plot(3.0, 0.0, 'k+', label="positive parity")
-        
-        # create flags to record which ROIs should be included in the legend (each flag will only be turned on if that ROI is plotted)
-        dot_flag = False
-        plus_flag = False
-        
-        
-        pad = 0.05*(e2plus_to_test[-1]-e2plus_to_test[0])
-        ax.set_xlim([e2plus_to_test[0]-pad, e2plus_to_test[-1]+pad]) 
-        
+        else:
+            data, = plt.plot(var, prop.data, 'k-x', label="%s = %s" % (fix_sym, fix[0]))
+            legend_handles.append(data)
+          
         # if experimental data is available, plot it in red for easy comparison
-        if experimental_data[g]:
-            exp, = plt.plot(e2plus_to_test, 
-                   np.full(len(e2plus_to_test), float(experimental_data[g])), 
+        if not(np.isnan(prop.experimental_data)):  
+            exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 
                    'r-', label="experimental value")
-        
+            legend_handles.append(exp)
+            
+    
         # mark the range in which the correct ground state spin was calculated
         if inputs["mark_spin"]==1:
-            for r in range(len(correct_spin_range)):
-                if correct_spin_range[r] == 0:                                  # the first value of eps in the range has the correct spin
-                    start_range = (e2plus_to_test[correct_spin_range[r]]-
-                                   float(inputs["eps"][2])/2)          
-                else:
-                    start_range = np.mean([e2plus_to_test[correct_spin_range[r]-1], 
-                                           e2plus_to_test[correct_spin_range[r]]])
-                
-                correct_spin, = plt.plot([start_range, start_range], 
-                                         [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                                          max(data_matrix[g])*1.05], 
-                                         'g-', label="range of correct spin")   # this plots the front and end edges of the box
-                if r%2==0:
-                    if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
-                        end_range = (e2plus_to_test[-1]+
-                                     float(inputs["e2plus"][2])/2)
-                    else:
-                        end_range = np.mean([e2plus_to_test[correct_spin_range[r+1]-1], 
-                                             e2plus_to_test[correct_spin_range[r+1]]])
+            
+            correct_spin_range = find_correct_spin(output_data["gs_spin_floats"].data, inputs["gs_spin_float"])
+            if len(correct_spin_range) > 0:
+                spin = plot_correct_spin(correct_spin_range, var, inputs["step"], prop)
+                legend_handles.append(spin)
+            
                     
-                    plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                             [min(data_matrix[g])+0.05*max(data_matrix[g]), 
-                              min(data_matrix[g])+0.05*max(data_matrix[g])], 'g-')
-                    plt.plot([start_range, end_range], 
-                             [max(data_matrix[g])*1.05, 
-                              max(data_matrix[g])*1.05], 'g-')                  # this plots the top edge of the box
-            
-                
-        # now plot the actual data
-        if inputs["spin_or_excitation"]=="excitation":
-            data, = plt.plot(e2plus_to_test, data_matrix[g], 'k-', label="ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0]))
-            for p in range(len(e2plus_to_test)):
-                if output_data["fermi_parities"][p] == "-":
-                    plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k.', label='negative parity')
-                    dot_flag = True
-                elif output_data["fermi_parities"][p] == "+":
-                    plt.plot(e2plus_to_test[p], data_matrix[g][p], 'k+', label='positive parity')
-                    plus_flag = True
-                    
-        else: # inputs["spin_or_excitation"]=="spin":
-            this_data = data_matrix[g]
-            line_colours = ['k-', 'b-', 'y-']
-            line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
-            data_handles = []
-            for s in range(len(this_data)):
-                
-                data, = plt.plot(e2plus_to_test, this_data[s], line_colours[s], label=line_labels[s])
-                data_handles.append(data)
-                for p in range(len(this_data[s])):
-                    if output_data["fermi_parities"][p] == "-":
-                        plt.plot(e2plus_to_test[p], this_data[s][p], 'k.', label='negative parity')
-                        dot_flag = True
-                    elif output_data["fermi_parities"][p] == "+":
-                        plt.plot(e2plus_to_test[p], this_data[s][p], 'k+', label='positive parity')
-                        plus_flag = True
-            legend_title = "ε = %s, γ = %s" % (eps_to_test[0], gamma_to_test[0])
         
-            
-        
-        # add title and axis labels
-        ax.set_title('%(current_graph)s in %(nucleus)s' 
-                     % inputs, va='bottom', y=1.1)                     
-        plt.xlabel("E2PLUS / MeV")
-        plt.ylabel(data_axis_labels[g])
-        
-        # add legend (depending on what ROIs have been drawn)
-        if correct_spin_range and experimental_data[g] and inputs["mark_spin"]==1: 
-            legend_handles=[exp, correct_spin, data, dot]
-        elif experimental_data[g]:
-            legend_handles=[exp, data]
-        else: 
-            legend_handles=[data]
-            
-        if dot_flag:
-            legend_handles.append(dot)
-        
-        if plus_flag:
-            legend_handles.append(plus)
-        
-        if inputs["spin_or_excitation"] == "spin":
-             legend_handles.remove(data)
-             legend_handles += data_handles
-    
         legend = ax.legend(handles = list(reversed(legend_handles)))
         
-        if inputs["spin_or_excitation"] == "spin":
-            legend.set_title(legend_title)
-            
         plt.show()
+        
+       
+del [g]
 
 # note how long it took
 timer_data["lapse_end"] = time.time()
 print("finished plotting graphs in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
 print("total runtime = %.2f seconds" % (timer_data["lapse_end"]-timer_data["start"]))
-
-
-
 
 
