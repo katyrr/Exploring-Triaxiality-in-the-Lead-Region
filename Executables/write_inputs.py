@@ -555,7 +555,7 @@ del [file, half_line, hash_index, l]
 del [lines, orbitals_string, single_parity_index, whole_line, orbitals]
 del [fermi_energies_hw, fermi_energies_mev, fermi_indices, fermi_parities, asyrmo_orbitals]
 
-
+_output_data = output_data # save a copy of the original before it's overwritten
 
 #%%
 ''' WRITING ASYRMO.DAT FILE '''
@@ -656,13 +656,13 @@ timer_data["lapse"] = timer_data["lapse_end"]
 def read_data(line):
     line = line.strip()
     
-    try:                                                                    # determine whether this line is a data row of the table (if ' - ' is present then it is)
+    try:                                                                        # determine whether this line is a data row of the table (if ' - ' is present then it is)
         dash_index = line.index(" - ")
     except ValueError:
         return False # continue to next line
     
     spin_string = line[dash_index-4:dash_index].strip()
-    final_spin_string = line[dash_index+11:dash_index+16].strip()              # get the spin of the final state (after transition)
+    final_spin_string = line[dash_index+11:dash_index+16].strip()               # get the spin of the final state (after transition)
     
     if not(spin_string == final_spin_string):
         return False
@@ -696,9 +696,33 @@ def sort_by_spin(line_data, file_data):
     else:
         file_data[(spin+"_energies")] = [line_data["energy"]]
         file_data[(spin+"_mag_moments")] = [line_data["mag_moment"]]
-
+    
     return file_data
 
+def sort_by_expectation(line_data, file_data):
+    
+    if line_data["energy"] == 0.0: # record the ground state separately
+        file_data["gs_spin_strings"] = line_data["spin_string"]
+        file_data["gs_spin_floats"] = line_data["spin_float"]
+        file_data["gs_mag_moments"] = line_data["mag_moment"]
+    
+    if "x1_spin" in inputs:
+        if line_data["spin_string"] == inputs["x1_spin"]:
+            file_data["x1_energies"] = line_data["energy"]
+            file_data["x1_mag_moments"] = line_data["mag_moment"]
+    
+    if "x2_spin" in inputs:
+        if line_data["spin_string"] == inputs["x2_spin"]:
+            file_data["x2_energies"] = line_data["energy"]
+            file_data["x2_mag_moments"] = line_data["mag_moment"]
+
+    if "x3_spin" in inputs:
+        if line_data["spin_string"] == inputs["x3_spin"]:
+            file_data["x3_energies"] = line_data["energy"]
+            file_data["x3_mag_moments"] = line_data["mag_moment"]
+    
+    return file_data
+            
 def fill_gaps(file_data): 
     
     for i in range(int(inputs["ispin"])+1):
@@ -715,14 +739,84 @@ def fill_gaps(file_data):
         
     return file_data
             
+def restructure_data(old_data):
+# Take input data structured as a list of dictionaries. 
+#       Each dictionary represents one deformation data-point.
+#       Therefore the number of dictionaries is equal to the number of data points.
+#       Each dictionary contains lists of states, organised by spin and property (energy or magnetic moment).
+#       Therefore the number of lists in each dictionary is (1 + ((ISPIN+1)/2)*2) for gs magnetic moment and two properties.
+# 
+# Outputs the same data, reorganised into a new dictionary of lists.
+#       Each list represents one property (energy or magnetic moment) and spin.
+#       Therefore the number of lists is (1 + ((ISPIN+1)/2)*2) for gs magnetic moment and two properties.
+#       Each list contains sub-lists of states, organised by deformation.
+#       Therefore all the lists have the same length (equal to the number of data points).
+#       This is more useful for plotting graphs.
     
+    new_data = {}
+    new_data["gs_spin_strings"] = []
+    new_data["gs_spin_floats"] = []
+    new_data["gs_mag_moments"] = []
+    new_data["x1_mag_moments"] = []
+    new_data["x2_mag_moments"] = []
+    new_data["x3_mag_moments"] = []
+    new_data["x1_energies"] = []
+    new_data["x2_energies"] = []
+    new_data["x3_energies"] = []
+    
+
+    for d in range(len(old_data)):
+        new_data["gs_spin_strings"].append(old_data[d]["gs_spin_strings"])
+        new_data["gs_spin_floats"].append(old_data[d]["gs_spin_floats"])
+        new_data["gs_mag_moments"].append(old_data[d]["gs_mag_moments"])
+        
+        try:
+            new_data["x1_energies"].append(old_data[d]["x1_energies"])
+            new_data["x1_mag_moments"].append(old_data[d]["x1_mag_moments"])
+        except(KeyError):
+            print("Could not find any states with first excited spin in file " + str(d))
+            new_data["x1_energies"].append(np.NaN)
+            new_data["x1_mag_moments"].append(np.NaN)
+        
+        try:
+            new_data["x2_energies"].append(old_data[d]["x2_energies"])
+            new_data["x2_mag_moments"].append(old_data[d]["x2_mag_moments"])
+        except(KeyError):
+            print("Could not find any states with second excited spin in file " + str(d))
+            new_data["x2_energies"].append(np.NaN)
+            new_data["x2_mag_moments"].append(np.NaN)
+        
+        try:
+            new_data["x3_mag_moments"].append(old_data[d]["x3_mag_moments"])
+            new_data["x3_energies"].append(old_data[d]["x3_energies"])
+        except(KeyError):
+            print("Could not find any states with third excited spin in file " + str(d))
+            new_data["x3_energies"].append(np.NaN)
+            new_data["x3_mag_moments"].append(np.NaN)
+    
+    for i in range(int(inputs["ispin"])+1): 
+        
+        if i%2 == 0:
+            continue # only half-int spins are calculated
+    
+        spin = "spin_"+str(i)+"/2"
+        
+        new_data[spin+"_energies"] = []
+        new_data[spin+"_mag_moments"] = []
+        
+        for d in range(len(old_data)):
+           
+            new_data[spin+"_energies"].append(old_data[d][spin+"_energies"])
+            new_data[spin+"_mag_moments"].append(old_data[d][spin+"_mag_moments"])
+            
+    return new_data
     
 print("\nreading PROBAMO.OUT files...")
 
 
 # start reading files 
 
-all_data = []
+data_points["property_data"] = []
 
 for t in range(len(data_points["file_tags"])):
     file = data_points["file_tags"][t]
@@ -741,126 +835,165 @@ for t in range(len(data_points["file_tags"])):
         
         # sort line_data into file_data according to its spin
         file_data = sort_by_spin(line_data, file_data)
+        
+        # separately save data that corresponds to the experimental ground state and input excited states
+        file_data = sort_by_expectation(line_data, file_data)
     
     file_data = fill_gaps(file_data)
-    all_data.append(file_data)
-    
+    data_points["property_data"].append(file_data)
 
+output_data = _output_data | restructure_data(data_points["property_data"])
+    
+del [file, file_data, line, line_data, lines, t]
+
+_output_data_dict = output_data # save a copy of the original before it's overwritten
 
 #%%
-
 ''' PREPARE TO PLOT GRAPHS '''
-# gamma is converted to radians.
 # all arrays of data to be plotted are collected into a single matrix.
 # lists of the titles to be used in each plot are constructed.
 # similarly for contour levels, colour bar ticks, data axis labels and units, 
 #       experimental data to compare results to, absolute error tolerance, 
 #       and whether the data set is continuous or discrete.
 
-
-if inputs["spin_or_excitation"]=="excitation":
-    # locate the yrast (lowest energy) state of each spin
+def calc_contour_levels(data):
     
-    data_matrix = [gs_mag_mom, output_data["fermi_energies_mev"], output_data["fermi_indices"], 
-                   gs_spins, x1_energies, x2_energies, x3_energies]
+    min_contour = min(data)-0.5
+    max_contour = max(data)+1.5
+    return np.arange(min_contour, max_contour, 1.0)
 
-    graphs_to_print = ["Ground State Magnetic Dipole Moment", "Fermi Energy", "Fermi Level Parity And Index", 
-                       "Ground State Spin", "First Excitation Energy", "Second Excitation Energy"]
+def calc_cbar_ticks(data):
+    cbar_ticks = np.arange(min(data), max(data)+1.0, 1.0)
+    return [spin_float_to_string(n) for n in cbar_ticks]
 
-    fermi_index_colour_levels = np.arange(min(output_data["fermi_indices"])-0.5, max(output_data["fermi_indices"])+1.5, 1.0) 
-    gs_spin_colour_levels = np.arange(min(gs_spins)-0.5, max(gs_spins)+1.5, 1.0)
-    contour_levels = [8, 10, fermi_index_colour_levels, 
-                      gs_spin_colour_levels, 10, 10]
+def try_experimental(inputs, key, tolerance):
+    try:
+        return (inputs[key], tolerance)
+    except KeyError:
+        return (np.NaN, np.NaN)
 
-    fermi_index_cbar_ticks = np.arange(min(output_data["fermi_indices"]), max(output_data["fermi_indices"])+1.0, 1.0)
-    fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
-    gs_spin_cbar_ticks = np.arange(min(gs_spins), max(gs_spins)+1.0, 1.0)
-    gs_spin_cbar_ticks = [(str(int(n*2))+"/2") for n in gs_spin_cbar_ticks]
-    cbar_ticks = [0,0, fermi_index_cbar_ticks, 
-                  gs_spin_cbar_ticks,0,0]
-
-    data_axis_labels = [r'μ / $μ_{N}$', 'fermi energy / MeV', 'fermi level parity and index',
-                        'ground state spin I', "First Excitation Energy / keV", "Second Excitation Energy / keV"]
-
-    experimental_data = [[], [], [], 
-                         [], [], []]
-    if "gs_mu" in inputs:
-        experimental_data[0] = inputs["gs_mu"]
-    if "gs_spin" in inputs:
-        experimental_data[3] = inputs["gs_spin_float"]
-    if "x1_energy" in inputs:
-        experimental_data[4] = inputs["x1_energy"]
-    if "x2_energy" in inputs:
-        experimental_data[5] = inputs["x2_energy"]
-        
-    error_tolerance = [0.2, 0.0, 0.0, 0.1, 50, 50]                                #!!! these are a bit arbitrary...
-
-
-else: # inputs["spin_or_excitation"]=="spin"
-
-    data_matrix = [mag_mom_1, mag_mom_3, mag_mom_5, 
-                   [output_data["fermi_energies_mev"]], [output_data["fermi_indices"]], 
-                   energies_1, energies_3, energies_5]
+class PropertyData:
     
-    if "eps_max" in inputs or inputs["num_to_record"] == 1: 
-        graphs_to_print = ["Magnetic Dipole Moment of Lowest Spin 1/2 State", "Magnetic Dipole Moment of Lowest Spin 3/2 State", "Magnetic Dipole Moment of Lowest Spin 5/2 State", 
-                           "Fermi Energy", "Fermi Level Parity And Index", 
-                           "Energy of Lowest Spin 1/2 State", "Energy of Lowest Spin 3/2 State", "Energy of Lowest Spin 5/2 State"]
+    def __init__(self, data): #(self, title, data, contour_levels, cbar_ticks, axis_label, experimental_data, error_tolerance):
+        # self.title = title
+        self.data = data
+        # self.contour_levels = contour_levels
+        # self.cbar_ticks = cbar_ticks
+        # self.axis_label = axis_label
+        # self.experimental_data = experimental_data
+        # self.error_tolerance = error_tolerance
 
-    else:   
-        graphs_to_print = ["Magnetic Dipole Moments of Spin 1/2 States", "Magnetic Dipole Moments of Spin 3/2 States", "Magnetic Dipole Moments of Spin 5/2 States", 
-                           "Fermi Energy", "Fermi Level Parity And Index", 
-                           "Energies of Spin 1/2 States", "Energies of Spin 3/2 States", "Energies of Spin 5/2 States"]
-
-    fermi_index_colour_levels = np.arange(min(output_data["fermi_indices"])-0.5, max(output_data["fermi_indices"])+1.5, 1.0) 
-    contour_levels = [8, 8, 8, 
-                      10, fermi_index_colour_levels, 
-                      10, 10, 10]
-
-    fermi_index_cbar_ticks = np.arange(min(output_data["fermi_indices"]), max(output_data["fermi_indices"])+1.0, 1.0)
-    fermi_index_cbar_ticks = [str(int(n)) for n in fermi_index_cbar_ticks]
-    cbar_ticks = [0,0,0,
-                  0,fermi_index_cbar_ticks, 
-                  0,0,0]
-
-    data_axis_labels = [r'μ / $μ_{N}$', r'μ / $μ_{N}$',r'μ / $μ_{N}$',
-                        'fermi energy / MeV', 'fermi level parity and index',
-                        "Energy / keV", "Energy / keV", "Energy / keV"]
-
-    experimental_data = [[], [], [],
-                         [], [],
-                         [], [], []]
-    if "gs_mu" in inputs:
+# convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
+output_data = {}
+for p in _output_data_dict:
+    
+    output_data[p] = PropertyData(_output_data_dict[p])
+    
+    # work out what kind of property it is
+    if p[0:4] == "spin":
+        num = p[5:9]
+        if num[-1] == "_": num = num[0:3]
+        prop = p[9:] 
+        if prop[0] == "_": prop = prop[1:]
+        sort = "Spin "
         
-        if inputs["gs_spin"] == "0.5":
-            experimental_data[0] = float(inputs["gs_mu"])
-        if inputs["gs_spin"] == "1.5":
-            experimental_data[1] = float(inputs["gs_mu"])
-        if inputs["gs_spin"] == "2.5":
-            experimental_data[2] = float(inputs["gs_mu"])
+    elif p[0] == "x":
+        num = p[1]
+        prop = p[3:]
+        sort = "Excited State "
         
-    if "x1_energy" in inputs:
-        if inputs["x1_spin"] == "1/2":
-            experimental_data[5] = float(inputs["x1_energy"])
-            if "x1_mu" in inputs:
-                experimental_data[0] = float(inputs["x1_mu"])
-        if inputs["x1_spin"] == "3/2":
-            experimental_data[6] = float(inputs["x1_energy"])
-            if "x1_mu" in inputs:
-                experimental_data[1] = float(inputs["x1_mu"])
-        if inputs["x1_spin"] == "5/2":
-            experimental_data[7] = float(inputs["x1_energy"])
-            if "x1_mu" in inputs:
-                experimental_data[2] = float(inputs["x1_mu"])
-    if "x2_energy" in inputs:
-        if inputs["x2_spin"] == "1/2":
-            experimental_data[5] = float(inputs["x2_energy"])
-        if inputs["x2_spin"] == "3/2":
-            experimental_data[6] = float(inputs["x2_energy"])
-        if inputs["x2_spin"] == "5/2":
-            experimental_data[7] = float(inputs["x2_energy"])
+    elif p[0:2] == "gs":
+        num = ""
+        prop = p[3:]
+        sort = "Ground"
+    
+    elif p[0:5] == "fermi":
+        num = ""
+        prop = p[6:14]
+        sort = "Fermi"
         
-    error_tolerance = [0.2, 0.2, 0.2, 0.0, 0.0, 50, 50, 50]                                #!!! these are a bit arbitrary...
+    else: raise ValueError("property not regonised: " + p)
+    
+    
+    # determine graph plotting attributes
+    if prop == "energies" and not(sort=="Fermi"): 
+        output_data[p].title = "Energies of "+ sort + num + " States"
+        output_data[p].contour_levels = 10
+        output_data[p].cbar_ticks = 0
+        output_data[p].axis_label = output_data[p].title + " / keV"
+        
+        
+        if sort == "Excited State ":
+            
+            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "x" + num + "_energy", 50)
+        
+        elif sort == "Spin ":
+            output_data[p].experimental_data = np.NaN
+            output_data[p].error_tolerance = np.NaN
+            
+        else: raise ValueError("property not recognised: " + p)
+        
+    elif prop == "mag_moments": 
+        output_data[p].title = "Magnetic Dipole Moments of " + sort + num + " States"
+        output_data[p].contour_levels = 8
+        output_data[p].axis_label = output_data[p].title + r' / $μ_{N}$'
+        output_data[p].cbar_ticks = 0
+            
+        if sort == "Excited State ":
+            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "x" + num + "_mu", 0.2)
+    
+        elif sort == "Spin ":
+            output_data[p].experimental_data = np.NaN
+            output_data[p].error_tolerance = np.NaN
+            
+        elif sort == "Ground":
+            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_mu", 0.2)
+            
+        else: raise ValueError("property not recognised: " + p)
+    
+    elif sort == "Ground":
+        
+        if prop == "spin_floats": 
+        
+            output_data[p].title = "Ground State Spins"
+            output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
+            output_data[p].axis_label = output_data[p].title
+            
+            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_spin_string", 0.2)
+            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].data)
+        elif prop == "spin_strings": continue
+    
+    elif sort == "Fermi":
+    
+        if prop == "indices": 
+            output_data[p].title = "Fermi Level Indices"
+            output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
+            
+            output_data[p].axis_label = output_data[p].title
+            output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].data)
+        
+        elif prop == "energies":
+        
+            output_data[p].title = "Fermi Energies"
+            output_data[p].contour_levels = 10
+            output_data[p].axis_label = output_data[p].title + p[-3:-1]
+            output_data[p].cbar_ticks = 0
+        
+        elif prop == "parities":
+        
+            output_data[p].title = "Fermi Parities"
+            output_data[p].contour_levels = 2
+            output_data[p].axis_label = output_data[p].title
+            output_data[p].cbar_ticks = 0
+        
+        else: raise ValueError("property not recognised: " + p)
+            
+        output_data[p].experimental_data = np.NaN
+        output_data[p].error_tolerance = np.NaN
+    
+    else: raise ValueError("property not recognised: " + p)
+        
+        
 
 
 #%%
