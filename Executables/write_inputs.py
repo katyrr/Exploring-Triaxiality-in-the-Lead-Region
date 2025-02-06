@@ -91,7 +91,7 @@ timer_data = {}
 
 #%%
 
-''' DEFINE FUNCTIONS '''
+''' FUNCTIONS FOR READING CONFIG AND RUNNING CODES '''
 
 
 
@@ -175,9 +175,6 @@ def configure_script_writer(file_tags,  num_batches,
             
     return run_script_batches
 
-
-
-#%%
 
 
 ''' OPEN AND READ CONFIG FILE '''
@@ -667,6 +664,9 @@ timer_data["lapse"] = timer_data["lapse_end"]
 # the "first excitation energy" is recorded
 # similarly for the second and third experimental excited states
 
+
+''' FUNCTIONS FOR READING PROBAMO '''
+
 def read_data(line):
     line = line.strip()
     
@@ -838,7 +838,9 @@ def fill_gaps(multi_level_data):
         
     return multi_level_data
     
-            
+
+
+
 
 
 # start reading files 
@@ -890,6 +892,8 @@ _output_data_dict = output_data # save a copy of the original before it's overwr
 #       experimental data to compare results to, absolute error tolerance, 
 #       and whether the data set is continuous or discrete.
 
+''' FUNCTIONS FOR ORGANISING DATA '''
+
 def calc_contour_levels(data):
     
     min_contour = min(data)-0.5
@@ -914,17 +918,10 @@ class PropertyData:
     
     plot = False # don't plot by default
     
-    def __init__(self, data): #(self, title, data, contour_levels, cbar_ticks, axis_label, experimental_data, error_tolerance):
+    def __init__(self, data): 
         
         self.data = data
         
-        # self.title = title
-        # self.contour_levels = contour_levels
-        # self.cbar_ticks = cbar_ticks
-        # self.axis_label = axis_label
-        # self.experimental_data = experimental_data
-        # self.error_tolerance = error_tolerance
-
 def sort_property(name):
     
     if name[0:4] == "spin":
@@ -953,6 +950,11 @@ def sort_property(name):
     
     return num, prop, sort
     
+
+
+
+
+
 # convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
 output_data = {}
 for p in _output_data_dict:
@@ -1007,7 +1009,7 @@ for p in _output_data_dict:
             output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
             output_data[p].axis_label = output_data[p].title
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_spin_string", 0.2)
+            output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_spin_float", 0.2)
             output_data[p].cbar_tick_labels = calc_cbar_tick_labels(output_data[p].data)
             output_data[p].cbar_ticks = calc_cbar_ticks(output_data[p].contour_levels)
             
@@ -1050,11 +1052,11 @@ for p in _output_data_dict:
     output_data[p].num = num
     
     
-        
-
 del [sort, prop, p, num]
 
+
 #%%
+
 
 ''' PLOT GRAPHS'''
 # plots variation of each data set with distortion
@@ -1069,16 +1071,7 @@ del [sort, prop, p, num]
 #   mark the experimental value in red for easy comparison
 #   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
 
-
-# set which graphs to plot:
-output_data["gs_mag_moments"].plot = True
-output_data["gs_spin_floats"].plot = False
-output_data["spin_1/2_energies"].plot = True
-output_data["spin_3/2_energies"].plot = False
-output_data["spin_5/2_energies"].plot = False
-
-data_points["agreed"] = [0]*len(data_points["eps"])
-
+''' FUNCTIONS FOR GRAPH PLOTTING '''
 
 def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
     
@@ -1125,27 +1118,22 @@ def draw_contour_plot(ax, prop, data_points):
     
     if prop.sort == "Spin ":
         
-        data_by_line = np.transpose(prop.data)
+        plot_data = np.transpose(prop.data)[0]
         
-        # some of the data points may be NaN, so manually create the triangulation and mask NaN triangles
-        triang = tri.Triangulation(data_points["gamma_radians"], data_points["eps"])
-        mask = np.any(np.isnan(data_by_line[0][triang.triangles]), axis=1)
-        triang.set_mask(mask)
-        
-        
-        try:
-            cax = ax.tricontourf(triang, 
-                             data_by_line[0], levels=prop.contour_levels)
-            cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
-        except ValueError as me: print("\n\t\t" + str(me))
-        else: print("multiple levels can't be plotted on a contour plot; \nplotting only the yrast state of spin " + prop.num)
+        print("multiple levels can't be plotted on a contour plot; \nplotting only the yrast state of spin " + prop.num)
         
         
     else:
+        plot_data = np.array(prop.data)
+        
+    # some of the data points may be NaN, so manually create the triangulation and mask NaN triangles
+    triang = tri.Triangulation(data_points["gamma_radians"], data_points["eps"])
+    mask = np.any(np.isnan(plot_data[triang.triangles]), axis=1)
+    triang.set_mask(mask)
     
-        cax = ax.tricontourf(data_points["gamma_radians"], data_points["eps"], 
-                             prop.data, levels=prop.contour_levels)
-        cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+    cax = ax.tricontourf(triang, plot_data, levels=prop.contour_levels)
+    cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+
 
     
     if isinstance(prop.contour_levels, list):                                   # then format for discrete values
@@ -1288,9 +1276,15 @@ def mark_spin(inputs, data_points, output_data, legend_handles):
 
 
 
+# set which graphs to plot:
+output_data["gs_mag_moments"].plot = False
+output_data["gs_spin_floats"].plot = True
+output_data["spin_1/2_energies"].plot = False
+output_data["spin_3/2_energies"].plot = False
+output_data["spin_5/2_energies"].plot = False
+output_data["x1_energies"].plot = False
 
-
-
+data_points["agreed"] = [0]*len(data_points["eps"])
 
 
 for g in output_data:
