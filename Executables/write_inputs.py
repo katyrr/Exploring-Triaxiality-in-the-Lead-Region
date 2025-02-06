@@ -26,6 +26,7 @@ import math                                                                     
 import matplotlib.pyplot as plt                                                 # for plotting graphs
 import time                                                                     # for checking how long it took to run
 from matplotlib.ticker import FuncFormatter                                     # for formatting axis ticks
+import matplotlib.tri as tri                                                    # for manual triangulation before drawing a contour plot
 
 plt.rcParams['figure.dpi'] = 150
         
@@ -1071,35 +1072,39 @@ del [sort, prop, p, num]
 
 # set which graphs to plot:
 output_data["gs_mag_moments"].plot = True
-output_data["gs_spin_floats"].plot = True
+output_data["gs_spin_floats"].plot = False
 output_data["spin_1/2_energies"].plot = True
-output_data["spin_3/2_energies"].plot = True
-output_data["spin_5/2_energies"].plot = True
+output_data["spin_3/2_energies"].plot = False
+output_data["spin_5/2_energies"].plot = False
 
 data_points["agreed"] = [0]*len(data_points["eps"])
 
 
-def configure_axis(isPolar, ax, title, **kwargs):
+def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
     
-    if isPolar:
+    if polar_or_linear == 'polar':
         ax.set_thetamin(0)   
         ax.set_thetamax(60)  
-        ax.set_rmax(1.0)
+        # ax.set_rmax(1.0)
         
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))    # set the number of decimal places 
         
         plt.xlabel("ε")
-        ax.text(65*np.pi/180, ax.get_rmax()*1.05, "γ", ha='center', va='center') # gamma axis label
+        ax.text(45*np.pi/180, ax.get_rmax()*1.2, "γ", ha='center', va='center') # gamma axis label
+        
+        ax.legend(handles=legend_handles, loc="upper left", 
+                           facecolor = 'lightblue', bbox_to_anchor=(-0.5, 1.1))
         
         ax.set_title(prop.title, va='bottom', y=1.1)  
         
-    else: # is not polar
+    elif polar_or_linear == 'linear':
         
         varied = kwargs.get("varied", None)
         x_label = kwargs.get("x_label", None)
         y_label = kwargs.get("y_label", None)
+        legend_title = kwargs.get("legend_title", "")
     
         pad = 0.05*(varied[-1]-varied[0])
         ax.set_xlim([varied[0]-pad, varied[-1]+pad]) 
@@ -1107,26 +1112,47 @@ def configure_axis(isPolar, ax, title, **kwargs):
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         
-        ax.set_title(prop.title, va='bottom', y=1.1)  
+        ax.set_title(prop.title, va='bottom', y=1.1) 
+        
+        legend = ax.legend(handles = legend_handles)
+        
+        if legend_title != "x":
+            legend.set_title(legend_title)
+    
+    else: raise ValueError("unrecognised graph type: " + polar_or_linear + "; must be either 'polar' or 'linear'.")
 
 def draw_contour_plot(ax, prop, data_points):
     
-    if isinstance(prop.contour_levels, list):                                   # then format for discrete values
+    if prop.sort == "Spin ":
         
+        data_by_line = np.transpose(prop.data)
+        
+        # some of the data points may be NaN, so manually create the triangulation and mask NaN triangles
+        triang = tri.Triangulation(data_points["gamma_radians"], data_points["eps"])
+        mask = np.any(np.isnan(data_by_line[0][triang.triangles]), axis=1)
+        triang.set_mask(mask)
+        
+        
+        try:
+            cax = ax.tricontourf(triang, 
+                             data_by_line[0], levels=prop.contour_levels)
+            cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+        except ValueError as me: print("\n\t\t" + str(me))
+        else: print("multiple levels can't be plotted on a contour plot; \nplotting only the yrast state of spin " + prop.num)
+        
+        
+    else:
+    
         cax = ax.tricontourf(data_points["gamma_radians"], data_points["eps"], 
                              prop.data, levels=prop.contour_levels)
-        
         cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
 
+    
+    if isinstance(prop.contour_levels, list):                                   # then format for discrete values
+        
         cbar.set_ticks(prop.ticks)
         cbar.set_ticklabels(prop.cbar_tick_labels)
     
-    else:
-        
-        cax = ax.tricontourf(data_points["gamma_radians"], data_points["eps"], 
-                             prop.data, levels=prop.contour_levels)
-        
-        cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
         
     return cax, cbar
 
@@ -1173,6 +1199,100 @@ def plot_correct_spin(correct_spin_range, var, step, prop):
                       max(prop.data)*1.05], 'g-')                  # this plots the top edge of the box
     return correct_spin
 
+def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
+    
+    legend_hit = False
+    legend_miss = False
+    
+    for r in range(len(data_points["eps"])):
+    
+        error = abs(prop.data[r] - prop.experimental_data)
+        if error < prop.error_tolerance: 
+            data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
+            hit, = plt.polar(data_points["gamma_radians"][r], 
+                      data_points["eps"][r], 'o', markeredgecolor='red', markerfacecolor='None', label="matches experiment")
+            legend_hit = True
+
+        else:
+            miss, = plt.polar(data_points["gamma_radians"][r], 
+                      data_points["eps"][r], 'wx', label="does not match experiment")
+            legend_miss = True
+    
+    if legend_hit:
+        legend_handles.append(hit)
+    if legend_miss:
+        legend_handles.append(miss)
+    
+    exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 'r-', label = "experimental value")
+    legend_handles.append(exp[0])
+    
+    return legend_handles
+
+def assign_parameters(inputs, e2plus_to_test, data_points):
+
+    if inputs["deformation_input"] == "eps" :
+        
+        var_sym = "ε"
+        var = data_points["eps"]
+        fix_sym = "γ"
+        fix = data_points["gamma_degrees"]
+        
+    elif inputs["deformation_input"] == "gamma" :
+        
+        var_sym = "γ / º"
+        var = data_points["gamma_degrees"]
+        fix_sym = "ε"
+        fix = data_points["eps"]
+        
+    elif len(e2plus_to_test) > 1:
+        
+        var_sym = "E2PLUS / MeV"
+        var = e2plus_to_test
+        fix_sym = "(ε, γ)"
+        fix = []
+        
+    else: raise ValueError("unrecognised graph request")
+
+    return (var_sym, var, fix_sym, fix)
+
+def plot_multi_lines(prop, var, legend_handles):
+    data_by_line = np.transpose(prop.data)
+    line_colours = ['k-x', 'b-x', 'y-x']
+    line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+    
+    for s in range(min(len(line_labels), np.size(data_by_line,0))):
+        
+        data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s])
+        legend_handles.append(data)
+        
+    legend_title = "%s = %s" % (fix_sym, fix[0])
+    
+    return legend_handles, legend_title
+
+def mark_spin(inputs, data_points, output_data, legend_handles):
+
+    correct_range = [inputs["gs_spin_float"]-0.5, 
+                     inputs["gs_spin_float"]+0.5]
+    spin_colour = (0,0,0) #(213/255,1,0)
+    
+    ax.tricontour(data_points["gamma_radians"], data_points["eps"], 
+                  output_data["gs_spin_floats"].data, levels=correct_range,  
+                  colors=[spin_colour], linewidths=1.0)
+    spin_legend_proxy = plt.Line2D([], [], color=spin_colour, linewidth=1.0, label="region of correct g.s. spin") 
+    legend_handles.append(spin_legend_proxy)
+
+    return legend_handles
+
+
+
+
+
+
+
+
+
+
+
 for g in output_data:
     
     prop = output_data[g]
@@ -1181,113 +1301,61 @@ for g in output_data:
     inputs["current_graph"] = prop.title # makes several inputs more efficient
     print("plotting graph: %(current_graph)s" % inputs) 
     
+    
+    
+    
     if inputs["deformation_input"] == "mesh":  
         
         fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-        configure_axis(True, ax, '%(current_graph)s of %(nucleus)s' % inputs)
         cax, cbar = draw_contour_plot(ax, prop, data_points)
         
-        # plot the data point markers, and check which deformations give a result that matches experiment
-        if not(np.isnan(prop.experimental_data)):                           # if the experimental data exists for comparison
-            for r in range(len(data_points["eps"])):
+        
+        legend_handles = []
+        
+        if inputs["mark_spin"]:
             
-                error = abs(prop.data[r] - prop.experimental_data)
-                if error < prop.error_tolerance: 
-                    data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
-                    hit, = plt.polar(data_points["gamma_radians"][r], 
-                              data_points["eps"][r], 'rx')
-                    legend_handles = [hit]
-
-                else:
-                    miss, = plt.polar(data_points["gamma_radians"][r], 
-                              data_points["eps"][r], 'wx')
-                    legend_handles = [miss]
-                
-                exp = cbar.ax.plot([0, 1], [prop.data, prop.data], 'r-')
-                legend_handles = [exp]
-                
-        else:
-                
+            legend_handles = mark_spin(inputs, data_points, output_data, legend_handles)
+            
+        # plot the data point markers, with comparison to experiment if possible 
+        if np.isfinite(prop.experimental_data): 
+            
+            legend_handles = plot_points_with_experiment(data_points, prop, legend_handles, cbar)
+            
+        else: 
             all_points, = plt.polar(data_points["gamma_radians"], 
-                      data_points["eps"], 'wx')
-            legend_handles.append(all_points)
-                
-                
-        if inputs["mark_spin"]==1:
+                      data_points["eps"], 'wx', label="data point")
+            legend_handles.append(all_points)         
             
-            correct_range = [inputs["gs_spin_float"]-0.5, 
-                             inputs["gs_spin_float"]+0.5]
-            
-            spin = ax.tricontour(data_points["gamma_radians"], data_points["eps"], 
-                          output_data["gs_spin_floats"].data, levels=correct_range,  
-                          colors=[(213/255,1,0)], linewidths=1.0)
-            legend_handles.append(spin)
         
-        
-        legend = ax.legend(handles=legend_handles, loc="upper left", 
-                           bbox_to_anchor=(-0.3, 0.78))
-        
-        
+        format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs)
         
         plt.show()
         
-        print("\n\nAgreement of each data point with experimental data: ")
-        print(data_points["agreed"])
+        
        
     elif (inputs["deformation_input"] ==  "gamma" 
           or inputs["deformation_input"] == "eps"
           or len(e2plus_to_test) > 1):
         
-        
-        # if eps was varied and gamma was fixed:
-        if inputs["deformation_input"] == "eps" :
-            
-            var_sym = "ε"
-            var = data_points["eps"]
-            fix_sym = "γ"
-            fix = data_points["gamma_degrees"]
-            
-        elif inputs["deformation_input"] == "gamma" :
-            
-            var_sym = "γ / º"
-            var = data_points["gamma_degrees"]
-            fix_sym = "ε"
-            fix = data_points["eps"]
-            
-        elif len(e2plus_to_test) > 1:
-            
-            var_sym = "E2PLUS / MeV"
-            var = e2plus_to_test
-            fix_sym = "(ε, γ)"
-            fix = []
-            
-        else: raise ValueError("unrecognised graph request")
+        # set which paramters are varied and which are constant
+        var_sym, var, fix_sym, fix = assign_parameters(inputs, e2plus_to_test, data_points)
         
         fig, ax = plt.subplots() 
-        configure_axis(False, ax, '%(current_graph)s in %(nucleus)s' % inputs, 
-                       varied=var, x_label=var_sym, y_label=prop.axis_label)
         
         legend_handles = []
+        
         # now plot the actual data
         if prop.sort == "Spin ":
         
-            data_by_line = np.transpose(prop.data)
-            line_colours = ['k-x', 'b-x', 'y-x']
-            line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
-            
-            for s in range(min(len(line_labels), np.size(data_by_line,0))):
-                
-                data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s])
-                legend_handles.append(data)
-                
-            legend_title = "%s = %s" % (fix_sym, fix[0])
+            legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles)
         
         else:
             data, = plt.plot(var, prop.data, 'k-x', label="%s = %s" % (fix_sym, fix[0]))
             legend_handles.append(data)
+            legend_title = ""
           
         # if experimental data is available, plot it in red for easy comparison
-        if not(np.isnan(prop.experimental_data)):  
+        if np.isfinite(prop.experimental_data):  
             exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 
                    'r-', label="experimental value")
             legend_handles.append(exp)
@@ -1302,13 +1370,21 @@ for g in output_data:
                 legend_handles.append(spin)
             
                     
-        
-        legend = ax.legend(handles = list(reversed(legend_handles)))
+        format_fig('linear', ax, list(reversed(legend_handles)), 
+                       '%(current_graph)s in %(nucleus)s' % inputs, 
+                       varied=var, x_label=var_sym, y_label=prop.axis_label, 
+                       legend_title=legend_title)
         
         plt.show()
         
+        del [var, var_sym, fix, fix_sym, legend_title, legend_handles]
+        
        
 del [g]
+
+
+print("\n\nAgreement of each data point with experimental data: ")
+print(data_points["agreed"])
 
 # note how long it took
 timer_data["lapse_end"] = time.time()
