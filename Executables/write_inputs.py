@@ -1136,9 +1136,9 @@ def draw_contour_plot(ax, prop, data_points):
 
 
     
-    if isinstance(prop.contour_levels, list):                                   # then format for discrete values
+    if len(prop.cbar_tick_labels) > 1:                                   # then format for discrete values
         
-        cbar.set_ticks(prop.ticks)
+        cbar.set_ticks(prop.cbar_ticks)
         cbar.set_ticklabels(prop.cbar_tick_labels)
     
         
