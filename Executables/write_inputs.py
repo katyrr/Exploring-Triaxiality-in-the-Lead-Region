@@ -248,9 +248,12 @@ for line in config_lines:                                                       
         
         if len(eps_to_test) > 1:
             inputs["step"] = get_range_step(split_string[1])
-        elif len(gamma_to_test) > 1:
+            
+        if len(gamma_to_test) > 1:
             inputs["step"] = get_range_step(split_string[2])
-        else: raise ValueError("cannot vary both eps and gamma linearly; choose one or use mesh")
+            
+        if (len(eps_to_test) > 1) and (len(gamma_to_test) > 1): 
+            raise ValueError("cannot vary both eps and gamma linearly; choose one or use mesh")
         
         
         # create arrays with repeated values, to cover every data point.
@@ -374,14 +377,14 @@ inputs["ipout"] = inputs["ipout"].replace(",", " ")
 # determine nneupr and calculate fermi level
 inputs["N"] = inputs["A"]-inputs["Z"]
     
-if inputs["Z"]%2 == 0:
-    inputs["nneupr"] = "1" 
-    inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
-    print("calculating for odd protons...")                 
-elif inputs["N"]%2 == 0:
-    inputs["nneupr"] = "-1"
+if inputs["Z"]%2 == 0: # Z is even so N is odd so NNEUPR = -1
+    inputs["nneupr"] = "-1" 
     inputs["fermi_level"] = math.ceil(inputs["N"]/2)
-    print("calculating for odd neutrons...")
+    print("calculating for odd neutrons...")                 
+elif inputs["N"]%2 == 0:
+    inputs["nneupr"] = "1"
+    inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
+    print("calculating for odd protons...")
 else:
     raise ValueError('''Input nucleus is even-even, 
                      but this code only applies to odd-mass nuclei.''')
