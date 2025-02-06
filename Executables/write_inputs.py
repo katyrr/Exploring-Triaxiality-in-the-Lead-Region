@@ -1073,6 +1073,8 @@ del [sort, prop, p, num]
 output_data["gs_mag_moments"].plot = True
 output_data["gs_spin_floats"].plot = True
 output_data["spin_1/2_energies"].plot = True
+output_data["spin_3/2_energies"].plot = True
+output_data["spin_5/2_energies"].plot = True
 
 data_points["agreed"] = [0]*len(data_points["eps"])
 
@@ -1104,12 +1106,14 @@ def configure_axis(isPolar, ax, title, **kwargs):
         
         plt.xlabel(x_label)
         plt.ylabel(y_label)
+        
+        ax.set_title(prop.title, va='bottom', y=1.1)  
 
 def draw_contour_plot(ax, prop, data_points):
     
     if isinstance(prop.contour_levels, list):                                   # then format for discrete values
         
-        cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], 
+        cax = ax.tricontourf(data_points["gamma_radians"], data_points["eps"], 
                              prop.data, levels=prop.contour_levels)
         
         cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
@@ -1119,7 +1123,7 @@ def draw_contour_plot(ax, prop, data_points):
     
     else:
         
-        cax = ax.tricontourf(data_points["gamma_degrees"], data_points["eps"], 
+        cax = ax.tricontourf(data_points["gamma_radians"], data_points["eps"], 
                              prop.data, levels=prop.contour_levels)
         
         cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
@@ -1184,28 +1188,38 @@ for g in output_data:
         cax, cbar = draw_contour_plot(ax, prop, data_points)
         
         # plot the data point markers, and check which deformations give a result that matches experiment
-        for r in range(len(data_points["eps"])):
-            if not(np.isNaN(prop.experimental_data)):                           # if the experimental data exists for comparison
+        if not(np.isnan(prop.experimental_data)):                           # if the experimental data exists for comparison
+            for r in range(len(data_points["eps"])):
+            
                 error = abs(prop.data[r] - prop.experimental_data)
                 if error < prop.error_tolerance: 
                     data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
-                    hit, = plt.polar(data_points["gamma_degrees"][r], 
+                    hit, = plt.polar(data_points["gamma_radians"][r], 
                               data_points["eps"][r], 'rx')
-                    legend_handles=[hit]
+                    legend_handles = [hit]
 
                 else:
-                    miss, = plt.polar(data_points["gamma_degrees"][r], 
+                    miss, = plt.polar(data_points["gamma_radians"][r], 
                               data_points["eps"][r], 'wx')
-                    legend_handles=[miss]
-                    
-                exp, = cbar.ax.plot([0, 1], [prop.data, prop.data], 'r-')
-                legend_handles.append(exp)
+                    legend_handles = [miss]
+                
+                exp = cbar.ax.plot([0, 1], [prop.data, prop.data], 'r-')
+                legend_handles = [exp]
+                
+        else:
+                
+            all_points, = plt.polar(data_points["gamma_radians"], 
+                      data_points["eps"], 'wx')
+            legend_handles.append(all_points)
+                
                 
         if inputs["mark_spin"]==1:
-            spin, = ax.tricontour(data_points["gamma_degrees"], data_points["eps"], 
-                          output_data["gs_spin_floats"], 
-                          levels=[inputs["gs_spin_float"]-0.5, 
-                                  inputs["gs_spin_float"]+0.5],  
+            
+            correct_range = [inputs["gs_spin_float"]-0.5, 
+                             inputs["gs_spin_float"]+0.5]
+            
+            spin = ax.tricontour(data_points["gamma_radians"], data_points["eps"], 
+                          output_data["gs_spin_floats"].data, levels=correct_range,  
                           colors=[(213/255,1,0)], linewidths=1.0)
             legend_handles.append(spin)
         
@@ -1218,7 +1232,7 @@ for g in output_data:
         plt.show()
         
         print("\n\nAgreement of each data point with experimental data: ")
-        print("\t" + data_points["agreed"])
+        print(data_points["agreed"])
        
     elif (inputs["deformation_input"] ==  "gamma" 
           or inputs["deformation_input"] == "eps"
