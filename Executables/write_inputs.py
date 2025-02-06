@@ -983,29 +983,32 @@ for p in _output_data_dict:
             
         else: raise ValueError("property not recognised: " + p)
         
-    elif prop == "mag_moments": 
-        output_data[p].title = "Magnetic Dipole Moments of " + sort + num + " States"
-        output_data[p].contour_levels = 8
-        output_data[p].axis_label = output_data[p].title + r' / $μ_{N}$'
-        output_data[p].cbar_tick_labels = 0
+    elif prop == "mag_moments":
             
         if sort == "Excited State ":
+            output_data[p].title = "Magnetic Dipole Moment of Excited State " + num 
             output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "x" + num + "_mu", 0.2)
     
         elif sort == "Spin ":
+            output_data[p].title = "Magnetic Dipole Moment of Spin " + num + " States"
             output_data[p].experimental_data = np.NaN
             output_data[p].error_tolerance = np.NaN
             
         elif sort == "Ground":
+            output_data[p].title = "Ground State Magnetic Dipole Moment"
             output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "gs_mu", 0.2)
             
         else: raise ValueError("property not recognised: " + p)
+        
+        output_data[p].contour_levels = 8
+        output_data[p].axis_label = output_data[p].title + r' / $μ_{N}$'
+        output_data[p].cbar_tick_labels = 0
     
     elif sort == "Ground":
         
         if prop == "spin_floats": 
         
-            output_data[p].title = "Ground State Spins"
+            output_data[p].title = "Ground State Spin"
             output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
             output_data[p].axis_label = output_data[p].title
             
@@ -1018,7 +1021,7 @@ for p in _output_data_dict:
     elif sort == "Fermi":
     
         if prop == "indices": 
-            output_data[p].title = "Fermi Level Indices"
+            output_data[p].title = "Fermi Level Index"
             output_data[p].contour_levels = calc_contour_levels(output_data[p].data)
             
             output_data[p].axis_label = output_data[p].title
@@ -1028,14 +1031,14 @@ for p in _output_data_dict:
         
         elif prop == "energies":
         
-            output_data[p].title = "Fermi Energies"
+            output_data[p].title = "Fermi Energy"
             output_data[p].contour_levels = 10
             output_data[p].axis_label = output_data[p].title + p[-3:-1]
             output_data[p].cbar_tick_labels = 0
         
         elif prop == "parities":
         
-            output_data[p].title = "Fermi Parities"
+            output_data[p].title = "Fermi Parity"
             output_data[p].contour_levels = 2
             output_data[p].axis_label = output_data[p].title
             output_data[p].cbar_tick_labels = 0
@@ -1090,7 +1093,7 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         ax.legend(handles=legend_handles, loc="upper left", 
                            facecolor = 'lightblue', bbox_to_anchor=(-0.5, 1.1))
         
-        ax.set_title(prop.title, va='bottom', y=1.1)  
+        ax.set_title(title, va='bottom', y=1.1)  
         
     elif polar_or_linear == 'linear':
         
@@ -1105,7 +1108,7 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         
-        ax.set_title(prop.title, va='bottom', y=1.1) 
+        ax.set_title(title, va='bottom', y=1.1) 
         
         legend = ax.legend(handles = legend_handles)
         
