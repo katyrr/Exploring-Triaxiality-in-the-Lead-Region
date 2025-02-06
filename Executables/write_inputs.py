@@ -1294,14 +1294,14 @@ def assign_parameters(inputs, e2plus_to_test, data_points):
 
     return (var_sym, var, fix_sym, fix)
 
-def plot_multi_lines(prop, var, legend_handles):
+def plot_multi_lines(prop, var, legend_handles, marker_size):
     data_by_line = np.transpose(prop.data)
     line_colours = ['k-x', 'b-x', 'y-x']
     line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
     
     for s in range(min(len(line_labels), np.size(data_by_line,0))):
         
-        data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s])
+        data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s], markersize=marker_size)
         legend_handles.append(data)
         
     legend_title = "%s = %s" % (fix_sym, fix[0])
@@ -1389,12 +1389,15 @@ for g in output_data:
         legend_handles = []
         
         # now plot the actual data
+        if len(data_points["file_tags"]) < 100: marker_size = 5
+        else: marker_size = 1
+        
         if prop.sort == "Spin ":
         
-            legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles)
+            legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles, marker_size)
         
         else:
-            data, = plt.plot(var, prop.data, 'k-x', label="%s = %s" % (fix_sym, fix[0]))
+            data, = plt.plot(var, prop.data, 'k-x', markersize=marker_size, label="%s = %s" % (fix_sym, fix[0]))
             legend_handles.append(data)
             legend_title = ""
           
