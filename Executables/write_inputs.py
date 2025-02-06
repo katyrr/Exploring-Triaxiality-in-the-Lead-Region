@@ -1142,7 +1142,7 @@ def draw_contour_plot(ax, prop, data_points):
 
 
     
-    if len(prop.cbar_tick_labels) > 1:                                   # then format for discrete values
+    if prop.cbar_tick_labels:                                   # then format for discrete values
         
         cbar.set_ticks(prop.cbar_ticks)
         cbar.set_ticklabels(prop.cbar_tick_labels)
@@ -1199,15 +1199,19 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
     legend_miss = False
     
     for r in range(len(data_points["eps"])):
+        
+        # use a smaller marker size for large data sets
+        if len(data_points["file_tags"]) < 100: marker_size = 20
+        else: marker_size = 5
     
         error = abs(prop.data[r] - prop.experimental_data)
         if error < prop.error_tolerance: 
             data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
-            hit, = plt.polar(data_points["gamma_radians"][r], 
-                      data_points["eps"][r], 'o', markeredgecolor='red', markerfacecolor='None', label="matches experiment")
+            hit = plt.scatter(data_points["gamma_radians"][r], 
+                      data_points["eps"][r], s=marker_size, edgecolor='red', facecolor='None', label="matches experiment")
             legend_hit = True
 
-        else:
+        elif len(data_points["file_tags"]) < 100: # for data points that don't match experimental data, only plot them when the data set is quite small, to avoid cluttering the graph 
             miss, = plt.polar(data_points["gamma_radians"][r], 
                       data_points["eps"][r], 'wx', label="does not match experiment")
             legend_miss = True
@@ -1219,6 +1223,18 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
     
     exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 'r-', label = "experimental value")
     legend_handles.append(exp[0])
+    
+    return legend_handles
+
+def plot_points_without_experiment(data_points, legend_handles):
+    
+    # use a smaller marker size for large data sets
+    if len(data_points["file_tags"]) < 100: marker_size = 5
+    else: marker_size = 1
+    
+    all_points = plt.scatter(data_points["gamma_radians"], 
+              data_points["eps"], s=marker_size, c='w', label="data point")
+    legend_handles.append(all_points) 
     
     return legend_handles
 
@@ -1283,12 +1299,12 @@ def mark_spin(inputs, data_points, output_data, legend_handles):
 
 
 # set which graphs to plot:
-output_data["gs_mag_moments"].plot = False
+output_data["gs_mag_moments"].plot = True
 output_data["gs_spin_floats"].plot = True
-output_data["spin_1/2_energies"].plot = False
-output_data["spin_3/2_energies"].plot = False
-output_data["spin_5/2_energies"].plot = False
-output_data["x1_energies"].plot = False
+output_data["spin_1/2_energies"].plot = True
+output_data["spin_3/2_energies"].plot = True
+output_data["spin_5/2_energies"].plot = True
+output_data["x1_energies"].plot = True
 
 data_points["agreed"] = [0]*len(data_points["eps"])
 
@@ -1322,10 +1338,9 @@ for g in output_data:
             legend_handles = plot_points_with_experiment(data_points, prop, legend_handles, cbar)
             
         else: 
-            all_points, = plt.polar(data_points["gamma_radians"], 
-                      data_points["eps"], 'wx', label="data point")
-            legend_handles.append(all_points)         
             
+            legend_handles =  plot_points_without_experiment(data_points, legend_handles)
+               
         
         format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs)
         
