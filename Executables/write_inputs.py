@@ -1182,9 +1182,13 @@ def plot_correct_spin(correct_spin_range, var, step, prop):
             start_range = np.mean([var[correct_spin_range[r]-1], 
                                    var[correct_spin_range[r]]])
         
+        if prop.sort == "Spin ":
+            data = prop.data[0]
+        else:
+            data = prop.data
+            
         correct_spin, = plt.plot([start_range, start_range], 
-                                [min(prop.data)+0.05*max(prop.data), 
-                                 max(prop.data)*1.05], 
+                                [min(data)+0.05*max(data), max(data)*1.05], 
                                 'g-', label="range of correct spin")   # this plots the front and end edges of the box
         if r%2==0:
             if r+1 == len(correct_spin_range):                          # the last value of eps in the range has the correct spin
@@ -1194,11 +1198,11 @@ def plot_correct_spin(correct_spin_range, var, step, prop):
                                      var[correct_spin_range[r+1]]])
             
             plt.plot([start_range, end_range],                          # this plots the bottom edge of the box
-                     [min(prop.data)+0.05*max(prop.data), 
-                      min(prop.data)+0.05*max(prop.data)], 'g-')
+                     [min(data)+0.05*max(data), 
+                      min(data)+0.05*max(data)], 'g-')
             plt.plot([start_range, end_range], 
-                     [max(prop.data)*1.05, 
-                      max(prop.data)*1.05], 'g-')                  # this plots the top edge of the box
+                     [max(data)*1.05, 
+                      max(data)*1.05], 'g-')                  # this plots the top edge of the box
     return correct_spin
 
 def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
@@ -1395,9 +1399,17 @@ for g in output_data:
             legend_title = ""
           
         # if experimental data is available, plot it in red for easy comparison
-        if np.isfinite(prop.experimental_data):  
-            exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 
-                   'r-', label="experimental value")
+        if np.isfinite(prop.experimental_data).all():  
+            
+            if prop.sort == "Spin ":
+                for e in range(len(prop.experimental_data)):
+                    exp, = plt.plot(var, np.full(len(var), prop.experimental_data[e]), 
+                       'r-', label="experimental value")
+            else:
+                exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 
+                       'r-', label="experimental value")
+                
+            
             legend_handles.append(exp)
             
     
