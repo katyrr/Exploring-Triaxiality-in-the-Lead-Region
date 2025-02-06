@@ -309,6 +309,9 @@ for line in config_lines:                                                       
             raise ValueError("testing a range of e2plus values is " +
                       "only supported \nfor a single deformation input. " +
                       '''Check that deformation is input as "single".''')
+    
+    elif split_string[0][:3]=="jp_":
+        inputs[split_string[0]] = [float(n) for n in split_string[1].split(',')]
           
     elif split_string[0] in variable_types["int"]:
         inputs[split_string[0]] = int(split_string[1])
@@ -981,8 +984,14 @@ for p in _output_data_dict:
             output_data[p].experimental_data, output_data[p].error_tolerance = try_experimental(inputs, "x" + num + "_energy", 50)
         
         elif sort == "Spin ":
-            output_data[p].experimental_data = np.NaN
-            output_data[p].error_tolerance = np.NaN
+            
+            try:
+                output_data[p].experimental_data = inputs["jp_"+num+inputs["par"]]
+                output_data[p].error_tolerance = 50
+            except KeyError:
+                output_data[p].experimental_data = np.NaN
+                output_data[p].error_tolerance = np.NaN
+            
             
         else: raise ValueError("property not recognised: " + p)
         
@@ -1084,7 +1093,6 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
     if polar_or_linear == 'polar':
         ax.set_thetamin(0)   
         ax.set_thetamax(60)  
-        # ax.set_rmax(1.0)
         
         theta_ticks = np.arange(0, 70, 10)  
         ax.set_xticks(np.radians(theta_ticks))
@@ -1203,15 +1211,23 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
         # use a smaller marker size for large data sets
         if len(data_points["file_tags"]) < 100: marker_size = 20
         else: marker_size = 5
-    
-        error = abs(prop.data[r] - prop.experimental_data)
-        if error < prop.error_tolerance: 
+        
+        if prop.sort == "Spin ":
+            error = [abs(prop.data[r][0] - exp) for exp in prop.experimental_data]
+            match = [err < prop.error_tolerance for err in error]
+        else:
+            error = abs(prop.data[r] - prop.experimental_data)
+            match = [error < prop.error_tolerance]
+            
+        if any(match): 
             data_points["agreed"][r] += 1                                       # record how many of the tested properties agree
             hit = plt.scatter(data_points["gamma_radians"][r], 
-                      data_points["eps"][r], s=marker_size, edgecolor='red', facecolor='None', label="matches experiment")
+                      data_points["eps"][r], s=marker_size, edgecolor='red', 
+                      facecolor='None', label="matches experiment")
             legend_hit = True
-
-        elif len(data_points["file_tags"]) < 100: # for data points that don't match experimental data, only plot them when the data set is quite small, to avoid cluttering the graph 
+            
+        # for data points that don't match experimental data, only plot them when the data set is quite small, to avoid cluttering the graph 
+        elif len(data_points["file_tags"]) < 100: 
             miss, = plt.polar(data_points["gamma_radians"][r], 
                       data_points["eps"][r], 'wx', label="does not match experiment")
             legend_miss = True
@@ -1221,7 +1237,16 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
     if legend_miss:
         legend_handles.append(miss)
     
-    exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 'r-', label = "experimental value")
+    if prop.sort == "Spin ":
+        for e in range(len(prop.experimental_data)):
+            exp = cbar.ax.plot([0, 1], 
+                               [prop.experimental_data[e], prop.experimental_data[e]], 
+                               'r-', label = "experimental value")
+    else:
+        exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 
+                           'r-', label = "experimental value")
+        
+   
     legend_handles.append(exp[0])
     
     return legend_handles
@@ -1333,7 +1358,7 @@ for g in output_data:
             legend_handles = mark_spin(inputs, data_points, output_data, legend_handles)
             
         # plot the data point markers, with comparison to experiment if possible 
-        if np.isfinite(prop.experimental_data): 
+        if np.isfinite(prop.experimental_data).all(): 
             
             legend_handles = plot_points_with_experiment(data_points, prop, legend_handles, cbar)
             
