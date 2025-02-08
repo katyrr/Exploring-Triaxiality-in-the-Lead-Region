@@ -578,22 +578,24 @@ del [p]
 
 ''' 10. PLOT GRAPHS
 
+- Set which graphs should be plotted. Any not listed are False by default.
+
+- If deformation was input as a mesh:
+    - Plot filled contours in polar coordinates.
+    - Draw a contour line to indicate the perimeter of the region where 
+      the ground state spin was correctly reproduced, if requested.
+    - Plot data point markers.
+        - If experimental data is available, points that agree with experiment 
+          (within tolerance) are marked in red.
+        - Non-matching points are not plotted (unless there are fewer than 100 data points.)
+    
+- If only one of eps/gamma/e2plus is varied:
+    - Plot line graphs.
+    - Draw a green box around regions that have the correct ground state spin, if requested.
+    - Plot a red line to indicate the experimental value, if available.
+    
+
 '''
-# plots variation of each data set with distortion
-# if a mesh of eps and gamma has been tested, plot wedge contour plots
-#   for each data point in each data set:
-#       use '+' data markers for positive parity points, and '.' markers for negative parity points
-#       compare with experimental value (if available)
-#       if the absolute error is below a tolerance, consider this to be a "match"; plot the data marker in red
-#       otherwise plot in white
-#   keep a list of data points at which all the data sets match their corresponding experimental values (within tolerance) 
-# if only one of eps and gamma is varying, plot line graphs 
-#   mark the experimental value in red for easy comparison
-#   mark the region of correct ground state spin in green for easy identification of the relevant (and meaningful) results
-
-
-
-
 
 # set which graphs to plot:
 output_data["gs_mag_moments"].plot = True
@@ -607,16 +609,14 @@ data_points["agreed"] = [0]*len(data_points["eps"])
 
 sub_timer.start()
 
+# start plotting graphs:
 for g in output_data:
     
     prop = output_data[g]
     if not(prop.plot):
         continue
-    inputs["current_graph"] = prop.title # makes several inputs more efficient
+    inputs["current_graph"] = prop.title # makes several later inputs more efficient
     print("plotting graph: %(current_graph)s" % inputs) 
-    
-    
-    
     
     if inputs["deformation_input"] == "mesh":  
         
@@ -659,7 +659,7 @@ for g in output_data:
         
         # now plot the actual data
         if len(data_points["file_tags"]) < 100: marker_size = 5
-        else: marker_size = 1
+        else: marker_size = 1 # use smaller markers if the data set is large
         
         if prop.sort == "Spin ":
         
