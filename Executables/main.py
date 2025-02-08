@@ -46,8 +46,8 @@ import functions as fn                               # my own module file of fun
 import structs as st                                 # my own module file of structs (classes, and read-only dicts)
 
 plt.rcParams['figure.dpi'] = 150
-timer = st.timer()
-sub_timer = st.timer()
+timer = st.Timer()
+sub_timer = st.Timer()
 
 nucleus = "Pb207"
 verbose = False # whether to print a lot of info, or just the essentials

@@ -5,31 +5,31 @@ Created on Fri Feb  7 10:58:19 2025
 
 @author: katyrr
 
-A separate module file to contain structs such as classes and read-only dictionaries.
+A separate module file to contain structs such as classes and read-only data.
 
+CONTENTS:
+--------
+
+- class Timer()
+
+- template = get_template(program)
+
+- var_list = get_variable_list(var_type)
+
+- class PropertyData(data, name)
 
 """
 
-import time                                                                     # for checking how long it took to run
+import time                                                                    
 
-class timer():
+class Timer():
     """
     A class that acts as a timer/stopwatch.
-    Can time two processes at once: 
-      - An "outer" process which lasts for the whole duration of the timer.
-        Starts and stops once.
-      - An "inner" process which lasts for a fraction of the total duration 
-        of the timer. Can be started and stopped multiple times.
-
 
     Attributes
     ----------
-    outer_is_running : bool
-        A record of whether the outer timer is currently running.
-        
-    inner_is_running : bool
-        A record of whether the inner timer is currently running.
-        Default value = False, until the inner timer is started.
+    is_running : bool
+        A record of whether the timer is currently running.
         
     start_time : float
         The time at which the timer was constructed.
@@ -37,44 +37,28 @@ class timer():
     end_time : float
         The time at which end_timer() was called.
         
-    start_lapse_time : float
-        The time at which start_timer_lapse() was most recently called.
-        
-    end_lapse_tme : float
-        The time at which end_timer_lapse() was most recently called.
-
     Methods
     -------
-    timer():
-        Constructor for the timer object, which starts the outer timer.
+    Timer():
+        Constructor for the timer object.
         
-    start_lapse():
-        Starts the inner timer.
+    start():
+        Starts the timer.
         
-    end_lapse():
-        Ends the inner timer.
-        
-    end_timer():
-        Ends the outer timer.
-        
-    get_total_time():
-        Returns the time in seconds recorded on the outer timer, 
-        after it has been stopped.
+    stop():
+        Ends the timer.
         
     get_lapsed_time():
-        Returns the time in seconds most recently recorded on the inner timer, 
-        after a given lapse has been stopped.
+        Returns the timeframe (in seconds) most recently recorded on the timer.
         
         
     Raises
     ------
-    
     RuntimeError:
-        Occurs if the lapse timer is ended before it is started, 
-        or started while it is already running.
-        
-        Additionally occurs if the recorded time of the outer/inner timer is 
-        requested while it is still running.
+        Occurs if the timer is stopped before it is started, 
+        or started while it is already running,
+        or if the lapsed time is requested while it is still running.
+    
     """
     
     def __init__(self):
@@ -125,7 +109,6 @@ def get_template(program):
         The format for the .DAT file of the requested program.
         Contains string formatting inserts %(key)s in place of values.
         
-
     """
     
     if program == "gampn":
@@ -223,6 +206,88 @@ def get_variable_list(var_type):
 
 
 class PropertyData:
+    """
+    A class collects information about a data set, for plotting a graph.
+
+    Attributes
+    ----------
+    axis_label : string
+        The text that should label the axis that this data is plotted on.
+        Includes units (if applicable).
+        
+    cbar_tick_labels : list of strings, or 0
+        Define custom tick labels on the colour bar of a filled contour plot.
+        If 0, use pyplot's default tick labels. 
+        
+    cbar_ticks : list of floats, or 0
+        Define custom placement of ticks on the colour bar of a filled contour plot.
+        If 0, use pyplot's default tick placement. 
+        
+    contour_levels : np.array of floats, or int
+        Define custom boundaries of contour levels.
+        If int, use that number of equally spaced contour levels between the max and min data value.
+        
+    data : list of floats, or np.array of floats
+        The value of this nuclear property at each data point.
+        Must have length = number of data points.
+        Properties grouped by spin (e.g. spin_1/2_energies) have depth = max number of levels found at that spin.
+    
+    error_tolerance : float
+        The absolute error tolerance to allow when comparing to an experimental value.
+        np.NaN if no experimental value has been input.
+        
+    eperimental_data : float
+        The experimental value of this nuclear property.
+        np.NaN if no experimental value has been input.
+        
+    num : string
+        Used to categorise this nucleaar property.
+        For properties that are grouped by spin, this is the spin of the group (e.g. "1/2").
+        For properties that are grouped by association with experimental data, 
+        this is the index of the energy level (e.g. "1" for the first excited state).
+        Otherwise "0".
+        
+    plot : bool
+        True if this data should be plotted.
+        False if this data should not be plotted.
+        
+    prop : string
+        Used to categorise this nuclear property.
+        Describes what kind of data it is (e.g. "energies", "mag_moments", "spin_floats").
+        
+    sort : string
+        Used to categorise this nuclear property.
+        Describes which group the data belongs to (e.g. "Ground", "Excited State ", "Spin ").
+    
+        
+    Methods
+    -------
+    PropertyData(data, name):
+        Constructor for the PropertyData object.
+        Saves "data" in the "data" attribute.
+        Uses the "name" parameter to categories the data with "prop", "sort", "num" attributes.
+        Sets the "title" and "axis_label" attributes.
+        
+        Parameters
+        ----------
+        
+        data : list of floats, or np.array of floats
+            The value of this nuclear property at each data point.
+            Must have length = number of data points.
+            Properties grouped by spin (e.g. spin_1/2_energies) have depth = max number of levels found at that spin.
+        
+        name : string
+            The key that was previously holding this data in a dictionary.
+            Encodes information about "prop" and "sort", and may additionally contain "num".
+            
+      
+        Raises
+        ------
+        ValueError:
+            Occurs if the property cannot be categorised with the current implementation.
+            Any future new properties must be hardcoded so that they can be correctly categorised and plotted.
+    
+    """
     
     plot = False # don't plot by default
     
