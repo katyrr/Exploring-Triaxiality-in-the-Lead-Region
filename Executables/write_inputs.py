@@ -28,152 +28,13 @@ import time                                                                     
 from matplotlib.ticker import FuncFormatter                                     # for formatting axis ticks
 import matplotlib.tri as tri                                                    # for manual triangulation before drawing a contour plot
 
+import functions as fn # my own module file of functions
+import structs as st # my own module file of structs (classes, and read-only dicts)
+
 plt.rcParams['figure.dpi'] = 150
-        
-templates = {}
 
-templates["gampn"] = '''
-'%(current_f002)s' '%(current_f016)s' '%(current_f017)s'     file2, file16, file17
-%(istrch)s,%(icorr)s,%(irec)s                          ISTRCH,ICORR,irec
-9,%(nneupr)s                            NKAMY,NNEUPR
-0.120,0.00,0.120,0.00
-0.120,0.00,0.120,0.00
-0.105,0.00,0.105,0.00
-0.090,0.30,0.090,0.25
-0.065,0.57,0.070,0.39
-0.060,0.65,0.062,0.43        'STND'  KAPPA, MU (PROTON)
-0.054,0.69,0.062,0.34        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
-0
-0.054,0.69,0.062,0.26
-0,1,1,0                       NUU,IPKT,NOYES,ITRANS
-%(emin)s,%(emax)s
-%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
-%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
-%(Z)s,%(A)s                                                Z,A
-%(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
-(LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,NPROT,NNEUTR,NSHELP,NSHELN)
-'''
-
-templates["asyrmo"] = '''
-'%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
-1,0                                        IPKT,ISKIP
-%(istrch)s,%(irec)s                                        ISTRCH,IREC
-%(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
-%(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(current_e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
-19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
-%(current_orbitals)s  
-  %(nantj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  %(noutj)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
-  %(ipout)s  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  IPOUT(I)
-'''
-
-templates["probamo"] = '''
-'%(current_f017)s' '%(current_f018)s'              FILE17,FILE18
-1,0                               ipkt,iskip
-%(istrch)s                                 isrtch
-%(Z)s,%(A)s                           Z,AA
-0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
-0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
-'''
-
-variable_types = {}
-
-variable_types["bool"] = ["mark_spin"]
-
-variable_types["int"] = ["A", "Z", "num_to_record", "num_orbs", "nu"]
-
-variable_types["float"] = ["gs_energy", "x1_energy", "x2_energy", "x3_energy",
-                           "gs_mu", "x1_mu"]
-
-timer_data = {}
 
 #%%
-
-''' FUNCTIONS FOR READING CONFIG AND RUNNING CODES '''
-
-
-
-def spin_string_to_float(spin_string):
-    if spin_string[1] == "/":
-        spin_float = float(spin_string[0])/2
-    elif spin_string[2] == "/":
-        spin_float = float(spin_string[0:2])/2 
-    else:
-        raise ValueError("Cannot parse spin. \nCheck it has been input in " +
-                         "the format 'n/2' where n is an int.")
-    return spin_float
-
-def spin_float_to_string(spin_float):
-    numerator = float(spin_float)*2
-    if str(numerator)[-1] != "0":
-        raise ValueError("Cannot convert float to fraction. \nCheck it has " + 
-                         "been input as a half-integer float.")
-    else:
-        return str(int(numerator))+"/2"
-    
-def range_to_list(range_string):
-    split_range = [float(n) for n in range_string.split(",")]
-    
-    
-    if len(split_range) > 1 :  
-        step = split_range[2]           
-        range_list =  np.arange(split_range[0],                          
-                                 split_range[1]+step, 
-                                 step)
-    else : range_list = [split_range[0]]
-    
-    return range_list
-
-def get_range_step(range_string):
-    split_range = [float(n) for n in range_string.split(",")]
-    return split_range[2]     
-    
-
-
-def configure_script_writer(file_tags,  num_batches, 
-                            num_per_batch, allowed_time):                       # these arguments will be the same throughout the execution, so we can define a family of script writers (one for each of gam/asy/prob)
-    
-    def run_script_batches(program):                                            # after configuring the script writer family, this is what we actually call (it's a "closure" function)
-        
-        if program == "gampn": abr = "GAM"
-        elif program == "asyrmo": abr = "ASY"
-        elif program == "probamo": abr = "PROB"
-        else: raise ValueError("Input program ["+ program +"] not supported.")
-        
-        def write_script_batch(file_tag_batch, batch_index, file_path):         # a sub-function, called in the loop below
-            
-            batch_folder = "Batch"+str(batch_index)
-            script_text = ""
-            
-            for file in file_tag_batch :
-                script_text += ("\n(cd "+batch_folder+
-                                "; ./../../../../Executables/MO/" + program + 
-                                " < ../../Inputs/" +abr + "_" +file + ".DAT)")
-                script_text += ("\ncp "+batch_folder+"/"+program.upper()+
-                                ".out "+abr+"_"+file+".OUT")                        # copy GAMPN.out to a new txt file with a more descriptive name
-            
-            script_text += ("\n\necho message from terminal: " +
-                            "finished running " + program + " batch " + str(batch_index))
-            
-            script_file = open(file_path, 'w')
-            script_file.write(script_text)
-            script_file.close() 
-
-
-        subprocesses = {}
-
-        for b in range(num_batches):
-            file_path = "../Run"+program.upper()+"_"+str(b+1)+".sh"
-            batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
-            write_script_batch(batch_file_tags, b+1, file_path)
-            subprocesses[(program+"_"+str(b+1))] = subprocess.Popen(["sh", file_path])     # asynchronous call to start gampn as a subprocess
-
-        for b in range(num_batches):
-            subprocesses[(program+"_"+str(b+1))].wait(allowed_time)                        # wait to ensure it has finished before starting to read outputs, if it takes longer than the time limit seconds, throw an error to catch hangs.
-            
-    return run_script_batches
 
 
 
@@ -184,7 +45,7 @@ def configure_script_writer(file_tags,  num_batches,
 # outputs a warning if the format is unexpected, otherwise splits the string at " " and assigns the variable to a dictionary
 # tests whether deformation has been input as a range, mesh, or single value, and creates a list of values to test (which may contain just one value)
 
-timer_data["start"] = time.time()
+timer = st.timer()
 
 print("reading from config file...") 
 with open("../Inputs/config.txt", 'r') as f:
@@ -243,14 +104,14 @@ for line in config_lines:                                                       
         inputs["deformation_input"] = split_string[0]
         
         # parse input
-        eps_to_test = range_to_list(split_string[1])
-        gamma_to_test = range_to_list(split_string[2])
+        eps_to_test = fn.range_to_list(split_string[1])
+        gamma_to_test = fn.range_to_list(split_string[2])
         
         if len(eps_to_test) > 1:
-            inputs["step"] = get_range_step(split_string[1])
+            inputs["step"] = fn.get_range_step(split_string[1])
             
         if len(gamma_to_test) > 1:
-            inputs["step"] = get_range_step(split_string[2])
+            inputs["step"] = fn.get_range_step(split_string[2])
             
         if (len(eps_to_test) > 1) and (len(gamma_to_test) > 1): 
             raise ValueError("cannot vary both eps and gamma linearly; choose one or use mesh")
@@ -303,7 +164,7 @@ for line in config_lines:                                                       
         
     elif split_string[0]=="e2plus":
         
-        e2plus_to_test = range_to_list(split_string[1])
+        e2plus_to_test = fn.range_to_list(split_string[1])
         
         if (len(e2plus_to_test)>1 and not inputs["deformation_input"] == "single"):
             raise ValueError("testing a range of e2plus values is " +
@@ -313,13 +174,13 @@ for line in config_lines:                                                       
     elif split_string[0][:3]=="jp_":
         inputs[split_string[0]] = [float(n) for n in split_string[1].split(',')]
           
-    elif split_string[0] in variable_types["int"]:
+    elif split_string[0] in st.get_variable_type("int"):
         inputs[split_string[0]] = int(split_string[1])
         
-    elif split_string[0] in variable_types["float"]:
+    elif split_string[0] in st.get_variable_type("float"):
         inputs[split_string[0]] = float(split_string[1])
                                       
-    elif split_string[0] in variable_types["bool"]:                                    
+    elif split_string[0] in st.get_variable_type("bool"):                                    
         inputs[split_string[0]] = bool(split_string[1])
         
     else: # string
@@ -360,16 +221,16 @@ del [config_lines, line, line_string, split_string, word]
 
 # add float versions of the spin parameters
 if "gs_spin" in inputs:
-    inputs["gs_spin_float"] = spin_string_to_float(inputs["gs_spin"])
+    inputs["gs_spin_float"] = fn.spin_string_to_float(inputs["gs_spin"])
 
 if "x1_spin" in inputs:
-    inputs["x1_spin_float"] = spin_string_to_float(inputs["x1_spin"])
+    inputs["x1_spin_float"] = fn.spin_string_to_float(inputs["x1_spin"])
 
 if "x2_spin" in inputs:
-    inputs["x2_spin_float"] = spin_string_to_float(inputs["x2_spin"])
+    inputs["x2_spin_float"] = fn.spin_string_to_float(inputs["x2_spin"])
 
 if "x3_spin" in inputs:
-    inputs["x3_spin_float"] = spin_string_to_float(inputs["x3_spin"])
+    inputs["x3_spin_float"] = fn.spin_string_to_float(inputs["x3_spin"])
 
 
 # convert the nantj, noutj, ipout inputs to the correct format
@@ -442,7 +303,7 @@ for p in range(len(data_points["eps"])):
         inputs["current_f016"] = "f016_"+file_tag+".dat"
         inputs["current_f017"] = "f017_"+file_tag+".dat"
         
-        gampn_dat_text = templates["gampn"] % inputs
+        gampn_dat_text = st.get_dat_template("gampn") % inputs
                
         with open(("../Inputs/GAM_"+file_tag+".DAT"), 'w') as f:
             f.write(gampn_dat_text)
@@ -466,7 +327,7 @@ del [etp, p, file_tag, file_tags, gampn_dat_text]
 # after each one is run, the output file GAMPN.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs gampn again and GAMPN.out is overwritten
 
-timer_data["lapse"] = time.time()
+timer.start_lapse()
 batch_settings = {}
 
 batch_settings["allowed_time"] = 0.1*len(data_points["file_tags"]) + 10         #!!! each file takes ~ 0.06 seconds to run, as a rough average, so allow 0.1 seconds per file to be safe, with an overhead of 0.2                                                               # time in seconds to allow for running the bash script before timing out (assuming hanging code)
@@ -480,16 +341,16 @@ if batch_settings["num_per_batch"] < 20:
                                               len(data_points["eps"])/
                                               batch_settings["num_per_batch"])             # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worth it
 
-run_program = configure_script_writer(data_points["file_tags"], 
+run_program = fn.configure_script_writer(data_points["file_tags"], 
                                       batch_settings["num_batches"], 
                                       batch_settings["num_per_batch"], 
                                       batch_settings["allowed_time"])
 
 run_program("gampn")
 
-timer_data["lapse_end"] = time.time()
-print("finished running gampn in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
-timer_data["lapse"] = timer_data["lapse_end"]
+timer.end_lapse()
+print("finished running gampn in time = %.2f seconds" % timer.get_lapsed_time())
+
 
 
 
@@ -595,7 +456,7 @@ for t in range(len(data_points["file_tags"])):
     inputs["current_f017"] = "f017_"+data_points["file_tags"][t]+".dat"
     inputs["current_f018"] = "f018_"+data_points["file_tags"][t]+".dat"
     
-    asyrmo_dat_text = templates["asyrmo"] % inputs
+    asyrmo_dat_text = st.get_dat_template("asyrmo") % inputs
    
     with open(("../Inputs/ASY_"+data_points["file_tags"][t]+".DAT"), 'w') as f:
         f.write(asyrmo_dat_text)
@@ -612,15 +473,12 @@ del [t, asyrmo_dat_text]
 # after each one is run, the output file ASYRMO.out is copied to a new text file with a more descriptive name (based on file tag),
 # so that the data is not lost when the next iteration runs asyrmo again and ASYRMO.out is overwritten
 
-timer_data["lapse"] = time.time()
+timer.start_lapse()
 
 run_program("asyrmo")
 
-timer_data["lapse_end"] = time.time()
-print("finished running asyrmo in time = %.2f seconds" % (timer_data["lapse_end"]-timer_data["lapse"]))
-timer_data["lapse"] = timer_data["lapse_end"]
-
-
+timer.end_lapse()
+print("finished running asyrmo in time = %.2f seconds" % timer.get_lapsed_time())
 
 
 #%%
@@ -632,7 +490,7 @@ for file in data_points["file_tags"]:
     inputs["current_f017"] = "f017_"+file+".dat"
     inputs["current_f018"] = "f018_"+file+".dat"
 
-    probamo_dat_text = templates["probamo"] % inputs
+    probamo_dat_text = st.get_dat_template("probamo") % inputs
     
     with open(("../Inputs/PROB_"+file+".DAT"), 'w') as f:
         f.write(probamo_dat_text)    
@@ -651,14 +509,14 @@ del [probamo_dat_text, file]
 # so that the data is not lost when the next iteration runs asyrmo again and PROBAMO.out is overwritten
 
 
-timer_data["lapse"] = time.time()
+timer.start_lapse()
 
 run_program("probamo")
 
-timer_data["lapse_end"] = time.time()
-print("finished running probamo in time = %.2f seconds" 
-      % (timer_data["lapse_end"]-timer_data["lapse"]))
-timer_data["lapse"] = timer_data["lapse_end"]
+timer.end_lapse()
+
+print("finished running probamo in time = %.2f seconds" % timer.get_lapsed_time())
+
 
 #%%
 
@@ -687,7 +545,7 @@ def read_data(line):
     if not(spin_string == final_spin_string):
         return False
 
-    spin_float = spin_string_to_float(spin_string)
+    spin_float = fn.spin_string_to_float(spin_string)
     
     try:
         this_energy = float(line[:6].strip())
@@ -908,7 +766,7 @@ def calc_contour_levels(data):
 
 def calc_cbar_tick_labels(data):
     cbar_ticks = np.arange(min(data), max(data)+1.0, 1.0)
-    return [spin_float_to_string(n) for n in cbar_ticks]
+    return [fn.spin_float_to_string(n) for n in cbar_ticks]
 
 def calc_cbar_ticks(contours):
     num = len(contours) - 1
