@@ -225,12 +225,14 @@ class PropertyData:
         
     contour_levels : np.array of floats, or int
         Define custom boundaries of contour levels.
-        If int, use that number of equally spaced contour levels between the max and min data value.
+        If int, use that number of equally spaced contour levels between the 
+        max and min data value.
         
     data : list of floats, or np.array of floats
         The value of this nuclear property at each data point.
         Must have length = number of data points.
-        Properties grouped by spin (e.g. spin_1/2_energies) have depth = max number of levels found at that spin.
+        Properties grouped by spin (e.g. spin_1/2_energies) have 
+        depth = max number of levels found at that spin.
     
     error_tolerance : float
         The absolute error tolerance to allow when comparing to an experimental value.
@@ -274,7 +276,8 @@ class PropertyData:
         data : list of floats, or np.array of floats
             The value of this nuclear property at each data point.
             Must have length = number of data points.
-            Properties grouped by spin (e.g. spin_1/2_energies) have depth = max number of levels found at that spin.
+            Properties grouped by spin (e.g. spin_1/2_energies) have 
+            depth = max number of levels found at that spin.
         
         name : string
             The key that was previously holding this data in a dictionary.
@@ -285,7 +288,8 @@ class PropertyData:
         ------
         ValueError:
             Occurs if the property cannot be categorised with the current implementation.
-            Any future new properties must be hardcoded so that they can be correctly categorised and plotted.
+            Any future new properties must be hardcoded so that they can be 
+            correctly categorised and plotted.
     
     """
     
@@ -332,9 +336,15 @@ class PropertyData:
            
         elif prop == "mag_moments":
                 
-            if sort == "Excited State ": self.title = "Magnetic Dipole Moment of Excited State " + num 
-            elif sort == "Spin ": self.title = "Magnetic Dipole Moment of Spin " + num + " States"
-            elif sort == "Ground": self.title = "Ground State Magnetic Dipole Moment"
+            if sort == "Excited State ": 
+                self.title = "Magnetic Dipole Moment of Excited State " + num 
+                
+            elif sort == "Spin ": 
+                self.title = "Magnetic Dipole Moment of Spin " + num + " States"
+                
+            elif sort == "Ground": 
+                self.title = "Ground State Magnetic Dipole Moment"
+                
             else: raise ValueError("property not recognised: " + self.name)
             
             self.axis_label = self.title + r' / $μ_{N}$'

@@ -325,7 +325,7 @@ for file in data_points["file_tags"] :
     output_data["fermi_parities"].append(fermi_level_line[hash_index-2])                              
     output_data["fermi_energies_hw"].append(float(fermi_level_line[hash_index-10 : hash_index-4]))   
     output_data["fermi_energies_mev"].append(output_data["fermi_energies_hw"][-1]*inputs["efac"])
-    output_data["fermi_indices"].append(fn.get_orbital_index(fermi_level_line, hash_index))
+    output_data["fermi_indices"].append(fn.get_fermi_index(fermi_level_line, hash_index))
     
     # generate the orbitals input for asyrmo
     data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
@@ -628,7 +628,7 @@ for g in output_data:
         
         if inputs["mark_spin"]:
             
-            legend_handles = fn.mark_spin(inputs, data_points, output_data, legend_handles, ax)
+            legend_handles = fn.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
             
         # plot the data point markers, with comparison to experiment if possible 
         if np.isfinite(prop.experimental_data).all(): 
