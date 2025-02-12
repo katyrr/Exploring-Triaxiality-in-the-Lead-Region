@@ -14,6 +14,8 @@ HOW TO USE:
         /Code/Pb207/config_file.txt     (file path to config file)
         /Code/Pb207/Inputs/             (.DAT files will be generated here)
         /Code/Pb207/Outputs/            (.OUT files will be generated here)
+        /Code/Pb207/Scripts/            (bash scripts for running codes will be 
+                                         generated here)
         /Code/Pb207/Run/Batch1/         (this is where the first batch of data 
                                          points will be run through each program)
         /Code/Pb207/Run/Batch2/         (where the second batch of data points 
@@ -112,15 +114,29 @@ for l in range(len(lines)):
             inputs["step"] = fn.get_range_step(split_string[2])
                    
        
-    # save E2PLUS input #!!! implement grodzins option?
+    # save E2PLUS input
     elif split_string[0]=="e2plus":
         
-        e2plus_to_test, _ = fn.range_to_list(split_string[1])
+        if "eps" not in data_points:
+            raise RuntimeError("must input deformation above e2plus")
+            
+        if split_string[1]=="0":
+            # if e2plus has been input with value = "0", then it will later be 
+            # calculated dynamically based on the deformation of each data point.
+            data_points["e2plus"] = [0]*len(data_points["eps"])
         
-        if (len(e2plus_to_test)>1 and not inputs["deformation_input"] == "single"):
-            raise RuntimeError('''Testing a range of e2plus is only supported 
-                             for a single deformation input.''')
-    
+        else:
+            data_points["e2plus"], _ = fn.range_to_list(split_string[1])
+            
+            if (len(data_points["e2plus"])>1 
+                and not(inputs["deformation_input"] == "single")):
+                
+                raise RuntimeError("Testing a range of e2plus is only " +
+                               "supported for a single deformation input.")
+            else: 
+                data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
+                data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
+                    
     # save other inputs
     elif split_string[0][:3]=="jp_":
         inputs[split_string[0]] = [float(n) for n in split_string[1].split(',')]
@@ -228,31 +244,35 @@ inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["n
 data_points["file_tags"] = []
 
 for p in range(len(data_points["eps"])):
-    for etp in e2plus_to_test:
-        
-        inputs["current_e2plus"] = etp
-        inputs["current_eps"] = data_points["eps"][p]
-        inputs["current_gamma"] = data_points["gamma_degrees"][p]
-        
-        file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"],  inputs["current_gamma"],
-                                            inputs["current_e2plus"], inputs["nucleus"])
-        
-        inputs["current_f002"] = "f002_"+file_tag+".dat"
-        inputs["current_f016"] = "f016_"+file_tag+".dat"
-        inputs["current_f017"] = "f017_"+file_tag+".dat"
-        
-        gampn_dat_text = st.get_template("gampn") % inputs
-               
-        fn.write_file("../"+nucleus+"/Inputs/GAM_"+file_tag+".DAT", gampn_dat_text)
+    
+    inputs["current_eps"] = data_points["eps"][p]
+    inputs["current_gamma"] = data_points["gamma_degrees"][p]
+    
+    if not(data_points["e2plus"][p]):
+        # if the value of e2plus has been input as 0, calculate dynamically
+        data_points["e2plus"][p] = fn.est_e2plus(data_points["eps"][p], inputs["A"])
+    
+    inputs["current_e2plus"] = data_points["e2plus"][p]
+    
+    file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"],  inputs["current_gamma"],
+                                        inputs["current_e2plus"], inputs["nucleus"])
+    
+    inputs["current_f002"] = "f002_"+file_tag+".dat"
+    inputs["current_f016"] = "f016_"+file_tag+".dat"
+    inputs["current_f017"] = "f017_"+file_tag+".dat"
+    
+    gampn_dat_text = st.get_template("gampn") % inputs
+           
+    fn.write_file("../"+nucleus+"/Inputs/GAM_"+file_tag+".DAT", gampn_dat_text)
  
-        data_points["file_tags"].append(file_tag)
+    data_points["file_tags"].append(file_tag)
 
 print("Number of data points = " + str(len(data_points["file_tags"])))
 print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.1f, %.1f]."
       % (data_points["eps"][0], data_points["eps"][-1], data_points["gamma_degrees"][0], data_points["gamma_degrees"][-1]))
 
 
-del [etp, p, file_tag, gampn_dat_text]
+del [p, file_tag, gampn_dat_text]
 
 
 
@@ -277,7 +297,7 @@ batch_settings["num_per_batch"] = math.ceil(len(data_points["file_tags"]) / batc
 # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worthwhile.
 if batch_settings["num_per_batch"] < 20:
     batch_settings["num_per_batch"] = 20
-    batch_settings["num_batches"] = math.ceil(len(e2plus_to_test)*len(data_points["eps"])/batch_settings["num_per_batch"])  
+    batch_settings["num_batches"] = math.ceil(len(data_points["eps"])/batch_settings["num_per_batch"])  
 
 # each file takes ~ 0.1 seconds to run;
 # allow double time plus an overhead of 2 s
@@ -351,12 +371,8 @@ _output_data = output_data # save a copy of the original before it's overwritten
 '''
 
 for t in range(len(data_points["file_tags"])):
-    
-    if len(e2plus_to_test)>1:
-        inputs["current_e2plus"] = e2plus_to_test[t]
-    else:
-        inputs["current_e2plus"] = e2plus_to_test[0]
-
+        
+    inputs["current_e2plus"] = data_points["e2plus"][t]
     inputs["current_orbitals"] = data_points["asyrmo_orbitals"][t]
     inputs["current_f016"] = "f016_"+data_points["file_tags"][t]+".dat"
     inputs["current_f017"] = "f017_"+data_points["file_tags"][t]+".dat"
@@ -388,19 +404,14 @@ print("***** Finished running asyrmo in time = %.2f seconds *****" % sub_timer.g
 '''
 
 for t in range(len(data_points["file_tags"])):
-    
-    if len(e2plus_to_test)>1:
-        inputs["current_e2plus"] = e2plus_to_test[t]
-    else:
-        inputs["current_e2plus"] = e2plus_to_test[0]
-    
+
+    inputs["current_e2plus"] = data_points["e2plus"][t]
     inputs["current_f017"] = "f017_"+data_points["file_tags"][t]+".dat"
     inputs["current_f018"] = "f018_"+data_points["file_tags"][t]+".dat"
 
     probamo_dat_text = st.get_template("probamo") % inputs
     
     fn.write_file("../"+nucleus+"/Inputs/PROB_"+data_points["file_tags"][t]+".DAT", probamo_dat_text)
-
 
 del [probamo_dat_text, t]
 
@@ -657,10 +668,10 @@ for g in output_data:
        
     elif (inputs["deformation_input"] ==  "gamma" 
           or inputs["deformation_input"] == "eps"
-          or len(e2plus_to_test) > 1):
+          or len(data_points["e2plus"]) > 1):
         
         # set which paramters are varied and which are constant
-        var_sym, var, fix_sym, fix = fn.assign_parameters(inputs, e2plus_to_test, data_points)
+        var_sym, var, fix_sym, fix = fn.assign_parameters(inputs, data_points)
         
         fig, ax = plt.subplots() 
         

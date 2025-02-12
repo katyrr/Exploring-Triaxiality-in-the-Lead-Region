@@ -173,7 +173,7 @@ def write_file(path, text):
 
 - step = get_range_step(range_string):
 
-- eps_points, gamma_points, step = arrange_data_line(split_string)
+- eps_points, gamma_points = arrange_data_line(split_string)
 
 - eps_points, gamma_points = arrange_mesh(split_string)
 
@@ -490,6 +490,37 @@ def write_orbitals(fermi_level, number, parity):
         
     return orbitals_string
 
+def est_e2plus(eps, A):
+    """
+    A function to dynamically calculate the effective E2PLUS value of a single 
+    data point, using Grodzin's relation. 
+    
+    eps is assumed to be interchangable with beta, to the precision of this estimate,
+    as reccomended on p6 of the manual, from which the formula is taken:
+        
+    E2PLUS approx = 1225 / [pow(beta, 2) * pow(A, 7/3)] MeV
+    
+    #!!! the same p6 of the manual mentions a reference to a more sophisticated model...?
+    
+
+    Parameters
+    ----------
+    eps : float
+        The value of eps with which to calculate E2PLUS.
+        
+    A : int
+        The mass number of the nucleus.
+
+    Returns
+    -------
+    e2plus : float
+        The estimated effective value of e2plus, in MeV.
+
+    """
+    denom = pow(eps, 2)*pow(A, 7/3)
+    e2plus = np.round(1225 / denom, 3)  # MeV
+    
+    return e2plus
 
 def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time, verbose): 
     """
@@ -1187,7 +1218,7 @@ def fill_gaps(multi_level_data):
 
 - legend_handles = plot_points_without_experiment(data_points, legend_handles)
 
-- var_sym, var, fix_sym, fix = assign_parameters(inputs, e2plus_to_test, data_points)
+- var_sym, var, fix_sym, fix = assign_parameters(inputs, data_points)
     
 - legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix_val)
 
@@ -1716,7 +1747,7 @@ def plot_points_without_experiment(data_points, legend_handles):
     return legend_handles
 
 
-def assign_parameters(inputs, e2plus_to_test, data_points):
+def assign_parameters(inputs, data_points):
     """
     For a linear plot, determine which is the independent variable, and which 
     are held constant.
@@ -1726,10 +1757,6 @@ def assign_parameters(inputs, e2plus_to_test, data_points):
     inputs : dictionary
         Input settings from a config file. 
         May contain some experimental data.
-        
-    e2plus_to_test : list of floats
-        A list of e2plus values to test (against constant eps and gamma).
-        If eps or gamma are varied, then the length of this list is 1.
         
     data_points : dictionary
         Contains lists of data point values, including "gamma_radians" and "eps".
@@ -1781,10 +1808,10 @@ def assign_parameters(inputs, e2plus_to_test, data_points):
         fix_sym = "ε"
         fix = data_points["eps"]
         
-    elif len(e2plus_to_test) > 1:
+    elif len(data_points["e2plus"]) > 1:
         
         var_sym = "E2PLUS / MeV"
-        var = e2plus_to_test
+        var = data_points["e2plus"]
         fix_sym = "(ε, γ)"
         fix = []
         

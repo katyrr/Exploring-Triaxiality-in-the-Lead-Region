@@ -94,9 +94,9 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 * single 0.1 10 ***** eps gamma
 
 * gamma 0.001 0,60,3 *** eps min_gamma,max_gamma,step
-eps 0.001,0.2,0.01 0 *** min_eps,max_eps,step gamma
+* eps 0.001,0.2,0.01 0 *** min_eps,max_eps,step gamma
 
-* mesh 0.5,20 ********* max_eps,outer_points ** 
+mesh 0.5,20 ********* max_eps,outer_points ** 
         
 
 
@@ -136,7 +136,7 @@ ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
-e2plus 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 nu 5 ******* the number of orbitals to consider
