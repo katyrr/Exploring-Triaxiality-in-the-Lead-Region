@@ -970,10 +970,20 @@ def sort_by_expectation(line_data, file_data, inputs):
     return file_data
             
 
-def missing_data(file_data, ispin): 
+def missing_data(file_data, inputs): 
     """
-    A function to fill missing data 
-
+    A function to fill missing data (i.e. data that was not calculated or not 
+    found when reading PROBAMO.OUT).
+    
+    Ensures at least one state of each spin (from 1/2 up to ISPIN/2) has been 
+    recorded, and fills gaps in energy and magnetic moment records with np.NaN.
+    
+    If experimental data has been provided, ensure that the closest energy match
+    of the correct spin has been recorded, and if no states of that spin were
+    found, fills the gap in energy and magnetic moment records with np.NaN.
+    
+    Assumes that a ground state will have been found (makes no checks).
+    
     Parameters
     ----------
     file_data : dictionary
@@ -984,8 +994,9 @@ def missing_data(file_data, ispin):
         e.g. "x1_energies" will be the energy for the states with (spin 
         = experimental first excited state) in this file.
      
-    ispin : string
-        The value of the asyrmo input ISPIN, from config.
+    inputs : dictionary
+        Input settings from a config file, including the asyrmo input ISPIN.
+        May contain some experimental data.
 
     Returns
     -------
@@ -996,9 +1007,7 @@ def missing_data(file_data, ispin):
 
     """
     
-    #!!! do I need to account for missing data in experimental and ground sorts too?
-    
-    max_val = int(ispin)+1
+    max_val = int(inputs["ispin"])+1
     
     for i in range(max_val): 
         
@@ -1009,8 +1018,24 @@ def missing_data(file_data, ispin):
         
         if not(spin+"_energies" in file_data):
             file_data[(spin+"_energies")] = [np.NaN]
+            # if the energy hasn't been recorded, then neither will the mag 
+            # moment, and vice versa, because the code always outputs both.
             file_data[(spin+"_mag_moments")] = [np.NaN]
 
+    if "x1_spin" in inputs: # assume that if x1_spin is input, then x1_energy will also have been input
+        if not("x1_energies" in file_data): 
+            file_data["x1_energies"] = np.NaN
+            file_data["x1_mag_moments"] = np.NaN
+    
+    if "x2_spin" in inputs:
+        if not("x2_energies" in file_data): 
+            file_data["x2_energies"] = np.NaN
+            file_data["x2_mag_moments"] = np.NaN
+    
+    if "x3_spin" in inputs:
+        if not("x3_energies" in file_data): 
+            file_data["x3_energies"] = np.NaN
+            file_data["x3_mag_moments"] = np.NaN
         
     return file_data
             

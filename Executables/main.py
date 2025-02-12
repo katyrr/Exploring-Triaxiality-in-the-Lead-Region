@@ -459,7 +459,7 @@ for t in range(len(data_points["file_tags"])):
         # additionally save data that corresponds to the experimental ground state and input excited states
         file_data = fn.sort_by_expectation(line_data, file_data, inputs)
     
-    file_data = fn.missing_data(file_data, inputs["ispin"])
+    file_data = fn.missing_data(file_data, inputs)
     data_points["property_data"].append(file_data)
 
     
