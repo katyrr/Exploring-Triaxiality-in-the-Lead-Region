@@ -279,7 +279,9 @@ if batch_settings["num_per_batch"] < 20:
     batch_settings["num_per_batch"] = 20
     batch_settings["num_batches"] = math.ceil(len(e2plus_to_test)*len(data_points["eps"])/batch_settings["num_per_batch"])  
 
-batch_settings["allowed_time"] = 0.5*batch_settings["num_per_batch"]+5         #!!! each file takes ~ 0.1 seconds to run, and allow an overhead of 1s
+# each file takes ~ 0.1 seconds to run;
+# allow double time plus an overhead of 2 s
+batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+2         
 
 
 # configure a batch script writer for gampn, and run the batches
