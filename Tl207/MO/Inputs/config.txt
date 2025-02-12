@@ -1,0 +1,64 @@
+********** config file ******* 07/11/24 ******* Test run on Tl207 ***********
+
+* the code reads each line, except blank lines and comments starting with "*"
+* each line is split into words with delimiter " "
+* the first word is the variable name
+* the second word is the variable value
+* the third word and beyond are ignored
+
+
+
+
+**************** nucleus info ******************
+
+nucleus Tl207s
+Z 81
+A 207
+* therefore N = 126 (magic)
+* and Z is magic 80 + 1 single particle
+
+
+
+
+************** deformation parameters - range to run over **************
+
+* can set each to a single values or a range (first,last+1,step)
+eps -1.1,1.2,0.2
+gamma 0,35,5
+
+
+
+
+******* program settings *********
+
+
+mode MO 
+
+
+
+* gampn *
+
+emin 0
+emax 7
+
+iparp + ****** the parity of proton orbitals 
+norbitp 11 *** the number of proton orbitals 
+forbitp 16 *** the first proton orbital 
+
+iparn + ****** the parity of neutron orbitals 
+norbitn 7 **** the number of neutron orbitals 
+forbitn 23 *** the first neutron orbital
+
+
+
+
+* asyrmo *
+
+imin 1 ***** min spin I 
+ispin 13 *** max spin I
+
+nu 4 ******* the number of orbitals to consider
+
+kmax 13 
+
+
