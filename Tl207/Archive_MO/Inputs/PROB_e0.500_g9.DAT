@@ -1,0 +1,10 @@
+
+
+'f017_e0.500_g9.dat' 'f018_e0.500_g9.dat'              FILE17,FILE18
+1,0                               ipkt,iskip
+1                                 isrtch
+81,207                           Z,AA
+0,2000.0,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
+0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
+
+    
