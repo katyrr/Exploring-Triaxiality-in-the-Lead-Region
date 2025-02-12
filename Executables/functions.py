@@ -348,11 +348,6 @@ def arrange_data_line(split_string):
     gamma_points : np.array of floats
         Contains the gamma value to test at each data point.
         Has length = number of data points.
-        
-    step : float
-        If eps was input as a range, this is eps_step.
-        If gamma was input as a range, this is gamma_step.
-        If both were input as single values, step = None.
 
     """
     
@@ -369,11 +364,7 @@ def arrange_data_line(split_string):
             eps_points.append(eps_to_test[e])
             gamma_points.append(gamma_to_test[g])
     
-    if eps_step != None: step = eps_step #!!! just use the get_step function!
-    elif gamma_step != None: step = gamma_step
-    else: step = None
-        
-    return eps_points, gamma_points, step
+    return eps_points, gamma_points
 
 
 def arrange_mesh(split_string):

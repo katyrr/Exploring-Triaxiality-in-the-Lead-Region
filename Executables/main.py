@@ -101,11 +101,15 @@ for l in range(len(lines)):
         inputs["deformation_input"] = split_string[0]
         
         if split_string[0]=="mesh":
-            
             data_points["eps"], data_points["gamma_degrees"] = fn.arrange_mesh(split_string[1].split(","))
             
         else: 
-            data_points["eps"], data_points["gamma_degrees"], inputs["step"] = fn.arrange_data_line(split_string)
+            data_points["eps"], data_points["gamma_degrees"] = fn.arrange_data_line(split_string)
+            
+        if split_string[0]=="eps":
+            inputs["step"] = fn.get_range_step(split_string[1])
+        elif split_string[0] == "gamma":
+            inputs["step"] = fn.get_range_step(split_string[2])
                    
        
     # save E2PLUS input #!!! implement grodzins option?
