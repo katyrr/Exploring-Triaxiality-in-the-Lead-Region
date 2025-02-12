@@ -500,7 +500,7 @@ def write_orbitals(fermi_level, number, parity):
     return orbitals_string
 
 
-def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time): 
+def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time, verbose): 
     """
     A closure to configure a general script writer, which can then be customised to 
     each program (gampn, asyrmo, probamo) while maintaining a consistent strategy 
@@ -530,6 +530,10 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
         The maximum time in seconds to allow for the batch to run. 
         If the runtime exceeds this then the program is assumed to be hanging, 
         and execution is halted.
+    
+    verbose : bool
+        True to print high detail messages to console
+        False to print only essential information to console
 
     Returns
     -------
@@ -624,7 +628,8 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
                                 " cp "+program.upper()+ ".out"+                 # copy the default .OUT file... 
                                 " ../../Outputs/"+ abr +"_" + file + ".OUT)")   # ...to a new .OUT file with a more descriptive name, in the Outputs folder.
             
-            script_text += ("\n\necho message from terminal: " +
+            if verbose:
+                script_text += ("\n\necho message from terminal: " +
                             "finished running "+ program +" batch "+ str(batch_index))
             
             script_file = open(file_path, 'w')
@@ -922,20 +927,49 @@ def sort_by_expectation(line_data, file_data, inputs):
         file_data["gs_spin_floats"] = line_data["spin_float"]
         file_data["gs_mag_moments"] = line_data["mag_moment"]
     
-    if "x1_spin" in inputs:
+    if "x1_spin" in inputs: # assume that if x1_spin is input, then x1_energy will also have been input
         if line_data["spin_string"] == inputs["x1_spin"]:
-            file_data["x1_energies"] = line_data["energy"]
-            file_data["x1_mag_moments"] = line_data["mag_moment"]
+            
+            if ("x1_energies" in file_data): 
+                # a lower energy state with the first excited spin has already been recorded
+                existing_energy_error = abs(file_data["x1_energies"] - inputs["x1_energy"])
+            else: existing_energy_error = np.inf
+            
+            new_energy_error = abs(line_data["energy"] - inputs["x1_energy"])
+            
+            if new_energy_error < existing_energy_error: # then overwrite
+                
+                file_data["x1_energies"] = line_data["energy"]
+                file_data["x1_mag_moments"] = line_data["mag_moment"]
     
     if "x2_spin" in inputs:
         if line_data["spin_string"] == inputs["x2_spin"]:
-            file_data["x2_energies"] = line_data["energy"]
-            file_data["x2_mag_moments"] = line_data["mag_moment"]
+        
+            if ("x2_energies" in file_data): 
+                # a lower energy state with the second excited spin has already been recorded
+                existing_energy_error = abs(file_data["x2_energies"] - inputs["x2_energy"])
+            else: existing_energy_error = np.inf
+            
+            new_energy_error = abs(line_data["energy"] - inputs["x2_energy"])
+            
+            if new_energy_error < existing_energy_error: # then overwrite
+    
+                file_data["x2_energies"] = line_data["energy"]
+                file_data["x2_mag_moments"] = line_data["mag_moment"]
 
     if "x3_spin" in inputs:
         if line_data["spin_string"] == inputs["x3_spin"]:
-            file_data["x3_energies"] = line_data["energy"]
-            file_data["x3_mag_moments"] = line_data["mag_moment"]
+            
+            if ("x3_energies" in file_data): 
+                # a lower energy state with the third excited spin has already been recorded
+                existing_energy_error = abs(file_data["x3_energies"] - inputs["x3_energy"])
+            else: existing_energy_error = np.inf
+            
+            new_energy_error = abs(line_data["energy"] - inputs["x3_energy"])
+            
+            if new_energy_error < existing_energy_error: # then overwrite
+                file_data["x3_energies"] = line_data["energy"]
+                file_data["x3_mag_moments"] = line_data["mag_moment"]
     
     return file_data
             
@@ -947,7 +981,7 @@ def missing_data(file_data, max_spin):
     Parameters
     ----------
     file_data : dictionary
-        A dictionary that will contain data about ALL the states of a single data point.
+        A dictionary that will contain data about ALL the states calculated at a single data point.
         May be half-full when this function is called.
         Each entry in the dictionary will contain the value of (/a list of values of) 
         a named property.
@@ -983,7 +1017,7 @@ def missing_data(file_data, max_spin):
     return file_data
             
 
-def restructure_data(old_data, max_spin):
+def restructure_data(old_data, max_spin, verbose):
     """
     Take input data structured as a list of dictionaries. 
     
@@ -1002,6 +1036,10 @@ def restructure_data(old_data, max_spin):
         
     max_spin : TYPE
         DESCRIPTION.
+        
+    verbose : bool
+        True to print high detail messages to console.
+        False to print only essential information to console.
 
     Returns
     -------
@@ -1037,7 +1075,8 @@ def restructure_data(old_data, max_spin):
             new_data["x1_energies"].append(old_data[d]["x1_energies"])
             new_data["x1_mag_moments"].append(old_data[d]["x1_mag_moments"])
         except(KeyError):
-            print("Could not find any states with first excited spin in file " + str(d))
+            if verbose: 
+                print("Could not find any states with first excited spin in file " + str(d))
             new_data["x1_energies"].append(np.NaN)
             new_data["x1_mag_moments"].append(np.NaN)
         
@@ -1045,7 +1084,8 @@ def restructure_data(old_data, max_spin):
             new_data["x2_energies"].append(old_data[d]["x2_energies"])
             new_data["x2_mag_moments"].append(old_data[d]["x2_mag_moments"])
         except(KeyError):
-            print("Could not find any states with second excited spin in file " + str(d))
+            if verbose: 
+                print("Could not find any states with second excited spin in file " + str(d))
             new_data["x2_energies"].append(np.NaN)
             new_data["x2_mag_moments"].append(np.NaN)
         
@@ -1053,7 +1093,8 @@ def restructure_data(old_data, max_spin):
             new_data["x3_mag_moments"].append(old_data[d]["x3_mag_moments"])
             new_data["x3_energies"].append(old_data[d]["x3_energies"])
         except(KeyError):
-            print("Could not find any states with third excited spin in file " + str(d))
+            if verbose: 
+                print("Could not find any states with third excited spin in file " + str(d))
             new_data["x3_energies"].append(np.NaN)
             new_data["x3_mag_moments"].append(np.NaN)
     
@@ -1838,6 +1879,80 @@ def mark_spin(inputs, data_points, spin_data, legend_handles, ax):
     return legend_handles
 
 
+def check_agreement(verbose, data_points, num_comparisons):
+    """
+    A function to check how well data points agreed with experimental values,
+    and which data point(s) had the highest agreement.
+    
+    Parameters
+    ----------
+    
 
+    Returns
+    -------
+    None.
 
-
+    """
+    
+    sorted_indices = np.argsort(data_points["agreed"])
+    sorted_eps = [data_points["eps"][i] for i in sorted_indices]
+    sorted_gamma = [data_points["gamma_degrees"][i] for i in sorted_indices]
+    
+    max_agreement = data_points["agreed"][sorted_indices[-1]]
+    
+    unique_values, counts = np.unique(data_points["agreed"], return_counts=True)
+    
+    print("\n\n***** Agreement of each data point with experimental data: *****")
+    if verbose:
+        print(data_points["agreed"])
+        
+        print(dict(zip(unique_values, counts)))
+        
+        print("Number of data points with each level of agreement:")
+        for i in range(len(unique_values)): # 0, 1
+        
+            print("\n\tAgreement = " + str(unique_values[i]) + ":")
+            
+            # when i = 0
+            # we want the first 2 values of deformation, (2 = counts[0] = counts[i])
+            # because they all have agreement = 0, (0 = unique_values[0] = unique_values[i])
+            # so we need slice range [0:2], (0 = i, 2 = counts[i]) 
+            
+            # when i = 1
+            # we want the next 8 values of deformation, (8 = counts[1] = counts[i])
+            # because they all have agreement = 3, (3 = unique_values[1] = unique_values[i])
+            # and account for existing values (2), (2 = counts[0] = counts[i-1] = sum(counts[0:1]) = sum(counts[0:i]))
+            # so we need slice range [2, 10], (2 = sum(counts[0:i]), 10 = sum(counts[0:i+1])
+        
+            lower = sum(counts[0:i])
+            upper = sum(counts[0:i+1])
+            
+            these_eps = sorted_eps[lower:upper]
+            these_gamma = sorted_gamma[lower:upper]
+            
+            for j in range(len(these_eps)):
+                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
+        
+       
+    
+    else:
+        
+        print("Highest agreement = " + str(max_agreement) + " / " + str(num_comparisons))
+                
+        print("\nPoints with agreement = " + str(max_agreement) + ":")
+        
+        i = len(unique_values)-1
+        
+        print("\n\tAgreement = " + str(unique_values[i]) + ":")
+    
+        lower = sum(counts[0:i])
+        upper = sum(counts[0:i+1])
+        
+        these_eps = sorted_eps[lower:upper]
+        these_gamma = sorted_gamma[lower:upper]
+        
+        for j in range(len(these_eps)):
+            print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
+    
+        
+       

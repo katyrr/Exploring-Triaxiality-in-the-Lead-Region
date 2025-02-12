@@ -243,6 +243,7 @@ for p in range(len(data_points["eps"])):
  
         data_points["file_tags"].append(file_tag)
 
+print("Number of data points = " + str(len(data_points["file_tags"])))
 print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.1f, %.1f]."
       % (data_points["eps"][0], data_points["eps"][-1], data_points["gamma_degrees"][0], data_points["gamma_degrees"][-1]))
 
@@ -274,12 +275,12 @@ if batch_settings["num_per_batch"] < 20:
     batch_settings["num_per_batch"] = 20
     batch_settings["num_batches"] = math.ceil(len(e2plus_to_test)*len(data_points["eps"])/batch_settings["num_per_batch"])  
 
-batch_settings["allowed_time"] = 0.1*batch_settings["num_per_batch"]+1         # each file takes ~ 0.1 seconds to run, and allow an overhead of 1s
+batch_settings["allowed_time"] = 0.5*batch_settings["num_per_batch"]+5         #!!! each file takes ~ 0.1 seconds to run, and allow an overhead of 1s
 
 
 # configure a batch script writer for gampn, and run the batches
 run_program = fn.configure_script_writer(data_points["file_tags"], nucleus, batch_settings["num_batches"], 
-                                         batch_settings["num_per_batch"], batch_settings["allowed_time"])
+                                         batch_settings["num_per_batch"], batch_settings["allowed_time"], verbose)
 
 sub_timer.start()
 
@@ -462,7 +463,7 @@ for t in range(len(data_points["file_tags"])):
     data_points["property_data"].append(file_data)
 
     
-output_data = _output_data | fn.restructure_data(data_points["property_data"], int(inputs["ispin"])+1)
+output_data = _output_data | fn.restructure_data(data_points["property_data"], int(inputs["ispin"])+1, verbose)
 
 # ensure all data sets have the same size and shape
 for d in output_data:
@@ -598,16 +599,19 @@ del [p]
 '''
 
 # set which graphs to plot:
-output_data["gs_mag_moments"].plot = True
-output_data["gs_spin_floats"].plot = True
-output_data["spin_1/2_energies"].plot = True
+output_data["gs_mag_moments"].plot = False
+output_data["gs_spin_floats"].plot = False
+output_data["spin_1/2_energies"].plot = False
 output_data["spin_3/2_energies"].plot = True
 output_data["spin_5/2_energies"].plot = True
 output_data["x1_energies"].plot = True
+output_data["x2_energies"].plot = True
 
 data_points["agreed"] = [0]*len(data_points["eps"])
+num_comparisons = 0 
 
 sub_timer.start()
+
 
 # start plotting graphs:
 for g in output_data:
@@ -632,11 +636,10 @@ for g in output_data:
             
         # plot the data point markers, with comparison to experiment if possible 
         if np.isfinite(prop.experimental_data).all(): 
-            
+            num_comparisons += 1
             legend_handles = fn.plot_points_with_experiment(data_points, prop, legend_handles, cbar)
             
         else: 
-            
             legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
                
         
@@ -706,9 +709,11 @@ for g in output_data:
        
 del [g]
 
+#%%
+
 if len(data_points["file_tags"]) > 1:
-    print("\n\nAgreement of each data point with experimental data: ")
-    print(data_points["agreed"])
+    
+    fn.check_agreement(verbose, data_points, num_comparisons)
 
 # note how long it took
 sub_timer.stop()

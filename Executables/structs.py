@@ -65,21 +65,21 @@ class Timer():
         self.is_running = False
         
     def start(self):
-        if self.is_running:
-            raise RuntimeError("The timer is already running.")
+        #if self.is_running:
+        #    raise RuntimeError("The timer is already running.")
         self.start_time = time.time()
         self.is_running = True
         
         
     def stop(self):
-        if not(self.is_running):
-            raise RuntimeError("The timer has not been started yet.")
+        #if not(self.is_running):
+        #    raise RuntimeError("The timer has not been started yet.")
         self.end_time = time.time()
         self.is_running = False
         
     def get_lapsed_time(self):
-        if self.is_running:
-            raise RuntimeError("The timer is still running.")
+        #if self.is_running:
+        #    raise RuntimeError("The timer is still running.")
         total_time= self.end_time - self.start_time
         return total_time
     
