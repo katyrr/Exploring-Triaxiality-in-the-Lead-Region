@@ -887,6 +887,8 @@ def sort_by_spin(line_data, file_data):
 def sort_by_expectation(line_data, file_data, inputs):
     """
     A function that sorts recorded data into groups by association with input experimental data.
+    If a calculated value for this experimental data has been recorded already,
+    check whether the new value is closer, and only overwwrite if it is closer.
 
     Parameters
     ----------
@@ -915,12 +917,6 @@ def sort_by_expectation(line_data, file_data, inputs):
         The same dictionary as was input, with data for one additional state now appended.
 
     """
-    #!!! do I need to be appending if the entry already exists, similar to sort_by_spin?
-    # surely, as it is, if more than one state of this spin is calculated, it will only
-    # remember the highest energy one! It might not even be consistent!
-    # Either append and plot multiple (although that really serves the same purpose 
-    # as grouping by spin), or check which is closest to the experimental value and
-    # only overwrite if the new value is closer).
     
     if line_data["energy"] == 0.0: # record the ground state separately 
         file_data["gs_spin_strings"] = line_data["spin_string"]
@@ -974,7 +970,7 @@ def sort_by_expectation(line_data, file_data, inputs):
     return file_data
             
 
-def missing_data(file_data, max_spin): 
+def missing_data(file_data, ispin): 
     """
     A function to fill missing data 
 
@@ -988,8 +984,8 @@ def missing_data(file_data, max_spin):
         e.g. "x1_energies" will be the energy for the states with (spin 
         = experimental first excited state) in this file.
      
-    max_spin : int
-        DESCRIPTION.
+    ispin : string
+        The value of the asyrmo input ISPIN, from config.
 
     Returns
     -------
@@ -1002,7 +998,9 @@ def missing_data(file_data, max_spin):
     
     #!!! do I need to account for missing data in experimental and ground sorts too?
     
-    for i in range(max_spin): #!!! max_spin isn't really a very accurate name
+    max_val = int(ispin)+1
+    
+    for i in range(max_val): 
         
         if i%2 == 0:
             continue # only half-int spins are calculated
@@ -1017,7 +1015,7 @@ def missing_data(file_data, max_spin):
     return file_data
             
 
-def restructure_data(old_data, max_spin, verbose):
+def restructure_data(old_data, ispin, verbose):
     """
     Take input data structured as a list of dictionaries. 
     
@@ -1034,8 +1032,8 @@ def restructure_data(old_data, max_spin, verbose):
         Therefore the number of lists in each dictionary is (1 + ((ISPIN+1)/2)*2) 
         for gs magnetic moment and two properties.
         
-    max_spin : TYPE
-        DESCRIPTION.
+    ispin : string
+        The value of the asyrmo input ISPIN, from config.
         
     verbose : bool
         True to print high detail messages to console.
@@ -1050,8 +1048,6 @@ def restructure_data(old_data, max_spin, verbose):
         Each list contains sub-lists of states, organised by deformation.
         Therefore all the lists have the same length (equal to the number of data points).
         
-        
-
     """
 
     new_data = {}
@@ -1098,7 +1094,10 @@ def restructure_data(old_data, max_spin, verbose):
             new_data["x3_energies"].append(np.NaN)
             new_data["x3_mag_moments"].append(np.NaN)
     
-    for i in range(max_spin): 
+    
+    max_val = int(ispin)+1
+
+    for i in range(max_val): 
         
         if i%2 == 0:
             continue # only half-int spins are calculated

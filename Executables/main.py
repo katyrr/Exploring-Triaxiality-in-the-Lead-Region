@@ -459,11 +459,11 @@ for t in range(len(data_points["file_tags"])):
         # additionally save data that corresponds to the experimental ground state and input excited states
         file_data = fn.sort_by_expectation(line_data, file_data, inputs)
     
-    file_data = fn.missing_data(file_data, int(inputs["ispin"])+1)
+    file_data = fn.missing_data(file_data, inputs["ispin"])
     data_points["property_data"].append(file_data)
 
     
-output_data = _output_data | fn.restructure_data(data_points["property_data"], int(inputs["ispin"])+1, verbose)
+output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
 # ensure all data sets have the same size and shape
 for d in output_data:
