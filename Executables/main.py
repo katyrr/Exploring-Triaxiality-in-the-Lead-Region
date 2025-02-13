@@ -557,7 +557,7 @@ for p in _output_data_dict:
         
             output_data[p].contour_levels = fn.calc_contour_levels(output_data[p].data)
             output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_spin_float", 0.2)
-            output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data)
+            output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data, "half")
             output_data[p].cbar_ticks = fn.calc_cbar_ticks(output_data[p].contour_levels)
             
         elif output_data[p].prop == "spin_strings": continue
@@ -567,7 +567,7 @@ for p in _output_data_dict:
         if output_data[p].prop == "indices": 
             
             output_data[p].contour_levels = fn.calc_contour_levels(output_data[p].data)
-            output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data)
+            output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data, "int")
             output_data[p].cbar_ticks = fn.calc_cbar_ticks(output_data[p].contour_levels)
         
         elif output_data[p].prop == "energies":
@@ -727,10 +727,45 @@ for g in output_data:
 del [g]
 
 #%%
+''' 11. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
 
-if len(data_points["file_tags"]) > 1:
+- Print information to the console about the best agreement and its location.
+- Plot a graph to show data point agreement across all data points.
+
+
+'''
+
+
     
-    fn.check_agreement(verbose, data_points, num_comparisons)
+fn.check_agreement(verbose, data_points, num_comparisons)
+
+agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
+agreement.contour_levels = fn.calc_contour_levels(agreement.data)
+agreement.cbar_ticks = fn.calc_cbar_ticks(agreement.contour_levels)
+agreement.cbar_tick_labels = fn.calc_cbar_tick_labels(agreement.data, "int")
+agreement.experimental_data = np.NaN
+agreement.error_tolerance = np.NaN
+    
+
+if inputs["deformation_input"] == "mesh":  
+    
+    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+    cax, cbar = fn.draw_contour_plot(ax, agreement, data_points)
+    
+    inputs["current_graph"] = agreement.title
+    print("plotting graph: %(current_graph)s" % inputs) 
+    
+    legend_handles = []
+    
+    if inputs["mark_spin"]:
+        legend_handles = fn.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
+    
+    legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
+           
+    
+    fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs)
+    
+    plt.show()
 
 # note how long it took
 sub_timer.stop()

@@ -1200,7 +1200,7 @@ def fill_gaps(multi_level_data):
 
 - contour_levels = calc_contour_levels(data)
 
-- cbar_tick_labels = calc_cbar_tick_labels(data)
+- cbar_tick_labels = calc_cbar_tick_labels(data, style)
 
 - cbar_ticks = calc_cbar_ticks(contours)
 
@@ -1249,7 +1249,7 @@ def calc_contour_levels(data):
     return contour_levels
 
 
-def calc_cbar_tick_labels(data):
+def calc_cbar_tick_labels(data, style):
     """
     A function to calculate a list of custom colour bar tick labels for a dataset. 
 
@@ -1257,6 +1257,10 @@ def calc_cbar_tick_labels(data):
     ----------
     data : np.array of floats
         The data set to which these colour bar tick labels will apply.
+    
+    style : string
+        "int" to format each label as an int
+        "half" to format each label as a fraction of 2
 
     Returns
     -------
@@ -1264,14 +1268,22 @@ def calc_cbar_tick_labels(data):
         The colour bar tick labels for this data.
 
     """
+    
     cbar_ticks = np.arange(min(data), max(data)+1.0, 1.0)
-    cbar_tick_labels = [spin_float_to_string(n) for n in cbar_ticks]
+    
+    if style=="half":
+        cbar_tick_labels = [spin_float_to_string(n) for n in cbar_ticks]
+        
+    elif style=="int":
+        cbar_tick_labels = [int(n) for n in cbar_ticks]
+        
     return cbar_tick_labels
 
 
 def calc_cbar_ticks(contours):
     """
     A function to calculate a list of custom colour bar ticks for a dataset. 
+    #!!! there is some kind of conflict between this and the func above...?
 
     Parameters
     ----------
@@ -1928,7 +1940,7 @@ def check_agreement(verbose, data_points, num_comparisons):
     
     Parameters
     ----------
-    
+    #!!! missing docs
 
     Returns
     -------
