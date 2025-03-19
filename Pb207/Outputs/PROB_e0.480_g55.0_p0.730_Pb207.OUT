@@ -1,0 +1,17 @@
+ PARITY=-   EPS= 0.480   GAMMA= 55.0   EPS4=0.000   EPS6=0.000   LEVELS:  31  32  33  34  35
+0   Z= 82   A=207   IQ=1   GSFAC= 0.75   GR=  0.40   MIN SPIN=  1/2   MAX SPIN= 13/2   KMAX= 13/2
+
+ MICR QUADR MOMENTS:  Q0=1265.425  Q2=******** FM**2
+
+
+   B(E2) AND Q(E2) IN E2B2 AND EB,   B(M1) AND M(M1) INNM2 AND NM,   T(E2) AND T(M1) IN 1/PS
+
+       E1     II      EF     IF     B(E2)             B(M1)              GD        D       EREL    T(E2)      T(M1)
+                                             WU               MWU
+
+    2619.3   5/2 - 2619.3   5/2   -7.0992           -0.2160
+       0.0  11/2 -    0.0  11/2  -12.0135           -0.7603
+    1581.3  13/2 -    0.0  11/2   11.3943 1566.42    0.3798  212.13    0.981    7.211   1581.3  0.137E+04  0.264E+02
+    1581.3  13/2 - 1581.3  13/2   -6.9606            0.0277
+
+ TIME=  0.0 SEC

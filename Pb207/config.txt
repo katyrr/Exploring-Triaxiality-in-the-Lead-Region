@@ -44,16 +44,18 @@ x3_spin 7/2
 
 ********* energy levels grouped by spin and parity:
 
-jp_1/2- 0.0 ******** e.g.: *** jp_1/2- 0.0,100,100 **** a list of energies of states that have this jp
-jp_3/2- 897.698
-jp_5/2- 569.6982
-jp_7/2- 2339.9921
+*jp_1/2- 0.0,3181 ******** e.g.: *** jp_1/2- 0.0,100,100 **** a list of energies of states that have this jp
+jp_3/2- 897.698,3929,4104
+*jp_5/2- 569.6982,3203
+*jp_7/2- 2339.9921,3218,4558
+jp_9/2- 3415
 
 
 
 ************** graph plotting options ****************************************
 
-mark_spin 1 ******* (1 or 0) highlight region of correct ground state spin in green
+mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin
+mark_exp 0 ******** (1 or 0) draw experimental value lines
 
 spin_or_excitation excitation ****** (spin or excitation) whether to collect data from probamo based on expected excited states or simply grouped by spin
 
@@ -91,12 +93,12 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 *
 *********************************************************************************
 
-* single 0.1 10 ***** eps gamma
+* single 0.230 0 ***** eps gamma
 
-* gamma 0.001 0,60,3 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.2,0.01 0 *** min_eps,max_eps,step gamma
+* gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
+eps 0.001,0.5,0.001 30 *** 0.041,0.071,0.001 10 *** 0.01,0.3,0.01 0 ***** min_eps,max_eps,step gamma
 
-mesh 0.5,20 ********* max_eps,outer_points ** 
+* mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
@@ -119,11 +121,13 @@ irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body wit
 ************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-emin 6.0
+emin 6.5
 emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
 
+nuu 4 ****** number of coupled oscillator shells 
+**************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
 
 
 
@@ -136,16 +140,16 @@ ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
-e2plus 0 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.73 **** 0.2 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 nu 5 ******* the number of orbitals to consider
 
-chsi 0.0 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
-eta 1.0 **** coriolis attenuation (1 for no attenuation, 5 for standard)
+chsi 0.7 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
+eta 5.0 **** coriolis attenuation (1 for no attenuation, 5 for standard)
 
-nantj 3,3,3,3,3,3,3 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
-noutj 2,2,2,2,2,2,2 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+nantj 5,2,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+noutj 5,2,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
 * ipout ********** number of core states to print
@@ -160,16 +164,13 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 3000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
-
+cutoff 3100.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+ispec 1 *** calculate spectroscopic factors 
+iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
+gsfac 0.75 *** scaling factor applied to free internal spin g-factor (g_s)
+gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 ** parameters that are currently still fixed: 
-
-* ispec 0 *** calculate spectroscopic factors ?
-* iq 1 *** for odd-Z (1), for odd-Z or odd-N (0)
-* gsfac 0.75 *** scaling factor applied to free internal spin g-factor (g_s)
-* gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
-
 * bs2s 0.000 **** for calculating the hyperfine anomaly (0 if no calc)
 * bs4s 0.000
 * bs2p 0.000
@@ -187,8 +188,6 @@ cutoff 3000.0 *** energy cutoff in keV for printing trans prob and elec/mag mome
 * iskip 0 **** number of data sets to skip before collecting ipkt
 ************** these are just for calculating multiple deformations in a single run
 
-* nuu 0 ****** number of coupled oscillator shells 
-**************(meaningless when N-shells are pure - when eps4/6=0 and omrot=0 and istrch = 1)
 
 * noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0) (1 for PR calculations)
 * omrot 0 **** rotation frequency (0 for PR calculations)

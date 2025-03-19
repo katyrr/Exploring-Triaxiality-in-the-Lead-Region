@@ -128,7 +128,7 @@ def get_template(program):
 0.054,0.69,0.062,0.26        'STND'         MU (PROTON)
 0
 0.054,0.69,0.062,0.26
-0,1,1,0                       NUU,IPKT,NOYES,ITRANS
+%(nuu)s,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
 %(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
 %(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
@@ -159,7 +159,7 @@ def get_template(program):
 1,0                               ipkt,iskip
 %(istrch)s                                 isrtch
 %(Z)s,%(A)s                           Z,AA
-0,%(cutoff)s,1,0.75,-1                ISPEC,CUTOFF,IQ,GSFAC,GR
+%(ispec)s,%(cutoff)s,%(iq)s,%(gsfac)s,%(gr)s                ISPEC,CUTOFF,IQ,GSFAC,GR
 0.0000, 0.000,0.000, 0.000        BS2,BS4 (FOR S-STATE), BS2,BS4(P-STATE)
 '''
         
@@ -192,7 +192,7 @@ def get_variable_list(var_type):
     """
     
     if var_type == "bool":
-        var_list = ["mark_spin"]
+        var_list = ["mark_spin", "mark_exp"]
 
     elif var_type == "int":
         var_list = ["A", "Z", "num_to_record", "num_orbs", "nu"]
@@ -322,13 +322,14 @@ class PropertyData:
             prop = name[6:14]
             sort = "Fermi"
             
-        elif name == "Agreement of Data Points With Experimental Data":
+        elif (name == "Agreement of Data Points With Experimental Data"
+              or name == "All Energy Levels"):
             num = ""
             prop = ""
             sort = ""
         
         else: 
-            Warning("property not regonised: " + name)
+            raise ValueError("property not regonised: " + name)
         
         self.num = num
         self.prop = prop
@@ -381,6 +382,12 @@ class PropertyData:
         elif name == "Agreement of Data Points With Experimental Data":
             self.title = name
             self.axis_label = "Number of Matches"
+            
+        elif name == "All Energy Levels":
+            self.title = name
+            self.axis_label = "Energy / keV"
+            self.sort = "Spin "
+            self.num = "all"
             
         else:
             raise ValueError("property not recognised: " + name)

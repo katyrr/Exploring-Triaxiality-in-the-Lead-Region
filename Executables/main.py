@@ -51,8 +51,8 @@ plt.rcParams['figure.dpi'] = 150
 timer = st.Timer()
 sub_timer = st.Timer()
 
-nucleus = "Pb207"
-verbose = False # whether to print a lot of info, or just the essentials
+nucleus = "Fixing_Discontinuities_Pb207" #"Au179" #"Pb207" #!!!
+verbose = True # whether to print a lot of info, or just the essentials
 
 
 #%%
@@ -118,7 +118,7 @@ for l in range(len(lines)):
     elif split_string[0]=="e2plus":
         
         if "eps" not in data_points:
-            raise RuntimeError("must input deformation above e2plus")
+            raise RuntimeError("missing deformation input (or perhaps deformation was input below e2plus?)")
             
         if split_string[1]=="0":
             # if e2plus has been input with value = "0", then it will later be 
@@ -133,6 +133,10 @@ for l in range(len(lines)):
                 
                 raise RuntimeError("Testing a range of e2plus is only " +
                                "supported for a single deformation input.")
+            elif (len(data_points["e2plus"])==1
+                  and len(data_points["eps"])>1):
+                data_points["e2plus"] = [data_points["e2plus"][0]]*len(data_points["eps"])
+                  
             else: 
                 data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
                 data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
@@ -148,7 +152,7 @@ for l in range(len(lines)):
         inputs[split_string[0]] = float(split_string[1])
                                       
     elif split_string[0] in st.get_variable_list("bool"):                                    
-        inputs[split_string[0]] = bool(split_string[1])
+        inputs[split_string[0]] = bool(int(split_string[1]))
         
     else: # string
         inputs[split_string[0]] = split_string[1]
@@ -354,8 +358,19 @@ for file in data_points["file_tags"] :
     output_data["fermi_energies_mev"].append(output_data["fermi_energies_hw"][-1]*inputs["efac"])
     output_data["fermi_indices"].append(fn.get_fermi_index(fermi_level_line, hash_index))
     
+    '''
+    if output_data["fermi_parities"][-1] != inputs["par"]:
+        # then it doesn't make sense to choose the strong coupling basis oribtals from around the fermi level
+        # so we need to locate the nearest single particle level with the same parity as we are investigating
+    
     # generate the orbitals input for asyrmo
+    
+    data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], output_data["fermi_parities"][-1]))
+    
     data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
+    '''
+    data_points["asyrmo_orbitals"].append(fn.write_orbitals(34, inputs["nu"], inputs["par"]))
+
     
 del [fermi_level_line, file, hash_index, lines]
 
@@ -587,8 +602,10 @@ for p in _output_data_dict:
     
     else: raise ValueError("property not recognised: " + p)
     
-    
 del [p]
+
+output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]))
+
 
 
 #%%
@@ -612,22 +629,42 @@ del [p]
     - Draw a green box around regions that have the correct ground state spin, if requested.
     - Plot a red line to indicate the experimental value, if available.
     
-
 '''
 
-# set which graphs to plot:
+#!!! set which graphs to plot:
+    
+
+output_data["fermi_indices"].plot = False
+
 output_data["gs_mag_moments"].plot = False
 output_data["gs_spin_floats"].plot = False
-output_data["spin_1/2_energies"].plot = False
-output_data["spin_3/2_energies"].plot = True
-output_data["spin_5/2_energies"].plot = True
-output_data["x1_energies"].plot = True
-output_data["x2_energies"].plot = True
+
+output_data["spin_1/2_energies"].plot = False 
+output_data["spin_3/2_energies"].plot = False
+output_data["spin_5/2_energies"].plot = False
+output_data["spin_7/2_energies"].plot = False
+output_data["spin_9/2_energies"].plot = False
+output_data["spin_11/2_energies"].plot = False
+output_data["spin_13/2_energies"].plot = False
+
+output_data["spin_3/2_mag_moments"].plot = False
+
+output_data["x1_energies"].plot = False
+output_data["x2_energies"].plot = False
+output_data["x3_energies"].plot = False
+
+output_data["x1_mag_moments"].plot = False
+
+output_data["all_energies"].plot = True
+
 
 data_points["agreed"] = [0]*len(data_points["eps"])
 num_comparisons = 0 
 
 sub_timer.start()
+
+
+
 
 
 # start plotting graphs:
@@ -652,7 +689,7 @@ for g in output_data:
             legend_handles = fn.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
             
         # plot the data point markers, with comparison to experiment if possible 
-        if np.isfinite(prop.experimental_data).all(): 
+        if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]: 
             num_comparisons += 1
             legend_handles = fn.plot_points_with_experiment(data_points, prop, legend_handles, cbar)
             
@@ -682,16 +719,19 @@ for g in output_data:
         else: marker_size = 1 # use smaller markers if the data set is large
         
         if prop.sort == "Spin ":
-        
-            legend_handles, legend_title = fn.plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix[0])
-        
+            
+            if prop.num == "all":
+                legend_handles, legend_title = fn.plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix[0])
+            else:
+                legend_handles, legend_title = fn.plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix[0])
+            
         else:
             data, = plt.plot(var, prop.data, 'k-x', markersize=marker_size, label="%s = %s" % (fix_sym, fix[0]))
             legend_handles.append(data)
             legend_title = ""
           
         # if experimental data is available, plot it in red for easy comparison
-        if np.isfinite(prop.experimental_data).all():  
+        if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]:  
             
             if prop.sort == "Spin ":
                 for e in range(len(prop.experimental_data)):

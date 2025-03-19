@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt                 # for plotting graphs
 from matplotlib.ticker import FuncFormatter     # for formatting axis ticks
 import matplotlib.tri as tri                    # for manual triangulation before drawing a contour plot
 
+import structs as st                            # my own module file of structs (classes, and read-only dicts)
 
 
 #%%
@@ -805,6 +806,8 @@ def get_fermi_index(fermi_level_line, hash_index):
 
 - multi_level_data = fill_gaps(multi_level_data)
 
+- all_energy_levels = collate_energy_data(output_data):
+
 '''
 
 def read_data(line):
@@ -1171,7 +1174,7 @@ def fill_gaps(multi_level_data):
 
     Parameters
     ----------
-    multi_level_data : a matrix (2D np.array) of floats
+    multi_level_data : a matrix (2D np.array or list) of floats
         Number of columns = number of data points (i.e. number of deformations being tested).
         Number of rows = number of levels of a certain spin calculated in each file (may be inconsistent).
 
@@ -1193,6 +1196,56 @@ def fill_gaps(multi_level_data):
     return multi_level_data
     
 
+
+
+def collate_energy_data(output_data, num_points):
+    """
+    A function that takes all of the separate spin_n/2_energies data sets
+    and combines them into a single collection.
+    
+
+    Parameters
+    ----------
+    output_data : list of PropertyData objects
+        Contains all the data read from the output files, packaged with graph
+        plotting information.
+        
+    num_points : int
+        The number of data points in the set (i.e. the number of files or 
+        the number of deformations).
+
+    Returns
+    -------
+    all_energy_levels : PropertyData object
+        A collection of energy level data for all spins, packaged with
+        graph plotting information.
+
+    """
+    all_level_data = np.zeros((num_points,1))
+    spins = []
+    
+    for d in output_data:
+        if output_data[d].prop == "energies" and output_data[d].sort == "Spin ":
+            this_level_data = output_data[d].data
+            all_level_data = np.hstack((all_level_data, this_level_data))
+            spins += [output_data[d].num]*np.size(this_level_data,1)
+            
+    all_level_data = np.delete(all_level_data, [0], axis=1)
+    
+    indices = np.argsort(all_level_data[0,:])
+    all_level_data = all_level_data[:, indices]
+    spins = np.array(spins)
+    spins = spins[indices]
+    
+    all_energy_levels = st.PropertyData(all_level_data, "All Energy Levels")
+    all_energy_levels.contour_levels = 10
+    all_energy_levels.cbar_ticks = 0
+    all_energy_levels.cbar_tick_labels = 0
+    all_energy_levels.experimental_data = np.NaN
+    all_energy_levels.error_tolerance = np.NaN
+    all_energy_levels.spins = [spin_string_to_float(n) for n in spins]
+            
+    return all_energy_levels
 
 #%%
 
@@ -1436,7 +1489,7 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         
         ax.set_title(title, va='bottom', y=1.1) 
         
-        legend = ax.legend(handles = legend_handles)
+        legend = ax.legend(handles = legend_handles, bbox_to_anchor=(1.2, 0.8))
         
         if legend_title != "x":
             legend.set_title(legend_title)
@@ -1874,12 +1927,74 @@ def plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix_val):
 
     """
     data_by_line = np.transpose(prop.data)
-    line_colours = ['k-x', 'b-x', 'y-x']
-    line_labels = ["lowest energy", "second lowest energy", "third lowest energy"]
+    line_colours = ['k-x', 'b-x', 'y-x', 'c-x', 'm-x']
+    line_labels = ["lowest energy", "second lowest energy", "third lowest energy", "fourth lowest energy", "fifth lowest energy"]
     
     for s in range(min(len(line_labels), np.size(data_by_line,0))):
         
         data, = plt.plot(var, data_by_line[s], line_colours[s], label=line_labels[s], markersize=marker_size)
+        legend_handles.append(data)
+        
+    legend_title = "%s = %s" % (fix_sym, fix_val)
+    
+    return legend_handles, legend_title
+
+def plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix_val):
+    """
+    A function to plot energy levels of all spins states calculated.
+    
+    Parameters
+    ----------
+    prop : PropertyData object
+        The energy levels, collected into a class with 
+        information about its graph plotting features.
+        
+    var : np.array of floats
+        The independent variable.
+        
+    legend_handles : list of object handles.
+        A list of all the objects so-far plotted on the graph which should be 
+        included in the legend.
+        
+    marker_size : int
+        The size of the data point markers.
+        
+    fix_sym : string
+        A symbol representing the fixed deformation parameter.
+        
+    fix_val : np.array
+        The value of the fixed deformation parameter.
+        Has length 1.
+
+    Returns
+    -------
+    legend_handles : list of object handles.
+        A list of all the objects so-far plotted on the graph which should be 
+        included in the legend, now including the lines plotted in this function.
+    
+    legend_title : string
+        A title for the legend.
+
+    """
+    data_by_line = np.transpose(prop.data)
+    num_lines = np.size(prop.data, axis=1)
+    
+    
+    line_colours = ['k', 'b', 'y', 'c', 'm', 'g', 'r']
+    line_labels = ["1/2", "3/2", "5/2", "7/2", "9/2", "11/2", "13/2"]
+    
+    line_style = 'x'
+    
+    idx = [int(((2*a)-1)/2) for a in prop.spins]
+    used = []
+    
+    for s in range(num_lines):
+        if idx[s] in used:
+            l = "_hidden"
+        else: 
+            l = line_labels[idx[s]]
+            used.append(idx[s])
+        data, = plt.plot(var, data_by_line[s], line_colours[idx[s]]+line_style, label=l, markersize=marker_size) # line_colours[s] // 'kx'
         legend_handles.append(data)
         
     legend_title = "%s = %s" % (fix_sym, fix_val)
