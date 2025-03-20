@@ -51,8 +51,8 @@ plt.rcParams['figure.dpi'] = 150
 timer = st.Timer()
 sub_timer = st.Timer()
 
-nucleus = "Fixing_Discontinuities_Pb207" #"Au179" #"Pb207" #!!!
-verbose = True # whether to print a lot of info, or just the essentials
+nucleus = "Pb207" #"Fixing_Discontinuities_Pb207" # #"Au179" # #!!!
+verbose = False # whether to print a lot of info, or just the essentials
 
 
 #%%
@@ -233,6 +233,7 @@ else:
 # Generate a string that contains the number of orbitals and their indices, 
 # in the correct format for input to gampn.
 inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
+# inputs["gampn_orbitals"] = fn.write_orbitals(34, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
 
 
 #%%   
@@ -369,7 +370,7 @@ for file in data_points["file_tags"] :
     
     data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
     '''
-    data_points["asyrmo_orbitals"].append(fn.write_orbitals(34, inputs["nu"], inputs["par"]))
+    data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
 
     
 del [fermi_level_line, file, hash_index, lines]

@@ -96,7 +96,7 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 * single 0.230 0 ***** eps gamma
 
 * gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
-eps 0.001,0.5,0.001 30 *** 0.041,0.071,0.001 10 *** 0.01,0.3,0.01 0 ***** min_eps,max_eps,step gamma
+eps 0.001,0.5,0.01 0 *** 0.305,0.315,0.001 0 *** 0.041,0.071,0.001 10 *** 0.01,0.3,0.01 0 ***** min_eps,max_eps,step gamma
 
 * mesh 0.5,40 ********* max_eps,outer_points ** 
         
@@ -124,12 +124,13 @@ icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) o
 emin 6.5
 emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
 
-num_orbs 11 ** the number of orbitals to include in calculations and forward to asyrmo
+num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
 
 nuu 4 ****** number of coupled oscillator shells 
 **************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
 
-
+nprot 8 **** number of proton oscillator shells (max 10)
+nneutr 8 *** number of neutron oscillator shells (max 10)
 
 
 * asyrmo *
@@ -143,10 +144,10 @@ kmax 13 **** max 29; set kmax=ispin if no truncation required
 e2plus 0.73 **** 0.2 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-nu 5 ******* the number of orbitals to consider
+nu 15 ******* the number of orbitals to consider
 
-chsi 0.7 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
-eta 5.0 **** coriolis attenuation (1 for no attenuation, 5 for standard)
+chsi 1 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
+eta 1 **** coriolis attenuation (1 for no attenuation, 5 for standard)
 
 nantj 5,2,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 noutj 5,2,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
@@ -191,9 +192,6 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 * noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0) (1 for PR calculations)
 * omrot 0 **** rotation frequency (0 for PR calculations)
-
-* nprot 8 **** number of proton oscillator shells (max 10)
-* nneutr 8 *** number of neutron oscillator shells (max 10)
 
 * itrans 0 *** if odd-odd, transform wfncs to NLls basis ?
 * nshelp 0 *** if odd-odd, and pure N-shells, which N-shell for levelp(j) ? 

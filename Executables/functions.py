@@ -2120,8 +2120,11 @@ def check_agreement(verbose, data_points, num_comparisons):
         these_eps = sorted_eps[lower:upper]
         these_gamma = sorted_gamma[lower:upper]
         
-        for j in range(len(these_eps)):
+        r = min(len(these_eps), 5)
+        for j in range(r):
             print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
-    
+        
+        if r==5 and len(these_eps) != 5:
+            print("... etc, " + str(len(these_eps)))
         
        
