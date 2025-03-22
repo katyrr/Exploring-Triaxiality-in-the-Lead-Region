@@ -686,9 +686,11 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
 
 - efac = get_efac(lines)
 
-- half_line = get_fermi_level(lines, fermi_level_index)
+- half_line = get_sp_level(lines, sp_index)
     
-- fermi_index = get_fermi_index(fermi_level_line, hash_index)
+- fermi_index = get_sp_index(fermi_level_line, hash_index)
+
+- (parity, energy_hw, index) = get_info(line)
 
 '''
 
@@ -715,10 +717,10 @@ def get_efac(lines):
      return efac
  
     
-def get_fermi_level(lines, fermi_level_index):
+def get_sp_level(lines, sp_index):
     """ 
     A function which reads the full contents of the GAMPN.OUT file, 
-    and returns the half-line containing data about the fermi level.
+    and returns the half-line containing data about the single particle level requested.
     
     Only half the line is required because the data for all 80 calculated levels 
     is output in two columns of 40 lines each.
@@ -729,43 +731,45 @@ def get_fermi_level(lines, fermi_level_index):
         The full contents of the GAMPN.OUT file.
         Each element of the list is a line read from the file.
     
-    fermi_level_index : int
-        The index of the highest filled orbital, numbered from 1 (all parities together).
+    index : int
+        The index of the single particle level, numbered upwards from 1 (all parities together).
         
     Returns:
     -------
     half_line : string
-        A string containing data about the fermi level.
+        A string containing data about the single particle level.
     
     """
     
     ref = "   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n"
     levels_header_line = lines.index(ref)
-    fermi_level_line = fermi_level_index+levels_header_line+1                  
+    sp_line = sp_index+levels_header_line+1                  
     # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
     
-    if fermi_level_index > 40:
-        fermi_level_line -= 40
-        whole_line = lines[fermi_level_line]
-        half_line = whole_line[60:-1].strip()                                 
+    if sp_index > 40:
         # get only the second half of the line
+        sp_line -= 40
+        whole_line = lines[sp_line]
+        half_line = whole_line[60:-1].strip()                                 
+        
     else:
-        whole_line = lines[fermi_level_line]
-        half_line = whole_line[0:60].strip()                                   
         # get only the first half of the line
+        whole_line = lines[sp_line]
+        half_line = whole_line[0:60].strip()                                   
+        
     
     return half_line
  
     
-def get_fermi_index(fermi_level_line, hash_index):
+def get_sp_index(line, hash_index):
     """ 
-    A function which takes a line of data about the fermi level, 
+    A function which takes a line of data about a single particle level, 
     and returns its orbital index.
     
     Parameters
     ----------
-    fermi_level_line : string
-        A string containing data about the fermi level.
+    line : string
+        A string containing data about the single particle level.
     
     hash_index : int
         The index in the string that locates the "#" character.
@@ -773,22 +777,51 @@ def get_fermi_index(fermi_level_line, hash_index):
         
     Returns:
     -------
-    fermi_index : int
-        The orbital index of the Fermi level 
+    index : int
+        The orbital index of the single particle level. 
         (numbered separately for positive and negative parity orbitals).
     
     """
-    fermi_index_string = fermi_level_line[hash_index+1 : hash_index+3]
-    if fermi_index_string[1] == ")":                                                  
+    index_string = line[hash_index+1 : hash_index+3]
+    if index_string[1] == ")":                                                  
         # in case the index is only a single digit, 
-        # ignore the ")" that will have been caught.
-        fermi_index_string = fermi_index_string[0]
+        # ignore the ")" that will have been caught:
+        index_string = index_string[0]
         
-    fermi_index = int(fermi_index_string)
+    index = int(index_string)
     
-    return fermi_index
+    return index
 
+def get_info(line):
+    '''
 
+    Parameters
+    ----------
+    line : string
+        The line of text read from the GAMPN.OUT file which contains data 
+        about a single particle (i.e. Nillson) level, including its energy,
+        its index, its parity, etc.
+
+    Returns
+    -------
+    parity : string
+        The parity of the single particle level. Either '+' or '-'.
+        
+    energy_hw : float
+        The energy of the single particle level, in oscillator (hbar omega) units.
+        
+    index : int
+        The index of the single particle level, numbered separately for 
+        positive and negative parity orbitals.
+
+    '''
+    hash_index = line.index("#")
+    parity = line[hash_index-2]                            
+    energy_hw = float(line[hash_index-10 : hash_index-4])  
+    # energy_mev = energy_hw*inputs["efac"] # can't do this conversion without passing efac, and not really necessary in all cases anyway
+    index = get_sp_index(line, hash_index)
+    
+    return (parity, energy_hw, index)
 
 #%%
 
@@ -2107,24 +2140,25 @@ def check_agreement(verbose, data_points, num_comparisons):
     else:
         
         print("Highest agreement = " + str(max_agreement) + " / " + str(num_comparisons))
-                
-        print("\nPoints with agreement = " + str(max_agreement) + ":")
         
-        i = len(unique_values)-1
+        if max_agreement > 0:
+            print("\nPoints with agreement = " + str(max_agreement) + ":")
+            
+            i = len(unique_values)-1
+            
+            print("\n\tAgreement = " + str(unique_values[i]) + ":")
         
-        print("\n\tAgreement = " + str(unique_values[i]) + ":")
-    
-        lower = sum(counts[0:i])
-        upper = sum(counts[0:i+1])
-        
-        these_eps = sorted_eps[lower:upper]
-        these_gamma = sorted_gamma[lower:upper]
-        
-        r = min(len(these_eps), 5)
-        for j in range(r):
-            print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
-        
-        if r==5 and len(these_eps) != 5:
-            print("... etc, " + str(len(these_eps)))
+            lower = sum(counts[0:i])
+            upper = sum(counts[0:i+1])
+            
+            these_eps = sorted_eps[lower:upper]
+            these_gamma = sorted_gamma[lower:upper]
+            
+            r = min(len(these_eps), 5)
+            for j in range(r):
+                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
+            
+            if r==5 and len(these_eps) != 5:
+                print("... etc, " + str(len(these_eps)))
         
        

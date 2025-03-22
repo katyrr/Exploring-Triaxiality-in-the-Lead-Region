@@ -15,7 +15,7 @@
 
 
      KAPPA    MY     EPS   GAMMA    EPS4     EPS6     W0/W00   NMAX  COUPL     OMROT      EFAC      QFAC
-      SEE TABLE     0.249    0.0   0.000    0.000    1.00738     8     4     0.00000   7.46556   5.55886
+      SEE TABLE     0.249    0.0   0.000    0.000    1.00738     8     0     0.00000   7.46556   5.55886
 
 
                      **** NEUTRONS ****                    **** STRETCHED COORDINATES ****

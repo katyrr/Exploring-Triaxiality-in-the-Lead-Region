@@ -73,7 +73,7 @@ verbose = False # whether to print a lot of info, or just the essentials
 - All inputs are saved as name-value pairs in a dictionary.
 
 ''' 
-
+print("running for nucleus: " + nucleus)
 timer.start()
 
 lines = fn.read_file("../"+ nucleus +"/config.txt")
@@ -349,31 +349,51 @@ for file in data_points["file_tags"] :
     # get the EFAC value (conversion factor from hw to MeV)
     inputs["efac"] = fn.get_efac(lines)
     
-    # locate the fermi level
-    fermi_level_line = fn.get_fermi_level(lines, inputs["fermi_level"])
+    # locate the fermi level and extract data
+    fermi_level_line = fn.get_sp_level(lines, inputs["fermi_level"])
     
-    # get data about the fermi level using the '#' as a reference point 
-    hash_index = fermi_level_line.index("#")
-    output_data["fermi_parities"].append(fermi_level_line[hash_index-2])                              
-    output_data["fermi_energies_hw"].append(float(fermi_level_line[hash_index-10 : hash_index-4]))   
-    output_data["fermi_energies_mev"].append(output_data["fermi_energies_hw"][-1]*inputs["efac"])
-    output_data["fermi_indices"].append(fn.get_fermi_index(fermi_level_line, hash_index))
+    f_parity, f_energy_hw, f_index = fn.get_info(fermi_level_line)
     
-    '''
+    output_data["fermi_parities"].append(f_parity)                              
+    output_data["fermi_energies_hw"].append(f_energy_hw)   
+    output_data["fermi_energies_mev"].append(f_energy_hw * inputs["efac"])
+    output_data["fermi_indices"].append(f_index)
+    
+    # generate the orbitals input for asyrmo
+    
+    # this version centers orbitals around fermi level and matches parity:
+    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], output_data["fermi_parities"][-1]))
+    
+    # this version centers orbitals around fermi level but fixes parity (no good! inconsistencies when the parity of the fermi level is opposite):
+    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
+    
+    # this version hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
+    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
+
+    # this version dynamically calculates orbitals with orbitals centered around the level with the correct parity nearest the fermi level:
     if output_data["fermi_parities"][-1] != inputs["par"]:
         # then it doesn't make sense to choose the strong coupling basis oribtals from around the fermi level
         # so we need to locate the nearest single particle level with the same parity as we are investigating
     
-    # generate the orbitals input for asyrmo
+        print("fermi level has wrong parity")
+        
+        # Need to find nearest sp level with the correct parity.
+        # For now just hard code to central orbital 33 (when the parity is 
+        # correct, it has index between 32-34).
+        # Can't go higher than this, because 15 levels around the predicted fermi 
+        # level #31 in gampn only reaches to #38, and 11 around #34 now in asyrmo 
+        # would require up to #39.
+        data_points["asyrmo_orbitals"].append(fn.write_orbitals(33, inputs["nu"], inputs["par"])) 
+        
+    else:
+        
+        print("fermi level has correct parity")
+        
+        # parity is correct so it is safe to center the orbitals on the fermi level
+        data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
+        
     
-    data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], output_data["fermi_parities"][-1]))
-    
-    data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
-    '''
-    data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
-
-    
-del [fermi_level_line, file, hash_index, lines]
+del [fermi_level_line, file, lines]
 
 _output_data = output_data # save a copy of the original before it's overwritten
 
@@ -407,7 +427,7 @@ run_program("asyrmo")
 
 sub_timer.stop()
 
-print("***** Finished running asyrmo in time = %.2f seconds *****" % sub_timer.get_lapsed_time())
+print("***** Finished running asyrmo in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
 
 
@@ -437,7 +457,7 @@ run_program("probamo")
 
 sub_timer.stop()
 
-print("***** Finished running probamo in time = %.2f seconds *****\n" % sub_timer.get_lapsed_time())
+print("***** Finished running probamo in time = %.2f seconds. *****\n" % sub_timer.get_lapsed_time())
 
 
 #%%

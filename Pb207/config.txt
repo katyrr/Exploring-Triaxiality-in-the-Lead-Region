@@ -126,11 +126,11 @@ emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
 
-nuu 4 ****** number of coupled oscillator shells 
+nuu 0 ****** number of coupled oscillator shells 
 **************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
 
-nprot 8 **** number of proton oscillator shells (max 10)
-nneutr 8 *** number of neutron oscillator shells (max 10)
+nprot 10 **** number of proton oscillator shells (max 10)
+nneutr 10 *** number of neutron oscillator shells (max 10)
 
 
 * asyrmo *
@@ -144,10 +144,10 @@ kmax 13 **** max 29; set kmax=ispin if no truncation required
 e2plus 0.73 **** 0.2 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-nu 15 ******* the number of orbitals to consider
+nu 11 ******* the number of orbitals to consider
 
-chsi 1 *** coriolis attenuation (1 for no attenuation, 0.7 for standard)
-eta 1 **** coriolis attenuation (1 for no attenuation, 5 for standard)
+chsi 0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
+eta 0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
 
 nantj 5,2,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 noutj 5,2,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
