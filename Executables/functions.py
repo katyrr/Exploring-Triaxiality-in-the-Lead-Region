@@ -686,7 +686,7 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
 
 - efac = get_efac(lines)
 
-- half_line = get_sp_level(lines, sp_index)
+- half_line = get_sp_level(lines, sp_index, parity)
     
 - fermi_index = get_sp_index(fermi_level_line, hash_index)
 
@@ -717,7 +717,7 @@ def get_efac(lines):
      return efac
  
     
-def get_sp_level(lines, sp_index):
+def get_sp_level(lines, sp_index, parity):
     """ 
     A function which reads the full contents of the GAMPN.OUT file, 
     and returns the half-line containing data about the single particle level requested.
@@ -732,8 +732,15 @@ def get_sp_level(lines, sp_index):
         Each element of the list is a line read from the file.
     
     index : int
-        The index of the single particle level, numbered upwards from 1 (all parities together).
+        The index of the single particle level
         
+    parity : string
+        Defines how the single particle levels are indexed. 
+        If '0', all the levels are counted (upwards from 1), regardless of parity.
+        If '-', only the negative parity levels are counted (and positive parity levels are ignored.)
+        If '+', only the positive parity levels are counted (and negative parity levels are ignored.)
+        
+    
     Returns:
     -------
     half_line : string
@@ -743,19 +750,40 @@ def get_sp_level(lines, sp_index):
     
     ref = "   #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>      #   ENERGY +/-(#)    <Q20>    <Q22>     <R2>     <JZ>\n"
     levels_header_line = lines.index(ref)
-    sp_line = sp_index+levels_header_line+1                  
-    # calculate the line number of the fermi level in the GAMPN.OUT file (indexed from zero!)
     
-    if sp_index > 40:
-        # get only the second half of the line
-        sp_line -= 40
-        whole_line = lines[sp_line]
-        half_line = whole_line[60:-1].strip()                                 
+    if parity == '0':
+        # calculate the line number of the single particle level in the GAMPN.OUT file (indexed from zero!)
+        sp_line = sp_index+levels_header_line+1  
         
-    else:
-        # get only the first half of the line
-        whole_line = lines[sp_line]
-        half_line = whole_line[0:60].strip()                                   
+        if sp_index > 40:
+            # get only the second half of the line
+            sp_line -= 40
+            whole_line = lines[sp_line]
+            half_line = whole_line[60:-1].strip()                                 
+            
+        else:
+            # get only the first half of the line
+            whole_line = lines[sp_line]
+            half_line = whole_line[0:60].strip()   
+            
+    elif parity == '-' or parity == '+':
+        
+        reduced_lines = lines[levels_header_line+2 : levels_header_line+42]
+        search = parity + '(#' + str(sp_index) + ')'
+        
+        for l in reduced_lines:
+            if search in l:
+                whole_line = l
+                break
+            
+        position = l.index(search)
+        
+        if position > 60:
+            half_line = whole_line[60:-1].strip()   
+        else:
+            half_line = whole_line[0:60].strip()   
+        
+    else: raise ValueError("Unrecognised parity. Allowed inputs are only '+', '-', or '0'.")
         
     
     return half_line

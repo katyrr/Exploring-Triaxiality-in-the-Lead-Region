@@ -350,7 +350,7 @@ for file in data_points["file_tags"] :
     inputs["efac"] = fn.get_efac(lines)
     
     # locate the fermi level and extract data
-    fermi_level_line = fn.get_sp_level(lines, inputs["fermi_level"])
+    fermi_level_line = fn.get_sp_level(lines, inputs["fermi_level"], '0')
     
     f_parity, f_energy_hw, f_index = fn.get_info(fermi_level_line)
     
@@ -368,8 +368,9 @@ for file in data_points["file_tags"] :
     # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
     
     # this version hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
-    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
+    data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
 
+    '''
     # this version dynamically calculates orbitals with orbitals centered around the level with the correct parity nearest the fermi level:
     if output_data["fermi_parities"][-1] != inputs["par"]:
         # then it doesn't make sense to choose the strong coupling basis oribtals from around the fermi level
@@ -391,7 +392,23 @@ for file in data_points["file_tags"] :
         
         # parity is correct so it is safe to center the orbitals on the fermi level
         data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
-        
+    '''      
+    
+    # check balance
+    # get the top and bottom levels and compare their energies
+    
+    lower_level_line = fn.get_sp_level(lines, int(data_points["asyrmo_orbitals"][-1][3:6].strip()), inputs["par"]) 
+    upper_level_line = fn.get_sp_level(lines, int(data_points["asyrmo_orbitals"][-1][-2:].strip()), inputs["par"])
+    
+    l_parity, l_energy_hw, l_index = fn.get_info(lower_level_line)
+    u_parity, u_energy_hw, u_index = fn.get_info(upper_level_line)
+    
+    lower_energy_gap = f_energy_hw - l_energy_hw
+    upper_energy_gap = u_energy_hw - f_energy_hw
+    
+    
+    
+    
     
 del [fermi_level_line, file, lines]
 
@@ -399,10 +416,11 @@ _output_data = output_data # save a copy of the original before it's overwritten
 
 
 #%%
-''' 6. WRITE AND RUN ASYRMO 
+''' 6. WRITE, RUN, AND READ ASYRMO 
 
 - Use the existing list of file tags to write a .DAT file for each data point.
-- Use the existing script writer to write and run asyrmo; dividing up the batches as for gampn. 
+- Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
+- Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
 
 '''
 
@@ -429,7 +447,15 @@ sub_timer.stop()
 
 print("***** Finished running asyrmo in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
+# now read output and check for errors
 
+for file in data_points["file_tags"] :
+
+    lines = fn.read_file("../"+nucleus+"/Outputs/ASY_"+file+".OUT")
+    
+    if not "PARTICLE-ROTOR  MODEL" in lines[0]: # then something has gone wrong
+        raise RuntimeError("File " + file + " raised error in ASYRMO output: \n" + lines[0] )
+    
 
 #%%
 ''' 7. WRITE AND RUN PROBAMO 
