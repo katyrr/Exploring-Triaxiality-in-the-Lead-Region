@@ -232,8 +232,8 @@ else:
 
 # Generate a string that contains the number of orbitals and their indices, 
 # in the correct format for input to gampn.
-inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
-# inputs["gampn_orbitals"] = fn.write_orbitals(34, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
+# inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
+inputs["gampn_orbitals"] = "-15 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
 
 
 #%%   
@@ -368,7 +368,7 @@ for file in data_points["file_tags"] :
     # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
     
     # this version hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
-    data_points["asyrmo_orbitals"].append(fn.write_orbitals(31, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
+    data_points["asyrmo_orbitals"].append("-15 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39") #fn.write_orbitals(30, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
 
     '''
     # this version dynamically calculates orbitals with orbitals centered around the level with the correct parity nearest the fermi level:
@@ -416,11 +416,10 @@ _output_data = output_data # save a copy of the original before it's overwritten
 
 
 #%%
-''' 6. WRITE, RUN, AND READ ASYRMO 
+''' 6. WRITE AND RUN ASYRMO 
 
 - Use the existing list of file tags to write a .DAT file for each data point.
 - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
-- Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
 
 '''
 
@@ -447,7 +446,17 @@ sub_timer.stop()
 
 print("***** Finished running asyrmo in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
-# now read output and check for errors
+#%%
+
+''' 7. READ ASYRMO 
+
+- Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
+- Record the value of the DELTA parameter.
+- Check for the "SORRY I FOUND NO SOLUTIONS" error, and exclude those files from future analysis.
+
+'''
+
+output_data["delta"] = []
 
 for file in data_points["file_tags"] :
 
@@ -455,10 +464,12 @@ for file in data_points["file_tags"] :
     
     if not "PARTICLE-ROTOR  MODEL" in lines[0]: # then something has gone wrong
         raise RuntimeError("File " + file + " raised error in ASYRMO output: \n" + lines[0] )
-    
+        
+    output_data["delta"].append(fn.get_delta(lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
+        
 
 #%%
-''' 7. WRITE AND RUN PROBAMO 
+''' 8. WRITE AND RUN PROBAMO 
 
 - Use the existing list of file tags to write a .DAT file for each data point.
 - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
@@ -488,7 +499,7 @@ print("***** Finished running probamo in time = %.2f seconds. *****\n" % sub_tim
 
 #%%
 
-''' 8. READ PROBAMO.OUT FILE
+''' 9. READ PROBAMO.OUT FILE
 
 For each file:
     
@@ -513,9 +524,6 @@ For each file:
       
 
 '''
-
-
-# start reading files 
 
 data_points["property_data"] = []
 
@@ -544,20 +552,27 @@ for t in range(len(data_points["file_tags"])):
     
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
+mask = np.array([0 if np.isnan(x) else 1 for x in output_data["delta"]])
+
 # ensure all data sets have the same size and shape
+# and mask ill-defined data poitns with reference to the DELTA data (any NaN values are ill-defined).
 for d in output_data:
     if isinstance(output_data[d][0], list):
         output_data[d] = fn.fill_gaps(output_data[d])
-
+        list_mask = np.transpose(np.tile(mask, (np.size(output_data[d][0]),1)))
+        
+        output_data[d] = np.where(list_mask == 0, np.NaN, output_data[d])
     
+    else: 
+        output_data[d] = np.where(mask == 0, np.NaN, output_data[d])
+
+_output_data_dict = output_data # save a copy of the original before it's overwritten, so that the code can be run cell-by-cell without errors.
+
 del [file_data, line, line_data, lines, t]
-
-_output_data_dict = output_data # save a copy of the original before it's overwritten
-
 
 
 #%%
-''' 9. PREPARE TO PLOT GRAPHS 
+''' 10. PREPARE TO PLOT GRAPHS 
 
 - Record each data set in an instance of class PropertyData
 - Calculate graph plotting attributes and store within the class
@@ -647,6 +662,13 @@ for p in _output_data_dict:
         output_data[p].experimental_data = np.NaN
         output_data[p].error_tolerance = np.NaN
     
+    elif output_data[p].prop == "delta":
+        output_data[p].contour_levels = 10
+        output_data[p].cbar_ticks = 0
+        output_data[p].cbar_tick_labels = 0
+        output_data[p].experimental_data = np.NaN
+        output_data[p].error_tolerance = np.NaN
+        
     else: raise ValueError("property not recognised: " + p)
     
 del [p]
@@ -658,7 +680,7 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 #%%
 
 
-''' 10. PLOT GRAPHS
+''' 11. PLOT GRAPHS
 
 - Set which graphs should be plotted. Any not listed are False by default.
 
@@ -682,6 +704,7 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
     
 
 output_data["fermi_indices"].plot = False
+output_data["delta"].plot = True
 
 output_data["gs_mag_moments"].plot = False
 output_data["gs_spin_floats"].plot = False
@@ -806,6 +829,9 @@ for g in output_data:
                        varied=var, x_label=var_sym, y_label=prop.axis_label, 
                        legend_title=legend_title)
         
+        if prop.prop == "delta":
+            ax.set_ylim([0.2,1]) 
+        
         plt.show()
         
         del [var, var_sym, fix, fix_sym, legend_title, legend_handles]
@@ -814,7 +840,7 @@ for g in output_data:
 del [g]
 
 #%%
-''' 11. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
+''' 12. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
 
 - Print information to the console about the best agreement and its location.
 - Plot a graph to show data point agreement across all data points.

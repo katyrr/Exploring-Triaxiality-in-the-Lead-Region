@@ -323,7 +323,8 @@ class PropertyData:
             sort = "Fermi"
             
         elif (name == "Agreement of Data Points With Experimental Data"
-              or name == "All Energy Levels"):
+              or name == "All Energy Levels"
+              or name == "delta"):
             num = ""
             prop = ""
             sort = ""
@@ -388,6 +389,12 @@ class PropertyData:
             self.axis_label = "Energy / keV"
             self.sort = "Spin "
             self.num = "all"
+        
+        elif name == "delta":
+            self.title = "Pairing Gap Energy Δ"
+            self.prop = "delta"
+            self.axis_label = "Δ / MeV"
+            
             
         else:
             raise ValueError("property not recognised: " + name)

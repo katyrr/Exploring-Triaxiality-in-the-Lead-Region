@@ -771,12 +771,16 @@ def get_sp_level(lines, sp_index, parity):
         reduced_lines = lines[levels_header_line+2 : levels_header_line+42]
         search = parity + '(#' + str(sp_index) + ')'
         
+        found = False
         for l in reduced_lines:
             if search in l:
                 whole_line = l
+                found = True
                 break
-            
-        position = l.index(search)
+        
+        if found:
+            position = whole_line.index(search)
+        else: raise RuntimeError("The requested single particle orbital was not calculated: " + search)
         
         if position > 60:
             half_line = whole_line[60:-1].strip()   
@@ -851,6 +855,52 @@ def get_info(line):
     
     return (parity, energy_hw, index)
 
+
+
+#%%
+
+''' FUNCTIONS FOR READING ASYRMO.OUT 
+
+- delta = get_delta(lines):
+     
+
+'''
+
+def get_delta(lines):
+     """ 
+     A function which reads the full contents of the ASYRMO.OUT file, 
+     and returns the value of DELTA if it is well-defined, otherwise returns NaN.
+     
+     The value is deemed ill-defined if the error "SORRY I FOUND NO SOLUTION" appears.
+     
+     Parameters
+     ----------
+     lines : list of strings
+         The full contents of the ASYRMO.OUT file.
+         Each element of the list is a line read from the file.
+    
+     Returns:
+     -------
+     delta : float
+         The value of the pairing gap energy DELTA in MeV.
+     
+     """
+     for l in lines[10:20]:
+         
+         if "SORRY I FOUND NO SOLUTION" in l:
+             delta = np.nan
+             break
+         
+         if "DELTA=" in l:
+             delta_string = l[7:13].strip()
+             if delta_string == '*****':
+                 delta = np.nan
+             else:
+                 delta = float(delta_string)
+             break
+     
+     return delta
+ 
 #%%
 
 ''' FUNCTIONS FOR READING PROBAMO.OUT 
