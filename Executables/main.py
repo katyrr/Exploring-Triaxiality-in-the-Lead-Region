@@ -700,8 +700,10 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
     
 '''
 
+#!!! set graph subtitle:
+subtitle = "no coriolis attenuation"
+
 #!!! set which graphs to plot:
-    
 
 output_data["fermi_indices"].plot = False
 output_data["delta"].plot = True
@@ -767,7 +769,7 @@ for g in output_data:
             legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
                
         
-        fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs)
+        fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
         
         plt.show()
         
@@ -825,7 +827,7 @@ for g in output_data:
             
                     
         fn.format_fig('linear', ax, list(reversed(legend_handles)), 
-                       '%(current_graph)s in %(nucleus)s' % inputs, 
+                       '%(current_graph)s in %(nucleus)s' % inputs, subtitle, 
                        varied=var, x_label=var_sym, y_label=prop.axis_label, 
                        legend_title=legend_title)
         
@@ -876,7 +878,7 @@ if inputs["deformation_input"] == "mesh":
     legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
            
     
-    fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs)
+    fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
     
     plt.show()
 

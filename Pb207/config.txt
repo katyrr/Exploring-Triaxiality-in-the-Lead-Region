@@ -138,6 +138,7 @@ nneutr 10 *** number of neutron oscillator shells (max 10)
 imin 1 ***** min spin I 
 ispin 13 *** max spin I
 
+
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
@@ -146,8 +147,8 @@ e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not re
 
 nu 11 ******* the number of orbitals to consider
 
-chsi 0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
-eta 0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
+chsi 1.0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
+eta 1.0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
 
 nantj 5,2,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 noutj 5,2,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
@@ -203,8 +204,8 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 * asyrmo *
 
 vmi 0 ************ account for core states (1) or assume rigid rotor core (0, standard)
-* nmin 4 ********* min N-shell in deformed s.p. wvfncs
-* nmax 4 ********* max
+nmin 1 ********* min N-shell in deformed s.p. wvfncs
+nmax 9 ********* max
 * iarcut 8 ******* number of core states included for each core spin
 * a00 0.0188 ***** parameter for vmi
 * stiff 100.00 *** parameter for vmi (both calculated from Harris Parameters)

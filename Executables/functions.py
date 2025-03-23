@@ -1370,7 +1370,7 @@ def collate_energy_data(output_data, num_points):
 
 - exp, tol = try_experimental(inputs, key, tolerance)
     
-- void = format_fig(polar_or_linear, ax, legend_handles, title, **kwargs)
+- void = format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs)
 
 - cax, cbar = draw_contour_plot(ax, prop, data_points)
 
@@ -1508,7 +1508,7 @@ def try_experimental(inputs, key, tolerance):
     return exp, tol
 
 
-def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
+def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
     """
     A function that handles formatting of a graph:
         - axis ranges
@@ -1516,6 +1516,7 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         - axis labels
         - legend
         - graph title
+        - subtitle
 
     Parameters
     ----------
@@ -1531,6 +1532,9 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         
     title : string
         The title for the graph.
+        
+    subtitle : string
+        The subtitle for the graph. May be empty.
         
     **kwargs : 
         
@@ -1585,6 +1589,10 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         
         ax.set_title(title, va='bottom', y=1.1)  
         
+        if subtitle != "":
+            ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=14,
+                    verticalalignment='top')
+        
     elif polar_or_linear == 'linear':
         
         varied = kwargs.get("varied", None)
@@ -1604,7 +1612,10 @@ def format_fig(polar_or_linear, ax, legend_handles, title, **kwargs):
         
         if legend_title != "x":
             legend.set_title(legend_title)
-    
+        
+        if subtitle != "":
+            ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=10, horizontalalignment = 'center', #verticalalignment='top')
+                    position=(0.5,1.05))
     else: 
         raise ValueError("unrecognised graph type: " + polar_or_linear + 
                          "; must be either 'polar' or 'linear'.")

@@ -143,7 +143,7 @@ def get_template(program):
 '%(current_f016)s' '%(current_f017)s' '%(current_f018)s' FILE16,FILE17,FILE18
 1,0                                        IPKT,ISKIP
 %(istrch)s,%(irec)s                                        ISTRCH,IREC
-%(vmi)s,4,4,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
+%(vmi)s,%(nmin)s,%(nmax)s,8,0.0188,100.00                      VMI,NMIN,NMAX,IARCUT,A00,STIFF
 %(Z)s,%(A)s,%(imin)s,%(ispin)s,%(kmax)s,%(current_e2plus)s,%(e2plur)s                   Z,AA,IMIN,ISPIN,KMAX,E2PLUS,E2PLUR
 19.2,7.4,15,%(chsi)s,%(eta)s                     GN0,GN1,IPAIR,CHSI,ETA
 %(current_orbitals)s  
