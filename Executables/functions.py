@@ -433,7 +433,9 @@ def arrange_mesh(split_string):
 
 ''' FUNCTIONS FOR RUNNING CODES 
 
-- orbitals_string = write_orbitals(fermi_level, number, parity):
+- orbitals_string = write_orbitals(fermi_level, number, parity)
+    
+- orbitals_string = find_orbitals(fermi_level, number, parity)
 
 - run_script_batches(program) = configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time)
     void = run_script_batches(program) # closure                              
@@ -443,7 +445,7 @@ def arrange_mesh(split_string):
 
 def write_orbitals(fermi_level, number, parity):
     """
-    A function to generate an parity + orbital string for input into gampn or asyrmo.
+    A function to generate a parity + orbital string for input into gampn or asyrmo.
     e.g. orbitals_string = "+4 19 20 21 22" for 4 orbitals [19, 20, 21, 22] of positive parity.
     
 
@@ -489,6 +491,98 @@ def write_orbitals(fermi_level, number, parity):
         orbitals_string += " "
         orbitals_string += str(i)
         
+    return orbitals_string
+
+
+def find_orbitals(fermi_level, number, parity, fermi_energy, fermi_parity, lines):
+    """
+    A function to dynamically generate a parity + orbital string for input into asyrmo.
+    e.g. orbitals_string = "+4 19 20 21 22" for 4 orbitals [19, 20, 21, 22] of positive parity.
+    
+    Chooses the orbitals nearest in energy to the fermi level, which may be unbalanced
+    (e.g. may not be the fermi level ± 5, but could be the fermi level + 2 - 8).
+    
+
+    Parameters
+    ----------
+    fermi_level : int
+        The index of the Fermi level orbital.
+        Assumes that orbitals are indexed separately for positive and negative parities.
+        
+    number : int
+        The number of orbitals to include in the string.
+        
+    parity : string
+        "+" for positive parity;
+        "-" for negative parity;
+
+    Returns
+    -------
+    orbitals_string : string
+        The parity, number of orbitals, and list of orbitals, 
+        formatted ready for input into asyrmo.
+        e.g. orbitals_string = "+4 19 20 21 22".
+
+    """
+    
+    # this works, but... it could probably be more efficient. #!!!
+    # also still need to implement checking that the requested orbital was included in the gampn input.
+    
+    if fermi_parity == parity:
+        orbitals_list = [fermi_level]
+        
+        # next above/below is fermi_level ± 1
+        
+        
+    else:
+        orbitals_list = []
+        
+    # next above/below:
+        
+    fermi_line = get_sp_level(lines, fermi_level, fermi_parity)
+    overall_index = int(fermi_line[0:2].strip())
+    
+    index_below = overall_index - 1
+    index_above = overall_index + 1
+    
+    while len(orbitals_list) < number :
+        if index_below < 1 or index_above > 80:
+            break
+        
+        line_below = get_sp_level(lines, index_below, '0')
+        parity_below, energy_below, level_below = get_info(line_below)
+        
+        line_above = get_sp_level(lines, index_above, '0')
+        parity_above, energy_above, level_above = get_info(line_above)
+        
+        while parity_below != parity:
+           index_below -= 1
+           if index_below < 1:
+               break
+           
+           line_below = get_sp_level(lines, index_below, '0')
+           parity_below, energy_below, level_below = get_info(line_below)
+           
+        while parity_above != parity:
+           index_above += 1
+           if index_above > 80:
+               break
+           
+           line_above = get_sp_level(lines, index_above, '0')
+           parity_above, energy_above, level_above = get_info(line_above)
+            
+        lower_energy_gap = fermi_energy - energy_below
+        upper_energy_gap = energy_above - fermi_energy
+        
+        if lower_energy_gap < upper_energy_gap:
+            orbitals_list.append(level_below)
+            index_below -= 1
+        else:
+            orbitals_list.append(level_above)
+            index_above += 1
+    
+    orbitals_string = parity + str(number) + ' ' + ' '.join(str(x) for x in sorted(orbitals_list))
+    
     return orbitals_string
 
 def est_e2plus(eps, A):
@@ -1615,7 +1709,7 @@ def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
         
         if subtitle != "":
             ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=10, horizontalalignment = 'center', #verticalalignment='top')
-                    position=(0.5,1.05))
+                    position=(0.5,1.03))
     else: 
         raise ValueError("unrecognised graph type: " + polar_or_linear + 
                          "; must be either 'polar' or 'linear'.")
@@ -2105,7 +2199,7 @@ def plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix_val):
     line_colours = ['k', 'b', 'y', 'c', 'm', 'g', 'r']
     line_labels = ["1/2", "3/2", "5/2", "7/2", "9/2", "11/2", "13/2"]
     
-    line_style = 'x'
+    line_style = '-x'
     
     idx = [int(((2*a)-1)/2) for a in prop.spins]
     used = []

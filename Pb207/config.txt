@@ -96,7 +96,7 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 * single 0.230 0 ***** eps gamma
 
 * gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
-eps 0.001,0.5,0.001 0 *** 0.305,0.315,0.001 0 *** 0.041,0.071,0.001 10 *** 0.01,0.3,0.01 0 ***** min_eps,max_eps,step gamma
+eps 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
 * mesh 0.5,40 ********* max_eps,outer_points ** 
         
@@ -188,8 +188,7 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 * ipkt 1 ***** number of data sets to read
 * iskip 0 **** number of data sets to skip before collecting ipkt
-************** these are just for calculating multiple deformations in a single run
-
+**** these are just for calculating multiple deformations in a single run
 
 * noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0) (1 for PR calculations)
 * omrot 0 **** rotation frequency (0 for PR calculations)

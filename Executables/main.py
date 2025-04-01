@@ -233,7 +233,7 @@ else:
 # Generate a string that contains the number of orbitals and their indices, 
 # in the correct format for input to gampn.
 # inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
-inputs["gampn_orbitals"] = "-15 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
+inputs["gampn_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
 
 
 #%%   
@@ -361,53 +361,21 @@ for file in data_points["file_tags"] :
     
     # generate the orbitals input for asyrmo
     
-    # this version centers orbitals around fermi level and matches parity:
+    # version 1: centers orbitals around fermi level and matches parity:
     # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], output_data["fermi_parities"][-1]))
     
-    # this version centers orbitals around fermi level but fixes parity (no good! inconsistencies when the parity of the fermi level is opposite):
+    # version 2: centers orbitals around fermi level but fixes parity (no good! inconsistencies when the parity of the fermi level is opposite):
     # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
     
-    # this version hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
-    data_points["asyrmo_orbitals"].append("-15 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39") #fn.write_orbitals(30, inputs["nu"], inputs["par"])) #!!! ideally shouldn't be hard coding this
-
-    '''
-    # this version dynamically calculates orbitals with orbitals centered around the level with the correct parity nearest the fermi level:
-    if output_data["fermi_parities"][-1] != inputs["par"]:
-        # then it doesn't make sense to choose the strong coupling basis oribtals from around the fermi level
-        # so we need to locate the nearest single particle level with the same parity as we are investigating
+    # version 3: hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
+    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(30, inputs["nu"], inputs["par"])) 
     
-        print("fermi level has wrong parity")
-        
-        # Need to find nearest sp level with the correct parity.
-        # For now just hard code to central orbital 33 (when the parity is 
-        # correct, it has index between 32-34).
-        # Can't go higher than this, because 15 levels around the predicted fermi 
-        # level #31 in gampn only reaches to #38, and 11 around #34 now in asyrmo 
-        # would require up to #39.
-        data_points["asyrmo_orbitals"].append(fn.write_orbitals(33, inputs["nu"], inputs["par"])) 
-        
-    else:
-        
-        print("fermi level has correct parity")
-        
-        # parity is correct so it is safe to center the orbitals on the fermi level
-        data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
-    '''      
+    # version 4: REALLY hard codes the orbitals, with complete flexibility:
+    # data_points["asyrmo_orbitals"].append("-15 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35") #!!! ideally shouldn't be hard coding this
     
-    # check balance
-    # get the top and bottom levels and compare their energies
-    
-    lower_level_line = fn.get_sp_level(lines, int(data_points["asyrmo_orbitals"][-1][3:6].strip()), inputs["par"]) 
-    upper_level_line = fn.get_sp_level(lines, int(data_points["asyrmo_orbitals"][-1][-2:].strip()), inputs["par"])
-    
-    l_parity, l_energy_hw, l_index = fn.get_info(lower_level_line)
-    u_parity, u_energy_hw, u_index = fn.get_info(upper_level_line)
-    
-    lower_energy_gap = f_energy_hw - l_energy_hw
-    upper_energy_gap = u_energy_hw - f_energy_hw
-    
-    
-    
+    # version 5: dynamically finds the orbitals nearest to the fermi level in energy:
+    data_points["asyrmo_orbitals"].append(fn.find_orbitals(f_index, inputs["nu"], 
+                                   inputs["par"], f_energy_hw, f_parity, lines))
     
     
 del [fermi_level_line, file, lines]
@@ -701,25 +669,26 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 '''
 
 #!!! set graph subtitle:
-subtitle = "no coriolis attenuation"
+subtitle = "no coriolis attenuation (chsi = eta = 1.0) \n orbitals: 12 dynamically calculated"
 
 #!!! set which graphs to plot:
 
-output_data["fermi_indices"].plot = False
+output_data["fermi_indices"].plot = True
 output_data["delta"].plot = True
 
-output_data["gs_mag_moments"].plot = False
-output_data["gs_spin_floats"].plot = False
+output_data["gs_mag_moments"].plot = True
+output_data["gs_spin_floats"].plot = True
 
-output_data["spin_1/2_energies"].plot = False 
-output_data["spin_3/2_energies"].plot = False
-output_data["spin_5/2_energies"].plot = False
-output_data["spin_7/2_energies"].plot = False
-output_data["spin_9/2_energies"].plot = False
-output_data["spin_11/2_energies"].plot = False
-output_data["spin_13/2_energies"].plot = False
+output_data["spin_1/2_energies"].plot = True 
+output_data["spin_3/2_energies"].plot = True
+output_data["spin_5/2_energies"].plot = True
+output_data["spin_7/2_energies"].plot = True
+output_data["spin_9/2_energies"].plot = True
+output_data["spin_11/2_energies"].plot = True
+output_data["spin_13/2_energies"].plot = True
 
-output_data["spin_3/2_mag_moments"].plot = False
+output_data["spin_1/2_mag_moments"].plot = True
+output_data["spin_3/2_mag_moments"].plot = True
 
 output_data["x1_energies"].plot = False
 output_data["x2_energies"].plot = False
