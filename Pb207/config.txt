@@ -96,9 +96,9 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 * single 0.230 0 ***** eps gamma
 
 * gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
-eps 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
+* eps 0.001,0.5,0.001 0 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-* mesh 0.5,40 ********* max_eps,outer_points ** 
+mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
@@ -145,13 +145,13 @@ kmax 13 **** max 29; set kmax=ispin if no truncation required
 e2plus 0.73 **** 0.2 ****** 0.73 * 0.1,1.5,0.1 *** 0.803 ***** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
-nu 11 ******* the number of orbitals to consider
+nu 15 ******* the number of orbitals to consider
 
 chsi 1.0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
 eta 1.0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
 
-nantj 5,2,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
-noutj 5,2,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+nantj 5,5,5,5,5,5,5 **** number of states to calculate at each        spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
+noutj 5,5,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
 * ipout ********** number of core states to print
@@ -166,17 +166,12 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 3100.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+cutoff 4000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 ispec 1 *** calculate spectroscopic factors 
 iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
 gsfac 0.75 *** scaling factor applied to free internal spin g-factor (g_s)
 gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
-** parameters that are currently still fixed: 
-* bs2s 0.000 **** for calculating the hyperfine anomaly (0 if no calc)
-* bs4s 0.000
-* bs2p 0.000
-* bs4p 0.000
 
 
 
@@ -211,3 +206,8 @@ nmax 9 ********* max
 ****************** these parameters are only used if vmi = 1
 
 * probamo *
+** parameters that are currently still fixed: 
+* bs2s 0.000 **** for calculating the hyperfine anomaly (0 if no calc)
+* bs4s 0.000
+* bs2p 0.000
+* bs4p 0.000

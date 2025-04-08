@@ -546,40 +546,72 @@ def find_orbitals(fermi_level, number, parity, fermi_energy, fermi_parity, lines
     index_above = overall_index + 1
     
     while len(orbitals_list) < number :
-        if index_below < 1 or index_above > 80:
-            break
+        if index_below < 1:
         
-        line_below = get_sp_level(lines, index_below, '0')
-        parity_below, energy_below, level_below = get_info(line_below)
-        
-        line_above = get_sp_level(lines, index_above, '0')
-        parity_above, energy_above, level_above = get_info(line_above)
-        
-        while parity_below != parity:
-           index_below -= 1
-           if index_below < 1:
-               break
-           
-           line_below = get_sp_level(lines, index_below, '0')
-           parity_below, energy_below, level_below = get_info(line_below)
-           
-        while parity_above != parity:
-           index_above += 1
-           if index_above > 80:
-               break
-           
-           line_above = get_sp_level(lines, index_above, '0')
-           parity_above, energy_above, level_above = get_info(line_above)
+            line_above = get_sp_level(lines, index_above, '0')
+            parity_above, energy_above, level_above = get_info(line_above)
             
-        lower_energy_gap = fermi_energy - energy_below
-        upper_energy_gap = energy_above - fermi_energy
-        
-        if lower_energy_gap < upper_energy_gap:
-            orbitals_list.append(level_below)
-            index_below -= 1
-        else:
+            # can't add any more orbitals below, so fill up with orbitals above
+            while parity_above != parity:
+               index_above += 1
+               if index_above > 80:
+                   break
+               
+               line_above = get_sp_level(lines, index_above, '0')
+               parity_above, energy_above, level_above = get_info(line_above)
+               
             orbitals_list.append(level_above)
             index_above += 1
+               
+        
+        elif index_above > 80:
+            # can't add any more orbitals above, so fill up with orbitals below
+            line_below = get_sp_level(lines, index_below, '0')
+            parity_below, energy_below, level_below = get_info(line_below)
+            
+            while parity_below != parity:
+               index_below -= 1
+               if index_below < 1:
+                   break
+               
+               line_below = get_sp_level(lines, index_below, '0')
+               parity_below, energy_below, level_below = get_info(line_below)
+               
+            orbitals_list.append(level_below)
+            index_below -= 1
+            
+        else:
+            line_below = get_sp_level(lines, index_below, '0')
+            parity_below, energy_below, level_below = get_info(line_below)
+            
+            line_above = get_sp_level(lines, index_above, '0')
+            parity_above, energy_above, level_above = get_info(line_above)
+            
+            while parity_below != parity:
+               index_below -= 1
+               if index_below < 1:
+                   break
+               
+               line_below = get_sp_level(lines, index_below, '0')
+               parity_below, energy_below, level_below = get_info(line_below)
+               
+            while parity_above != parity:
+               index_above += 1
+               if index_above > 80:
+                   break
+               
+               line_above = get_sp_level(lines, index_above, '0')
+               parity_above, energy_above, level_above = get_info(line_above)
+                
+            lower_energy_gap = fermi_energy - energy_below
+            upper_energy_gap = energy_above - fermi_energy
+            
+            if lower_energy_gap < upper_energy_gap:
+                orbitals_list.append(level_below)
+                index_below -= 1
+            else:
+                orbitals_list.append(level_above)
+                index_above += 1
     
     orbitals_string = parity + str(number) + ' ' + ' '.join(str(x) for x in sorted(orbitals_list))
     
@@ -593,7 +625,7 @@ def est_e2plus(eps, A):
     eps is assumed to be interchangable with beta, to the precision of this estimate,
     as reccomended on p6 of the manual, from which the formula is taken:
         
-    E2PLUS approx = 1225 / [pow(beta, 2) * pow(A, 7/3)] MeV
+    E2PLUS approx = 1100 / [pow(beta, 2) * pow(A, 7/3)] MeV
     
     #!!! the same p6 of the manual mentions a reference to a more sophisticated model...?
     

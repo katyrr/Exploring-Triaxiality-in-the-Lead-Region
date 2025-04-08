@@ -216,6 +216,7 @@ inputs["ipout"] = inputs["ipout"].replace(",", " ")
 # determine nneupr and calculate fermi level
 inputs["N"] = inputs["A"]-inputs["Z"]
 
+
 if inputs["A"]%2 == 0:
     raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
 elif inputs["Z"]%2 == 0: 
@@ -233,7 +234,7 @@ else:
 # Generate a string that contains the number of orbitals and their indices, 
 # in the correct format for input to gampn.
 # inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
-inputs["gampn_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
+inputs["current_gampn_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
 
 
 #%%   
@@ -377,10 +378,43 @@ for file in data_points["file_tags"] :
     data_points["asyrmo_orbitals"].append(fn.find_orbitals(f_index, inputs["nu"], 
                                    inputs["par"], f_energy_hw, f_parity, lines))
     
+
+
+
+# Re-run gampn with the new set of orbitals, so that the strong-coupling basis can be maximised. 
+# No need to re-read outputs, as the values read manually (energy levels etc) will be unaffected,
+# only the matrix elements (read automatically by asyrmo) will be affected.
     
+for t in range(len(data_points["file_tags"])):
+    
+    inputs["current_eps"] = data_points["eps"][t]
+    inputs["current_gamma"] = data_points["gamma_degrees"][t]
+    inputs["current_e2plus"] = data_points["e2plus"][t]
+    inputs["current_gampn_orbitals"] = data_points["asyrmo_orbitals"][t]
+    
+    inputs["current_f002"] = "f002_"+data_points["file_tags"][t]+".dat"
+    inputs["current_f016"] = "f016_"+data_points["file_tags"][t]+".dat"
+    inputs["current_f017"] = "f017_"+data_points["file_tags"][t]+".dat"
+    
+    gampn_dat_text = st.get_template("gampn") % inputs
+           
+    fn.write_file("../"+nucleus+"/Inputs/GAM_"+data_points["file_tags"][t]+".DAT", gampn_dat_text)
+ 
+
+sub_timer.start()
+
+run_program("gampn")
+
+sub_timer.stop()
+print("***** Finished running gampn (again) in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
+
+
+
 del [fermi_level_line, file, lines]
 
 _output_data = output_data # save a copy of the original before it's overwritten
+
+
 
 
 #%%
@@ -669,34 +703,34 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 '''
 
 #!!! set graph subtitle:
-subtitle = "no coriolis attenuation (chsi = eta = 1.0) \n orbitals: 12 dynamically calculated"
+subtitle = "no coriolis attenuation (chsi = eta = 1.0) \n orbitals: 15 dynamically calculated"
 
 #!!! set which graphs to plot:
 
-output_data["fermi_indices"].plot = True
-output_data["delta"].plot = True
+output_data["fermi_indices"].plot = 0
+output_data["delta"].plot = 0
 
-output_data["gs_mag_moments"].plot = True
-output_data["gs_spin_floats"].plot = True
+output_data["gs_mag_moments"].plot = 0
+output_data["gs_spin_floats"].plot = 0
 
-output_data["spin_1/2_energies"].plot = True 
-output_data["spin_3/2_energies"].plot = True
-output_data["spin_5/2_energies"].plot = True
-output_data["spin_7/2_energies"].plot = True
-output_data["spin_9/2_energies"].plot = True
-output_data["spin_11/2_energies"].plot = True
-output_data["spin_13/2_energies"].plot = True
+output_data["spin_1/2_energies"].plot = 0 
+output_data["spin_3/2_energies"].plot = 0
+output_data["spin_5/2_energies"].plot = 0
+output_data["spin_7/2_energies"].plot = 0
+output_data["spin_9/2_energies"].plot = 0
+output_data["spin_11/2_energies"].plot = 0
+output_data["spin_13/2_energies"].plot = 0
 
-output_data["spin_1/2_mag_moments"].plot = True
-output_data["spin_3/2_mag_moments"].plot = True
+output_data["spin_1/2_mag_moments"].plot = 0
+output_data["spin_3/2_mag_moments"].plot = 0
 
-output_data["x1_energies"].plot = False
-output_data["x2_energies"].plot = False
-output_data["x3_energies"].plot = False
+output_data["x1_energies"].plot = 0
+output_data["x2_energies"].plot = 0
+output_data["x3_energies"].plot = 0
 
-output_data["x1_mag_moments"].plot = False
+output_data["x1_mag_moments"].plot = 0
 
-output_data["all_energies"].plot = True
+output_data["all_energies"].plot = 0
 
 
 data_points["agreed"] = [0]*len(data_points["eps"])
@@ -847,9 +881,9 @@ if inputs["deformation_input"] == "mesh":
     legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
            
     
-    fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
+    #fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
     
-    plt.show()
+    #plt.show()
 
 # note how long it took
 sub_timer.stop()

@@ -130,8 +130,8 @@ def get_template(program):
 0.054,0.69,0.062,0.26
 %(nuu)s,1,1,0                       NUU,IPKT,NOYES,ITRANS
 %(emin)s,%(emax)s
-%(gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
-%(gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
+%(current_gampn_orbitals)s                 fermi_parityP, NORBITP, LEVELP
+%(current_gampn_orbitals)s                  fermi_parityN, NORBITN, LEVELN
 %(Z)s,%(A)s                                                Z,A
 %(current_eps)s,%(current_gamma)s,0.00,0.0,0.0000,8,8,0,0
 (LAST CARD: EPS,GAMMA,EPS4,EPS6,OMROT,%(nprot)s,%(nneutr)s,NSHELP,NSHELN)
