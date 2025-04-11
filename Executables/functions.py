@@ -1043,9 +1043,47 @@ def get_delta(lines):
 
 - multi_level_data = fill_gaps(multi_level_data)
 
-- all_energy_levels = collate_energy_data(output_data):
+- all_energy_levels = collate_energy_data(output_data)
+
+- gaps = find_gaps(spin_1, spin_2, exp)
 
 '''
+
+# find the lowest 13/2 state
+# check whether there are any 9/2 states at lower energy
+# if not, NaN
+# otherwise, get the energy gap between this 13/2 level and the closest 9/2 level below
+# check whether this gap is smaller than the experimental gap 
+# if so, AND there is another 9/2 level further down, get the gap to that level and compare with experiment (if this is closer, keep it, otherwise return to the first value)
+# otherwise, stop
+# find the next 13/2 state
+# get the best energy gap to its 9/2 below 
+# if this gap is closer to experiment, keep 
+def find_gaps(spin_b_energies, spin_t_energies, exp):
+
+    gaps = []
+    
+    for i in range(len(spin_t_energies)):
+        
+        gap = np.NaN
+        gap_ref = np.inf
+        
+        all_t = spin_t_energies[i]
+        all_b = spin_b_energies[i]
+        
+        for t in all_t:
+            for b in all_b:
+                if b<t:
+                    if abs(t-b-exp) < gap_ref:
+                        gap = t - b
+                        gap_ref = abs(gap-exp)
+                    else:
+                        continue
+                else:
+                    continue
+        gaps.append(gap)
+        
+    return gaps
 
 def read_data(line):
     """
@@ -1977,7 +2015,7 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
     for r in range(len(data_points["eps"])):
         
         # use a smaller marker size for large data sets
-        if len(data_points["file_tags"]) < 100: marker_size = 20
+        if len(data_points["file_tags"]) < 100: marker_size = 2
         else: marker_size = 5
         
         if prop.sort == "Spin ":

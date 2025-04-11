@@ -198,7 +198,7 @@ def get_variable_list(var_type):
         var_list = ["A", "Z", "num_to_record", "num_orbs", "nu"]
 
     elif var_type == "float":
-        var_list = ["gs_energy", "x1_energy", "x2_energy", "x3_energy", "gs_mu", "x1_mu"]
+        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "en_tol"]
         
     else: raise ValueError("unrecognised type: " + var_type)
     
@@ -328,6 +328,11 @@ class PropertyData:
             num = ""
             prop = ""
             sort = ""
+            
+        elif name[0:3] == "gap":
+            num = name[5:10].replace("_", " ").strip().replace(" ", "/2 and ")
+            prop = "energies"
+            sort = "gap"
         
         else: 
             raise ValueError("property not regonised: " + name)
@@ -337,7 +342,12 @@ class PropertyData:
         self.sort = sort
         
         # set graph title and axis label strings
-        if prop == "energies" and not(sort=="Fermi"): 
+        if sort == "gap":
+            
+            self.title = "Energy Gaps Between Spin States "+ num + "/2"
+            self.axis_label = "Energy Gap / keV"
+            
+        elif prop == "energies" and not(sort=="Fermi"): 
             
             self.title = "Energies of "+ sort + num + " States"
             self.axis_label = self.title + " / keV"

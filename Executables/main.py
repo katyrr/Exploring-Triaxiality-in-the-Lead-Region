@@ -51,7 +51,7 @@ plt.rcParams['figure.dpi'] = 150
 timer = st.Timer()
 sub_timer = st.Timer()
 
-nucleus = "Pb207" #"Fixing_Discontinuities_Pb207" # #"Au179" # #!!!
+nucleus = "Au179" #  "Pb207" #  "Fixing_Discontinuities_Pb207" # ##!!!
 verbose = False # whether to print a lot of info, or just the essentials
 
 
@@ -148,7 +148,8 @@ for l in range(len(lines)):
     elif split_string[0] in st.get_variable_list("int"):
         inputs[split_string[0]] = int(split_string[1])
         
-    elif split_string[0] in st.get_variable_list("float"):
+    elif (split_string[0] in st.get_variable_list("float")
+          or split_string[0][:3] in st.get_variable_list("float")):
         inputs[split_string[0]] = float(split_string[1])
                                       
     elif split_string[0] in st.get_variable_list("bool"):                                    
@@ -551,13 +552,17 @@ for t in range(len(data_points["file_tags"])):
     file_data = fn.missing_data(file_data, inputs)
     data_points["property_data"].append(file_data)
 
-    
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
-mask = np.array([0 if np.isnan(x) else 1 for x in output_data["delta"]])
+# get energy gap between 9/2 and 13/2
+output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], output_data["spin_13/2_energies"], 20)
+
 
 # ensure all data sets have the same size and shape
 # and mask ill-defined data poitns with reference to the DELTA data (any NaN values are ill-defined).
+
+mask = np.array([0 if np.isnan(x) else 1 for x in output_data["delta"]])
+
 for d in output_data:
     if isinstance(output_data[d][0], list):
         output_data[d] = fn.fill_gaps(output_data[d])
@@ -571,6 +576,7 @@ for d in output_data:
 _output_data_dict = output_data # save a copy of the original before it's overwritten, so that the code can be run cell-by-cell without errors.
 
 del [file_data, line, line_data, lines, t]
+
 
 
 #%%
@@ -600,13 +606,17 @@ for p in _output_data_dict:
         output_data[p].contour_levels = 10
         output_data[p].cbar_tick_labels = 0
         
-        if output_data[p].sort == "Excited State ":
+        if output_data[p].sort == "gap":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_energy", 50)
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, p, inputs["en_tol"])
+        
+        elif output_data[p].sort == "Excited State ":
+            
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_energy", inputs["en_tol"])
         
         elif output_data[p].sort == "Spin ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "jp_"+ output_data[p].num + inputs["par"], 50)
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "jp_"+ output_data[p].num + inputs["par"], inputs["en_tol"])
             
         else: raise ValueError("property not recognised: " + p)
         
@@ -614,7 +624,7 @@ for p in _output_data_dict:
             
         if output_data[p].sort == "Excited State ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_mu", 0.2)
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_mu", inputs["mu_tol"])
     
         elif output_data[p].sort == "Spin ":
             
@@ -623,7 +633,7 @@ for p in _output_data_dict:
             
         elif output_data[p].sort == "Ground":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_mu", 0.2)
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_mu", inputs["mu_tol"])
             
         else: raise ValueError("property not recognised: " + p)
         
@@ -635,7 +645,7 @@ for p in _output_data_dict:
         if output_data[p].prop == "spin_floats": 
         
             output_data[p].contour_levels = fn.calc_contour_levels(output_data[p].data)
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_spin_float", 0.2)
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_spin_float", inputs["mu_tol"])
             output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data, "half")
             output_data[p].cbar_ticks = fn.calc_cbar_ticks(output_data[p].contour_levels)
             
@@ -703,23 +713,25 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 '''
 
 #!!! set graph subtitle:
-subtitle = "no coriolis attenuation (chsi = eta = 1.0) \n orbitals: 15 dynamically calculated"
+subtitle = ""# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
 
 #!!! set which graphs to plot:
 
 output_data["fermi_indices"].plot = 0
 output_data["delta"].plot = 0
+output_data["fermi_energies_mev"].plot = 0
+output_data["fermi_energies_hw"].plot = 0
 
-output_data["gs_mag_moments"].plot = 0
-output_data["gs_spin_floats"].plot = 0
+output_data["gs_mag_moments"].plot = 1
+output_data["gs_spin_floats"].plot = 1
 
 output_data["spin_1/2_energies"].plot = 0 
-output_data["spin_3/2_energies"].plot = 0
+output_data["spin_3/2_energies"].plot = 1
 output_data["spin_5/2_energies"].plot = 0
 output_data["spin_7/2_energies"].plot = 0
-output_data["spin_9/2_energies"].plot = 0
+output_data["spin_9/2_energies"].plot = 1
 output_data["spin_11/2_energies"].plot = 0
-output_data["spin_13/2_energies"].plot = 0
+output_data["spin_13/2_energies"].plot = 1
 
 output_data["spin_1/2_mag_moments"].plot = 0
 output_data["spin_3/2_mag_moments"].plot = 0
@@ -730,7 +742,9 @@ output_data["x3_energies"].plot = 0
 
 output_data["x1_mag_moments"].plot = 0
 
-output_data["all_energies"].plot = 0
+output_data["all_energies"].plot = 1
+
+output_data["gap_9_13"].plot = 1
 
 
 data_points["agreed"] = [0]*len(data_points["eps"])
@@ -810,11 +824,10 @@ for g in output_data:
             
             if prop.sort == "Spin ":
                 for e in range(len(prop.experimental_data)):
-                    exp, = plt.plot(var, np.full(len(var), prop.experimental_data[e]), 
-                       'r-', label="experimental value")
+                    #exp, = plt.plot(var, np.full(len(var), prop.experimental_data[e]), 'r-', label="experimental value")
+                    exp = ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental value")
             else:
-                exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 
-                       'r-', label="experimental value")
+                exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
                 
             
             legend_handles.append(exp)

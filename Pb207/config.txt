@@ -96,9 +96,9 @@ num_to_record 3 ***** (if spin_or_excitation=="spin") how many states of each sp
 * single 0.230 0 ***** eps gamma
 
 * gamma 0.1 0,60,3 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.5,0.001 0 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
+eps 0.28,0.32,0.001 0 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-mesh 0.5,40 ********* max_eps,outer_points ** 
+* mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
@@ -169,7 +169,7 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 cutoff 4000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 ispec 1 *** calculate spectroscopic factors 
 iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
-gsfac 0.75 *** scaling factor applied to free internal spin g-factor (g_s)
+gsfac 0.70 *** scaling factor applied to free internal spin g-factor (g_s)
 gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 
