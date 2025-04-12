@@ -192,13 +192,13 @@ def get_variable_list(var_type):
     """
     
     if var_type == "bool":
-        var_list = ["mark_spin", "mark_exp"]
+        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points"]
 
     elif var_type == "int":
         var_list = ["A", "Z", "num_to_record", "num_orbs", "nu"]
 
     elif var_type == "float":
-        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "en_tol"]
+        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "abs_en_tol", "gap_en_tol"]
         
     else: raise ValueError("unrecognised type: " + var_type)
     
@@ -330,7 +330,7 @@ class PropertyData:
             sort = ""
             
         elif name[0:3] == "gap":
-            num = name[5:10].replace("_", " ").strip().replace(" ", "/2 and ")
+            num = name[3:].replace("_", " ").strip().replace(" ", "/2 and ")
             prop = "energies"
             sort = "gap"
         

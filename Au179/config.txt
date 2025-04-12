@@ -37,21 +37,22 @@ jp_13/2+ 515 ** [Physical Review C 106 (2022) 064324]
 
 ******* excited states (energy gaps):
 
-gap_9_13 17 ** [Physical Review C 106 (2022) 064324]
+gap_9_13 20 ** [Physical Review C 106 (2022) 064324]
 
 
 
 ****** error tolerances
 
 mu_tol 0.2 *** mu_N
-en_tol 50 **** keV
-
+abs_en_tol 50 **** keV
+gap_en_tol 20 **** keV
 
 ************** graph plotting options ****************************************
 
 mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
-mark_exp 1 ******** (1 or 0) draw experimental value lines
-
+mark_exp 0 ******** (1 or 0) draw experimental value lines
+mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
+mark_points 0 ******* (1 or 0) plot data points
 
 
 
@@ -87,8 +88,8 @@ mark_exp 1 ******** (1 or 0) draw experimental value lines
 
 * single 0.230 0 ***** eps gamma
 
-* gamma 0.18 0,60,0.5 *** eps min_gamma,max_gamma,step
-eps 0.001,0.5,0.001 33 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
+gamma 0.15 0,60,0.5 *** eps min_gamma,max_gamma,step
+* eps 0.001,0.5,0.001 33 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
 * mesh 0.5,40 ********* max_eps,outer_points ** 
         
@@ -96,9 +97,6 @@ eps 0.001,0.5,0.001 33 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,m
 
 
 ******************** program settings ************************************
-
-mode MO **** either MO or WS (not yet implemented WS)
-
 
 
 * gampn *
@@ -134,7 +132,7 @@ ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
-e2plus 0.3 *** 0.434 ** 0.170 **** 0.1,1.5,0.1 *** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.13 ** 0.170 **** 0.147 ** 0.434 ***  ** 0.1,1.5,0.1 *** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 nu 15 ******* the number of orbitals to consider
@@ -158,10 +156,10 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 
 * probamo *
 
-cutoff 4000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
+cutoff 1500.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 ispec 1 *** calculate spectroscopic factors 
 iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
-gsfac 0.70 *** scaling factor applied to free internal spin g-factor (g_s)
+gsfac 0.7 *** scaling factor applied to free internal spin g-factor (g_s)
 gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 

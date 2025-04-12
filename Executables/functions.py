@@ -1059,17 +1059,32 @@ def get_delta(lines):
 # find the next 13/2 state
 # get the best energy gap to its 9/2 below 
 # if this gap is closer to experiment, keep 
-def find_gaps(spin_b_energies, spin_t_energies, exp):
+def find_gaps(spin_b_energies, index_b , spin_t_energies, index_t, exp):
 
     gaps = []
     
-    for i in range(len(spin_t_energies)):
+    for i in range(len(spin_t_energies)): # for each data point...
         
         gap = np.NaN
         gap_ref = np.inf
         
-        all_t = spin_t_energies[i]
-        all_b = spin_b_energies[i]
+        if index_t == 0:
+            all_t = spin_t_energies[i] # all the energy levels of spin t at this deformation
+        else:
+            try:
+                all_t = [spin_t_energies[i][index_t-1]]
+            except IndexError:
+                gaps.append(np.NaN)
+                continue
+            
+        if index_b == 0:
+            all_b = spin_b_energies[i]
+        else:
+            try:
+                all_b = [spin_b_energies[i][index_b-1]]
+            except IndexError:
+                gaps.append(np.NaN)
+                continue
         
         for t in all_t:
             for b in all_b:
@@ -1747,15 +1762,15 @@ def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
         # gamma axis label
         ax.text(45*np.pi/180, ax.get_rmax()*1.2, "γ", ha='center', va='center') 
         
-        
-        ax.legend(handles=legend_handles, loc="upper left", 
-                           facecolor = 'lightblue', bbox_to_anchor=(-0.5, 1.1))
+        if len(legend_handles) > 0:
+            ax.legend(handles=legend_handles, loc="upper left", 
+                           facecolor = '#D2D2D2', framealpha=0.9, bbox_to_anchor=(-0.4, 1.0))
         
         ax.set_title(title, va='bottom', y=1.1)  
         
         if subtitle != "":
-            ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=14,
-                    verticalalignment='top')
+            ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=12, #verticalalignment='top')
+                    horizontalalignment = 'center', position=(0.5,1.06))
         
     elif polar_or_linear == 'linear':
         
@@ -1772,8 +1787,12 @@ def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
         
         ax.set_title(title, va='bottom', y=1.1) 
         
-        legend = ax.legend(handles = legend_handles, bbox_to_anchor=(1.2, 0.8))
+        if "All " in title:
+            legend = ax.legend(handles = legend_handles, loc="center left", bbox_to_anchor=(1.0, 0.5))
+        else: 
+            legend = ax.legend(handles = legend_handles, loc="upper center", bbox_to_anchor=(0.5, -0.15))
         
+            
         if legend_title != "x":
             legend.set_title(legend_title)
         
@@ -1828,17 +1847,18 @@ def draw_contour_plot(ax, prop, data_points):
 
     """
     
+    # get the data to plot
     if prop.sort == "Spin ":
         
         plot_data = np.transpose(prop.data)[0]
         
         print('''multiple levels can't be plotted on a contour plot; 
               plotting only the yrast state of spin ''' + prop.num)
-        
-        
     else:
         plot_data = np.array(prop.data)
         
+    # now start plotting
+    
     # some of the data points may be NaN, 
     # so manually create the triangulation and mask NaN triangles.
     triang = tri.Triangulation(data_points["gamma_radians"], data_points["eps"])
@@ -2030,7 +2050,7 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
             data_points["agreed"][r] += 1                                       
             hit = plt.scatter(data_points["gamma_radians"][r], 
                       data_points["eps"][r], s=marker_size, edgecolor='red', 
-                      facecolor='None', label="matches experiment")
+                      facecolor='None', label="data point that agrees with experiment")
             legend_hit = True
             
         # for data points that don't match experimental data, only plot them 
@@ -2050,15 +2070,127 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
             exp = cbar.ax.plot([0, 1], 
                                [prop.experimental_data[e], prop.experimental_data[e]], 
                                'r-', label = "experimental value")
+            # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
+            
     else:
         exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 
                            'r-', label = "experimental value")
+        # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
         
    
     legend_handles.append(exp[0])
     
     return legend_handles
 
+
+def plot_points(data_points, prop, legend_handles, cbar, inputs):
+    """
+    A function to plot data points on a graph in polar coordinates. 
+    Additionally compares the value of each data point to an experimental value,
+    and marks it in red if it agrees within tolerance.
+    
+    If the data set is large, the data point markers are smaller, and ONLY points 
+    that match experiment are plotted, to avoid overly cluttering the graph.
+    
+    The experimental value is also marked with a red line on the colour bar.
+
+    Parameters
+    ----------
+    data_points : dictionary
+        Contains lists of data point values, including "gamma_radians" and "eps".
+        All the lists in this dictionary have the same length = total number of data points.
+        
+    prop : PropertyData object
+        The nuclear property that is being plotted, collected into a class with 
+        information about its graph plotting features.
+        
+    legend_handles : list of object handles.
+        A list of all the objects so-far plotted on the graph which should be 
+        included in the legend.
+        
+    cbar : Colorbar object
+        The color bar of the filled contour plot.
+        
+    Returns
+    -------
+    legend_handles : list of object handles.
+        A list of all the objects so-far plotted on the graph which should be 
+        included in the legend, now including the objects plotted in this function.
+        
+    
+    """
+    
+    if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]==1:
+    
+        legend_hit = False
+        legend_miss = False
+        
+        for r in range(len(data_points["eps"])):
+            
+            # use a smaller marker size for large data sets
+            if len(data_points["file_tags"]) < 100: marker_size = 2
+            else: marker_size = 5
+            
+            if prop.sort == "Spin ":
+                error = [abs(prop.data[r][0] - exp) for exp in prop.experimental_data]
+                match = [err < prop.error_tolerance for err in error]
+            else:
+                error = abs(prop.data[r] - prop.experimental_data)
+                match = [error < prop.error_tolerance]
+                
+            if any(match): 
+                # update the record of how many of the tested properties agree
+                data_points["agreed"][r] += 1      
+
+                if inputs["mark_points"]==1:
+                    
+                    hit = plt.scatter(data_points["gamma_radians"][r], 
+                          data_points["eps"][r], s=marker_size, edgecolor='red', 
+                          facecolor='None', label="data point that agrees \nwith experiment")
+                    
+                    legend_hit = True
+                
+            # for data points that don't match experimental data, only plot them 
+            # when the data set is quite small, to avoid cluttering the graph.
+            elif len(data_points["file_tags"]) < 100 and inputs["mark_points"]==1: 
+                miss, = plt.polar(data_points["gamma_radians"][r], 
+                          data_points["eps"][r], 'wx', label="does not match experiment")
+                legend_miss = True
+        
+        if legend_hit:
+            legend_handles.append(hit)
+        if legend_miss:
+            legend_handles.append(miss)
+        
+        if inputs["mark_exp"]==1:
+            if prop.sort == "Spin ":
+                for e in range(len(prop.experimental_data)):
+                    exp = cbar.ax.plot([0, 1], 
+                                       [prop.experimental_data[e], prop.experimental_data[e]], 
+                                       'r-', label = "experimental value")
+                    # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
+                    
+            else:
+                exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 
+                                   'r-', label = "experimental value")
+                # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
+                
+       
+        legend_handles.append(exp[0])
+    
+    else: 
+        # use a smaller marker size for large data sets
+        if len(data_points["file_tags"]) < 100: marker_size = 5
+        else: marker_size = 1
+        
+        if inputs["mark_points"]==1:
+            all_points = plt.scatter(data_points["gamma_radians"], 
+                      data_points["eps"], s=marker_size, c='w', label="data point")
+            legend_handles.append(all_points) 
+    
+    return legend_handles
+    
+    
 
 def plot_points_without_experiment(data_points, legend_handles):
     """

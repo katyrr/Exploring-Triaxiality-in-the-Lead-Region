@@ -555,7 +555,7 @@ for t in range(len(data_points["file_tags"])):
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
 # get energy gap between 9/2 and 13/2
-output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], output_data["spin_13/2_energies"], 20)
+output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 2, output_data["spin_13/2_energies"], 1, 20) #!!!
 
 
 # ensure all data sets have the same size and shape
@@ -608,19 +608,22 @@ for p in _output_data_dict:
         
         if output_data[p].sort == "gap":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, p, inputs["en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, p, inputs["gap_en_tol"])
         
         elif output_data[p].sort == "Excited State ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_energy", inputs["en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_energy", inputs["abs_en_tol"])
         
         elif output_data[p].sort == "Spin ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "jp_"+ output_data[p].num + inputs["par"], inputs["en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "jp_"+ output_data[p].num + inputs["par"], inputs["abs_en_tol"])
             
         else: raise ValueError("property not recognised: " + p)
         
     elif output_data[p].prop == "mag_moments":
+        
+        output_data[p].contour_levels = 6
+        output_data[p].cbar_tick_labels = 0
             
         if output_data[p].sort == "Excited State ":
             
@@ -637,8 +640,6 @@ for p in _output_data_dict:
             
         else: raise ValueError("property not recognised: " + p)
         
-        output_data[p].contour_levels = 8
-        output_data[p].cbar_tick_labels = 0
     
     elif output_data[p].sort == "Ground":
         
@@ -650,6 +651,7 @@ for p in _output_data_dict:
             output_data[p].cbar_ticks = fn.calc_cbar_ticks(output_data[p].contour_levels)
             
         elif output_data[p].prop == "spin_strings": continue
+        else: raise ValueError("property not recognised: " + p)
     
     elif output_data[p].sort == "Fermi":
     
@@ -713,7 +715,7 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 '''
 
 #!!! set graph subtitle:
-subtitle = ""# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
+subtitle = "e2plus = 0.13, gsfac = 0.7 \n second 9/2 and first 13/2"# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
 
 #!!! set which graphs to plot:
 
@@ -777,14 +779,12 @@ for g in output_data:
             
             legend_handles = fn.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
             
-        # plot the data point markers, with comparison to experiment if possible 
+        # plot the data point markers, with comparison to experiment if possible
+             
+        legend_handles = fn.plot_points(data_points, prop, legend_handles, cbar, inputs)
         if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]: 
             num_comparisons += 1
-            legend_handles = fn.plot_points_with_experiment(data_points, prop, legend_handles, cbar)
-            
-        else: 
-            legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
-               
+        
         
         fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
         
@@ -820,17 +820,24 @@ for g in output_data:
             legend_title = ""
           
         # if experimental data is available, plot it in red for easy comparison
-        if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]:  
+        if np.isfinite(prop.experimental_data).all():  
             
             if prop.sort == "Spin ":
                 for e in range(len(prop.experimental_data)):
-                    #exp, = plt.plot(var, np.full(len(var), prop.experimental_data[e]), 'r-', label="experimental value")
-                    exp = ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental value")
+                    if inputs["mark_exp"]:
+                        exp, = plt.plot(var, np.full(len(var), prop.experimental_data[e]), 'r-', label="experimental value")
+                    if inputs["mark_exp_tol"]:
+                        exp_tol = ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
             else:
-                exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
-                
-            
-            legend_handles.append(exp)
+                if inputs["mark_exp"]:
+                    exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
+                if inputs["mark_exp_tol"]:
+                    exp_tol = ax.axhspan(prop.experimental_data-prop.error_tolerance, prop.experimental_data+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
+
+            if inputs["mark_exp"]:
+                legend_handles.append(exp)
+            if inputs["mark_exp_tol"]:
+                legend_handles.append(exp_tol)
             
     
         # mark the range in which the correct ground state spin was calculated
@@ -849,6 +856,11 @@ for g in output_data:
         
         if prop.prop == "delta":
             ax.set_ylim([0.2,1]) 
+            
+        if prop.cbar_tick_labels:        # then format for discrete values
+            
+            ax.set_yticks(prop.cbar_ticks)
+            ax.set_yticklabels(prop.cbar_tick_labels)
         
         plt.show()
         
@@ -866,37 +878,41 @@ del [g]
 
 '''
 
-
+inputs["mark_points"] = 0
     
 fn.check_agreement(verbose, data_points, num_comparisons)
 
 agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
-agreement.contour_levels = fn.calc_contour_levels(agreement.data)
+agreement.contour_levels = np.arange(0, num_comparisons+2, dtype=int) #fn.calc_contour_levels(agreement.data)
 agreement.cbar_ticks = fn.calc_cbar_ticks(agreement.contour_levels)
-agreement.cbar_tick_labels = fn.calc_cbar_tick_labels(agreement.data, "int")
+agreement.cbar_tick_labels = list(np.arange(0, num_comparisons+1, dtype=int)) #fn.calc_cbar_tick_labels(agreement.data, "int")
 agreement.experimental_data = np.NaN
 agreement.error_tolerance = np.NaN
-    
 
-if inputs["deformation_input"] == "mesh":  
-    
-    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-    cax, cbar = fn.draw_contour_plot(ax, agreement, data_points)
+agreement.plot = 1
+
+
+if inputs["deformation_input"] == "mesh" and agreement.plot:  
     
     inputs["current_graph"] = agreement.title
     print("plotting graph: %(current_graph)s" % inputs) 
+    
+    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+    cax, cbar = fn.draw_contour_plot(ax, agreement, data_points)
     
     legend_handles = []
     
     if inputs["mark_spin"]:
         legend_handles = fn.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
     
-    legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
+    if inputs["mark_points"]:
+        legend_handles =  fn.plot_points_without_experiment(data_points, legend_handles)
            
     
-    #fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
+    fn.format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
     
-    #plt.show()
+    plt.show()
+    
 
 # note how long it took
 sub_timer.stop()
