@@ -80,6 +80,7 @@ lines = fn.read_file("../"+ nucleus +"/config.txt")
 
 inputs = {}                                                                     
 data_points = {}
+experimental = {}
 
 for l in range(len(lines)):                       
     
@@ -143,14 +144,14 @@ for l in range(len(lines)):
                     
     # save other inputs
     elif split_string[0][:3]=="jp_":
-        inputs[split_string[0]] = [float(n) for n in split_string[1].split(',')]
+        experimental[split_string[0]] = [float(n) for n in split_string[1].split(',')]
           
     elif split_string[0] in st.get_variable_list("int"):
         inputs[split_string[0]] = int(split_string[1])
         
     elif (split_string[0] in st.get_variable_list("float")
           or split_string[0][:3] in st.get_variable_list("float")):
-        inputs[split_string[0]] = float(split_string[1])
+        experimental[split_string[0]] = float(split_string[1])
                                       
     elif split_string[0] in st.get_variable_list("bool"):                                    
         inputs[split_string[0]] = bool(int(split_string[1]))
@@ -175,7 +176,6 @@ del [l, line, lines, split_string]
 
 
 
-
 #%%
 ''' 3. PROCESS INPUTS 
 
@@ -197,16 +197,16 @@ data_points["gamma_radians"] = [n*np.pi/180 for n in data_points["gamma_degrees"
 
 # add float versions of the spin parameters
 if "gs_spin" in inputs:
-    inputs["gs_spin_float"] = fn.spin_string_to_float(inputs["gs_spin"])
+    experimental["gs_spin_float"] = fn.spin_string_to_float(inputs["gs_spin"])
 
 if "x1_spin" in inputs:
-    inputs["x1_spin_float"] = fn.spin_string_to_float(inputs["x1_spin"])
+    experimental["x1_spin_float"] = fn.spin_string_to_float(inputs["x1_spin"])
 
 if "x2_spin" in inputs:
-    inputs["x2_spin_float"] = fn.spin_string_to_float(inputs["x2_spin"])
+    experimental["x2_spin_float"] = fn.spin_string_to_float(inputs["x2_spin"])
 
 if "x3_spin" in inputs:
-    inputs["x3_spin_float"] = fn.spin_string_to_float(inputs["x3_spin"])
+    experimental["x3_spin_float"] = fn.spin_string_to_float(inputs["x3_spin"])
 
 
 # convert the nantj, noutj, ipout inputs to the correct format
@@ -234,9 +234,7 @@ else:
 
 # Generate a string that contains the number of orbitals and their indices, 
 # in the correct format for input to gampn.
-# inputs["gampn_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
-inputs["current_gampn_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!!! hard coded version of the above
-
+inputs["current_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
 
 #%%   
 ''' 4. WRITE GAMPN.DAT FILES 
@@ -251,6 +249,7 @@ inputs["current_gampn_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 3
 data_points["file_tags"] = []
 
 for p in range(len(data_points["eps"])):
+    
     
     inputs["current_eps"] = data_points["eps"][p]
     inputs["current_gamma"] = data_points["gamma_degrees"][p]
@@ -268,6 +267,10 @@ for p in range(len(data_points["eps"])):
     inputs["current_f016"] = "f016_"+file_tag+".dat"
     inputs["current_f017"] = "f017_"+file_tag+".dat"
     
+    if data_points["gamma_degrees"][p] > 30:
+        inputs["current_eps"] = data_points["eps"][p] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][p]
+        
     gampn_dat_text = st.get_template("gampn") % inputs
            
     fn.write_file("../"+nucleus+"/Inputs/GAM_"+file_tag+".DAT", gampn_dat_text)
@@ -361,21 +364,8 @@ for file in data_points["file_tags"] :
     output_data["fermi_energies_mev"].append(f_energy_hw * inputs["efac"])
     output_data["fermi_indices"].append(f_index)
     
-    # generate the orbitals input for asyrmo
-    
-    # version 1: centers orbitals around fermi level and matches parity:
-    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], output_data["fermi_parities"][-1]))
-    
-    # version 2: centers orbitals around fermi level but fixes parity (no good! inconsistencies when the parity of the fermi level is opposite):
-    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(output_data["fermi_indices"][-1], inputs["nu"], inputs["par"]))
-    
-    # version 3: hard codes centering of the orbitals with approx fermi level, matching fixed parity, but doesn't adjust the levels input when SP levels reorder):
-    # data_points["asyrmo_orbitals"].append(fn.write_orbitals(30, inputs["nu"], inputs["par"])) 
-    
-    # version 4: REALLY hard codes the orbitals, with complete flexibility:
-    # data_points["asyrmo_orbitals"].append("-15 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35") #!!! ideally shouldn't be hard coding this
-    
-    # version 5: dynamically finds the orbitals nearest to the fermi level in energy:
+    # generate the orbitals input for asyrmo:
+    # dynamically find the orbitals nearest to the fermi level in energy:
     data_points["asyrmo_orbitals"].append(fn.find_orbitals(f_index, inputs["nu"], 
                                    inputs["par"], f_energy_hw, f_parity, lines))
     
@@ -388,10 +378,16 @@ for file in data_points["file_tags"] :
     
 for t in range(len(data_points["file_tags"])):
     
-    inputs["current_eps"] = data_points["eps"][t]
-    inputs["current_gamma"] = data_points["gamma_degrees"][t]
+    if data_points["gamma_degrees"][t] > 30:
+        inputs["current_eps"] = data_points["eps"][t] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][t]
+    else:
+        inputs["current_eps"] = data_points["eps"][t]
+        inputs["current_gamma"] = data_points["gamma_degrees"][t]
+        
+        
     inputs["current_e2plus"] = data_points["e2plus"][t]
-    inputs["current_gampn_orbitals"] = data_points["asyrmo_orbitals"][t]
+    inputs["current_orbitals"] = data_points["asyrmo_orbitals"][t]
     
     inputs["current_f002"] = "f002_"+data_points["file_tags"][t]+".dat"
     inputs["current_f016"] = "f016_"+data_points["file_tags"][t]+".dat"
@@ -555,7 +551,21 @@ for t in range(len(data_points["file_tags"])):
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
 # get energy gap between 9/2 and 13/2
-output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 2, output_data["spin_13/2_energies"], 1, 20) #!!!
+# output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 1, output_data["spin_13/2_energies"], 1, 20) #!!!
+
+# take the lowest energy level of each spin for now
+for j in experimental:
+    
+    if "gap_" not in j: # ignore experimental values that aren't energy levels 
+        continue
+    
+    if j == "gap_en_tol":
+        continue
+    
+    spin_b = j[4:6].replace("_", "")
+    spin_t = j[-2:].replace("_", "")
+    
+    output_data[j] = fn.find_gaps(output_data["spin_"+spin_b+"/2_energies"], 1, output_data["spin_"+spin_t+"/2_energies"], 1, 20) #!!!
 
 
 # ensure all data sets have the same size and shape
@@ -608,15 +618,15 @@ for p in _output_data_dict:
         
         if output_data[p].sort == "gap":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, p, inputs["gap_en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, p, experimental["gap_en_tol"])
         
         elif output_data[p].sort == "Excited State ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_energy", inputs["abs_en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, "x" + output_data[p].num + "_energy", experimental["abs_en_tol"])
         
         elif output_data[p].sort == "Spin ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "jp_"+ output_data[p].num + inputs["par"], inputs["abs_en_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, "jp_"+ output_data[p].num + inputs["par"], experimental["abs_en_tol"])
             
         else: raise ValueError("property not recognised: " + p)
         
@@ -627,7 +637,7 @@ for p in _output_data_dict:
             
         if output_data[p].sort == "Excited State ":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "x" + output_data[p].num + "_mu", inputs["mu_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, "x" + output_data[p].num + "_mu", experimental["mu_tol"])
     
         elif output_data[p].sort == "Spin ":
             
@@ -636,7 +646,7 @@ for p in _output_data_dict:
             
         elif output_data[p].sort == "Ground":
             
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_mu", inputs["mu_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, "gs_mu", experimental["mu_tol"])
             
         else: raise ValueError("property not recognised: " + p)
         
@@ -646,7 +656,7 @@ for p in _output_data_dict:
         if output_data[p].prop == "spin_floats": 
         
             output_data[p].contour_levels = fn.calc_contour_levels(output_data[p].data)
-            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(inputs, "gs_spin_float", inputs["mu_tol"])
+            output_data[p].experimental_data, output_data[p].error_tolerance = fn.try_experimental(experimental, "gs_spin_float", experimental["mu_tol"])
             output_data[p].cbar_tick_labels = fn.calc_cbar_tick_labels(output_data[p].data, "half")
             output_data[p].cbar_ticks = fn.calc_cbar_ticks(output_data[p].contour_levels)
             
@@ -715,7 +725,7 @@ output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_point
 '''
 
 #!!! set graph subtitle:
-subtitle = "e2plus = 0.13, gsfac = 0.7 \n second 9/2 and first 13/2"# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
+subtitle = "negative parity, e2plus 0.434" #"e2plus = 0.10, gsfac = 0.6 \n second 9/2 and first 13/2"# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
 
 #!!! set which graphs to plot:
 
@@ -724,16 +734,16 @@ output_data["delta"].plot = 0
 output_data["fermi_energies_mev"].plot = 0
 output_data["fermi_energies_hw"].plot = 0
 
-output_data["gs_mag_moments"].plot = 1
+output_data["gs_mag_moments"].plot = 0
 output_data["gs_spin_floats"].plot = 1
 
 output_data["spin_1/2_energies"].plot = 0 
-output_data["spin_3/2_energies"].plot = 1
+output_data["spin_3/2_energies"].plot = 0
 output_data["spin_5/2_energies"].plot = 0
 output_data["spin_7/2_energies"].plot = 0
-output_data["spin_9/2_energies"].plot = 1
+output_data["spin_9/2_energies"].plot = 0
 output_data["spin_11/2_energies"].plot = 0
-output_data["spin_13/2_energies"].plot = 1
+output_data["spin_13/2_energies"].plot = 0
 
 output_data["spin_1/2_mag_moments"].plot = 0
 output_data["spin_3/2_mag_moments"].plot = 0
@@ -744,9 +754,9 @@ output_data["x3_energies"].plot = 0
 
 output_data["x1_mag_moments"].plot = 0
 
-output_data["all_energies"].plot = 1
+output_data["all_energies"].plot = 0
 
-output_data["gap_9_13"].plot = 1
+output_data["gap_9_13"].plot = 0
 
 
 data_points["agreed"] = [0]*len(data_points["eps"])
@@ -843,7 +853,7 @@ for g in output_data:
         # mark the range in which the correct ground state spin was calculated
         if inputs["mark_spin"]==1:
             
-            correct_spin_range = fn.find_correct_spin(output_data["gs_spin_floats"].data, inputs["gs_spin_float"])
+            correct_spin_range = fn.find_correct_spin(output_data["gs_spin_floats"].data, experimental["gs_spin_float"])
             if len(correct_spin_range) > 0:
                 spin = fn.plot_correct_spin(correct_spin_range, var, inputs["step"], prop)
                 legend_handles.append(spin)

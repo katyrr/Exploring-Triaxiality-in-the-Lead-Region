@@ -50,9 +50,9 @@ gap_en_tol 20 **** keV
 ************** graph plotting options ****************************************
 
 mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
-mark_exp 0 ******** (1 or 0) draw experimental value lines
+mark_exp 1 ******** (1 or 0) draw experimental value lines
 mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
-mark_points 0 ******* (1 or 0) plot data points
+mark_points 1 ******* (1 or 0) plot data points
 
 
 
@@ -86,12 +86,12 @@ mark_points 0 ******* (1 or 0) plot data points
 *
 *********************************************************************************
 
-* single 0.230 0 ***** eps gamma
+* single 0.167 0.0 ***** eps gamma
 
-gamma 0.15 0,60,0.5 *** eps min_gamma,max_gamma,step
+* gamma 0.18 0,60,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.001,0.5,0.001 33 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-* mesh 0.5,40 ********* max_eps,outer_points ** 
+mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
@@ -105,13 +105,13 @@ istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
 ************* also used in asyrmo
 
 ***** nneupr 1 *** protons (1) neutrons (-1) or both (2) *** calculated in macro code
-par + ******* the parity calculated in gampn and displayed in probamo
+par - ******* the parity calculated in gampn and displayed in probamo
 
 irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
 ************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
 
-emin 6.5
+emin 5.0
 emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
 
 num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
@@ -132,7 +132,7 @@ ispin 13 *** max spin I
 kmax 13 **** max 29; set kmax=ispin if no truncation required
 
 
-e2plus 0.13 ** 0.170 **** 0.147 ** 0.434 ***  ** 0.1,1.5,0.1 *** for calculating MoI (fixes value of the first E(2+)/MeV)
+e2plus 0.434 ** 0.170 **** 0.147 ** 0.434 ***  ** 0.1,1.5,0.1 *** for calculating MoI (fixes value of the first E(2+)/MeV)
 e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 
 nu 15 ******* the number of orbitals to consider
@@ -159,7 +159,7 @@ ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rot
 cutoff 1500.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 ispec 1 *** calculate spectroscopic factors 
 iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
-gsfac 0.7 *** scaling factor applied to free internal spin g-factor (g_s)
+gsfac 0.6 *** scaling factor applied to free internal spin g-factor (g_s)
 gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 
