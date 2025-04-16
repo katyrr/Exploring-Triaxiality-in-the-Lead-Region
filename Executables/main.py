@@ -265,6 +265,10 @@ for _ in range(len(data_points["eps"])):
     inputs["current_f016"] = "f016_"+_file_tag+".dat"
     inputs["current_f017"] = "f017_"+_file_tag+".dat"
     
+    if data_points["gamma_degrees"][_] > 30:
+        inputs["current_eps"] = data_points["eps"][_] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][_]
+    
     fn.write_file("../"+nucleus+"/Inputs/GAM_"+_file_tag+".DAT", st.get_template("gampn") % inputs)
  
     data_points["file_tags"].append(_file_tag)
@@ -367,14 +371,20 @@ for _file in data_points["file_tags"] :
     
 for _ in range(len(data_points["file_tags"])):
     
-    inputs["current_eps"] = data_points["eps"][_]
-    inputs["current_gamma"] = data_points["gamma_degrees"][_]
+    if data_points["gamma_degrees"][_] > 30:
+        inputs["current_eps"] = data_points["eps"][_] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][_]
+    else:
+        inputs["current_eps"] = data_points["eps"][_]
+        inputs["current_gamma"] = data_points["gamma_degrees"][_]
+        
     inputs["current_e2plus"] = data_points["e2plus"][_]
     inputs["current_orbitals"] = data_points["asyrmo_orbitals"][_]
     
     inputs["current_f002"] = "f002_"+data_points["file_tags"][_]+".dat"
     inputs["current_f016"] = "f016_"+data_points["file_tags"][_]+".dat"
     inputs["current_f017"] = "f017_"+data_points["file_tags"][_]+".dat"
+   
     
     fn.write_file("../"+nucleus+"/Inputs/GAM_"+data_points["file_tags"][_]+".DAT", st.get_template("gampn") % inputs)
  
@@ -644,8 +654,9 @@ for _ in _output_data_dict:
     
 
 
-output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]))
+output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), experimental["gs_spin_string"])
 
+output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energies"]) # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
 
 
 #%%
@@ -701,9 +712,10 @@ output_data["x3_energies"].plot = 0
 
 output_data["x1_mag_moments"].plot = 0
 
-output_data["all_energies"].plot = 1
+output_data["all_energies"].plot = 0
+output_data["shifted_energies"].plot = 1
 
-output_data["gap_9_13"].plot = 1
+output_data["gap_9_13"].plot = 0
 
 
 data_points["agreed"] = [0]*len(data_points["eps"])

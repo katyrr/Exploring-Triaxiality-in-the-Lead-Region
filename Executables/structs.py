@@ -323,7 +323,7 @@ class PropertyData:
             sort = "Fermi"
             
         elif (name == "Agreement of Data Points With Experimental Data"
-              or name == "All Energy Levels"
+              or "All E" in name 
               or name == "delta"):
             num = ""
             prop = ""
@@ -394,7 +394,7 @@ class PropertyData:
             self.title = name
             self.axis_label = "Number of Matches"
             
-        elif name == "All Energy Levels":
+        elif "All E" in name:
             self.title = name
             self.axis_label = "Energy / keV"
             self.sort = "Spin "

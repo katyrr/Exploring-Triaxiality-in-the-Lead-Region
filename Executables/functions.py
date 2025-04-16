@@ -1488,7 +1488,7 @@ def fill_gaps(multi_level_data):
 
 
 
-def collate_energy_data(output_data, num_points):
+def collate_energy_data(output_data, num_points, expected_gs_spin_string):
     """
     A function that takes all of the separate spin_n/2_energies data sets
     and combines them into a single collection.
@@ -1520,6 +1520,10 @@ def collate_energy_data(output_data, num_points):
             all_level_data = np.hstack((all_level_data, this_level_data))
             spins += [output_data[d].num]*np.size(this_level_data,1)
             
+            if output_data[d].num == expected_gs_spin_string:
+                gs_spin_energies = this_level_data[:,0]  # the energies of the lowest state of the expected gs spin
+            
+            
     all_level_data = np.delete(all_level_data, [0], axis=1)
     
     indices = np.argsort(all_level_data[0,:])
@@ -1534,6 +1538,7 @@ def collate_energy_data(output_data, num_points):
     all_energy_levels.experimental_data = np.NaN
     all_energy_levels.error_tolerance = np.NaN
     all_energy_levels.spins = [spin_string_to_float(n) for n in spins]
+    all_energy_levels.shifts = gs_spin_energies
             
     return all_energy_levels
 
@@ -2586,3 +2591,26 @@ def plot_exp_line(prop, inputs, var, legend_handles):
         legend_handles.append(exp_tol)
         
     return legend_handles
+
+def shift_energy_levels(default_energy_levels):
+    
+    shifted_energy_levels = []
+    
+    # for each deformation:
+    for d in range(np.size(default_energy_levels.data, 0)):
+        
+        this_deformation_data = default_energy_levels.data[d,:]
+        this_deformation_gs_energy = default_energy_levels.shifts[d]
+        
+        # shift energies to be relative to this
+        shifted_energy_levels.append([(e - this_deformation_gs_energy) for e in this_deformation_data])
+    
+    shifted_energies = st.PropertyData(np.array(shifted_energy_levels), "All Energy Levels (Relative)")
+    shifted_energies.contour_levels = 10
+    shifted_energies.cbar_ticks = 0
+    shifted_energies.cbar_tick_labels = 0
+    shifted_energies.experimental_data = np.NaN
+    shifted_energies.error_tolerance = np.NaN
+    shifted_energies.spins = default_energy_levels.spins
+            
+    return shifted_energies
