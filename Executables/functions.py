@@ -2547,3 +2547,42 @@ def check_agreement(verbose, data_points, num_comparisons):
                 print("... etc, " + str(len(these_eps)))
         
        
+def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
+
+    # now plot the actual data
+    if len(data_points["file_tags"]) < 100: marker_size = 5
+    else: marker_size = 1 # use smaller markers if the data set is large
+    
+    if prop.sort == "Spin ":
+        
+        if prop.num == "all":
+            legend_handles, legend_title = plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix[0])
+        else:
+            legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix[0])
+        
+    else:
+        data, = plt.plot(var, prop.data, 'k-x', markersize=marker_size, label="%s = %s" % (fix_sym, fix[0]))
+        legend_handles.append(data)
+        legend_title = ""
+        
+    return legend_handles, legend_title
+
+def plot_exp_line(prop, inputs, var, legend_handles):
+    if prop.sort == "Spin ":
+        for _ in range(len(prop.experimental_data)):
+            if inputs["mark_exp"]:
+                exp, = plt.plot(var, np.full(len(var), prop.experimental_data[_]), 'r-', label="experimental value")
+            if inputs["mark_exp_tol"]:
+                exp_tol = plt.axhspan(prop.experimental_data[_]-prop.error_tolerance, prop.experimental_data[_]+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
+    else:
+        if inputs["mark_exp"]:
+            exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
+        if inputs["mark_exp_tol"]:
+            exp_tol = plt.axhspan(prop.experimental_data-prop.error_tolerance, prop.experimental_data+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
+    
+    if inputs["mark_exp"]:
+        legend_handles.append(exp)
+    if inputs["mark_exp_tol"]:
+        legend_handles.append(exp_tol)
+        
+    return legend_handles
