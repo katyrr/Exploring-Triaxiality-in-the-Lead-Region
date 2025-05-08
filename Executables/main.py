@@ -3,7 +3,7 @@
 """
 Created on Fri Feb  7 10:54:23 2025
 
-@author: katyrr
+@author: Katy Robson
 
 HOW TO USE:
     
@@ -11,7 +11,7 @@ HOW TO USE:
     - Modules "functions.py" and "structs.py" are also stored in this directory.
     
     - Must have the following file structure set up before running (e.g. for 207Pb):
-        /Code/Pb207/config_file.txt     (file path to config file)
+        /Code/Pb207/config.txt          (file path to config file)
         /Code/Pb207/Inputs/             (.DAT files will be generated here)
         /Code/Pb207/Outputs/            (.OUT files will be generated here)
         /Code/Pb207/Scripts/            (bash scripts for running codes will be 
@@ -22,7 +22,7 @@ HOW TO USE:
                                          is run through the programs in parallel)
         /Code/Pb207/Run/Batch3/         (etc. up to batch 8)
     
-    - Before running, check that config_file_path is set correctly in [1. SET UP] below.
+    - Before running, check that config.txt has been filled in with the desired input parameters.
     
     - Run from terminal in working directory /Code/Executables using command: python3 main.py
     
@@ -35,7 +35,7 @@ HOW TO USE:
 - Import modules.
 - Set figure resolution.
 - Create timers (one to time the whole program, and one to time small sections).
-- State the nucleus being studied (for use in navigating file directories).
+- State the nucleus being studied (for navigating file directories).
 
 """
 
@@ -47,11 +47,11 @@ import matplotlib.pyplot as plt                      # for plotting graphs
 import functions as fn                               # my own module file of functions
 import structs as st                                 # my own module file of structs (classes, and read-only dicts)
 
-plt.rcParams['figure.dpi'] = 150
+plt.rcParams['figure.dpi'] = 150 
 _timer = st.Timer()
 _sub_timer = st.Timer()
 
-nucleus = "Au179" #  "Pb207" #  "Fixing_Discontinuities_Pb207" # ##!!!
+nucleus = "Au179_test10000" # "Au179" #  "Pb207" # "Pt177" #   "Fixing_Discontinuities_Pb207" # ##!!!
 verbose = False # whether to print a lot of info, or just the essentials
 
 
@@ -91,7 +91,7 @@ for _ in range(len(_lines)):
     if _line[0] == "*" : continue              
     
     _split_string = _line.split(" ")  # split into name and value
-    _split_string = fn.remove_inline_comments(_split_string)
+    _split_string = fn.remove_inline_comments(_split_string, _)
 
     fn.check_line_format(_split_string, _line, _)         
     
@@ -304,7 +304,7 @@ if batch_settings["num_per_batch"] < 20:
 
 # each file takes ~ 0.1 seconds to run;
 # allow double time plus an overhead of 2 s
-batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+2         
+batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+50         
 
 
 # configure a batch script writer for gampn, and run the batches
@@ -525,7 +525,7 @@ for _ in range(len(data_points["file_tags"])):
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
 
 # get energy gap between 9/2 and 13/2
-output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 2, output_data["spin_13/2_energies"], 1, 20) #!!!
+output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
 
 
 # ensure all data sets have the same size and shape
@@ -562,6 +562,8 @@ _output_data_dict = output_data # save a copy of the original before it's overwr
 # convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
 output_data = {}
 for _ in _output_data_dict:
+    
+    #print(_)
     
     output_data[_] = st.PropertyData(_output_data_dict[_], _)
     
@@ -654,9 +656,13 @@ for _ in _output_data_dict:
     
 
 
-output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), experimental["gs_spin_string"])
+output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), experimental["gs_spin_string"], experimental)
 
 output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energies"]) # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
+
+output_data["rms"] = fn.calc_rms_err(output_data["spin_1/2_energies"],output_data["spin_3/2_energies"], output_data["spin_5/2_energies"], output_data["spin_7/2_energies"], output_data["spin_9/2_energies"], output_data["spin_11/2_energies"], output_data["spin_13/2_energies"])
+
+
 
 
 #%%
@@ -682,8 +688,13 @@ output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energi
     
 '''
 
+inputs["mark_exp"] = 1
+inputs["mark_exp_tol"] = 0
+inputs["mark_points"] = 1
+inputs["mark_spin"] = 0
+
 #!!! set graph subtitle:
-subtitle = "e2plus = 0.13, gsfac = 0.7 \n second 9/2 and first 13/2"# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
+subtitle = "E2PLUS = " + str(inputs["current_e2plus"]) # r""# "no coriolis attenuation (chsi = eta = 1.0) \n 15 orbitals calculated dynamically"
 
 #!!! set which graphs to plot:
 
@@ -695,13 +706,13 @@ output_data["fermi_energies_hw"].plot = 0
 output_data["gs_mag_moments"].plot = 1
 output_data["gs_spin_floats"].plot = 1
 
-output_data["spin_1/2_energies"].plot = 0 
-output_data["spin_3/2_energies"].plot = 1
+output_data["spin_1/2_energies"].plot = 0
+output_data["spin_3/2_energies"].plot = 0
 output_data["spin_5/2_energies"].plot = 0
 output_data["spin_7/2_energies"].plot = 0
-output_data["spin_9/2_energies"].plot = 1
+output_data["spin_9/2_energies"].plot = 0
 output_data["spin_11/2_energies"].plot = 0
-output_data["spin_13/2_energies"].plot = 1
+output_data["spin_13/2_energies"].plot = 0
 
 output_data["spin_1/2_mag_moments"].plot = 0
 output_data["spin_3/2_mag_moments"].plot = 0
@@ -712,8 +723,10 @@ output_data["x3_energies"].plot = 0
 
 output_data["x1_mag_moments"].plot = 0
 
+output_data["rms"].plot = 1
+
 output_data["all_energies"].plot = 0
-output_data["shifted_energies"].plot = 1
+output_data["shifted_energies"].plot = 0
 
 output_data["gap_9_13"].plot = 0
 
@@ -722,8 +735,6 @@ data_points["agreed"] = [0]*len(data_points["eps"])
 num_comparisons = 0 
 
 _sub_timer.start()
-
-
 
 
 
@@ -776,7 +787,7 @@ for _p in output_data:
 
           
         # if experimental data is available, plot it in red for easy comparison
-        if np.isfinite(_prop.experimental_data).all(): 
+        if np.isfinite(_prop.experimental_data).all() and not _prop.num == "all": 
             _legend_handles = fn.plot_exp_line(_prop, inputs, _var, _legend_handles)
 
             
@@ -814,8 +825,6 @@ for _p in output_data:
 
 
 '''
-
-inputs["mark_points"] = 0
     
 fn.check_agreement(verbose, data_points, num_comparisons)
 
@@ -826,7 +835,7 @@ agreement.cbar_tick_labels = list(np.arange(0, num_comparisons+1, dtype=int)) #f
 agreement.experimental_data = np.NaN
 agreement.error_tolerance = np.NaN
 
-agreement.plot = 1
+agreement.plot = 0
 
 
 if inputs["deformation_input"] == "mesh" and agreement.plot:  
@@ -850,6 +859,20 @@ if inputs["deformation_input"] == "mesh" and agreement.plot:
     
     plt.show()
     
+
+print("\n******** mean and standard error in the mean ******")
+
+#fn.report_mean(output_data["spin_1/2_energies"])
+#fn.report_mean(output_data["spin_3/2_energies"])
+#fn.report_mean(output_data["spin_5/2_energies"])
+fn.report_mean(output_data["spin_7/2_energies"])
+fn.report_mean(output_data["spin_9/2_energies"])
+fn.report_mean(output_data["spin_11/2_energies"])
+fn.report_mean(output_data["spin_13/2_energies"])
+fn.report_mean(output_data["gs_mag_moments"])
+    
+
+
 
 # note how long it took
 _sub_timer.stop()

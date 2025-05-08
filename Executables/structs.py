@@ -333,6 +333,11 @@ class PropertyData:
             num = name[3:].replace("_", " ").strip().replace(" ", "/2 and ")
             prop = "energies"
             sort = "gap"
+            
+        elif name == "RMS energies":
+            num = ""
+            prop = ""
+            sort = "rms"
         
         else: 
             raise ValueError("property not regonised: " + name)
@@ -350,6 +355,11 @@ class PropertyData:
         elif prop == "energies" and not(sort=="Fermi"): 
             
             self.title = "Energies of "+ sort + num + " States"
+            self.axis_label = self.title + " / keV"
+        
+        elif sort == "rms":
+             
+            self.title = "RMS error in energies"
             self.axis_label = self.title + " / keV"
            
         elif prop == "mag_moments":

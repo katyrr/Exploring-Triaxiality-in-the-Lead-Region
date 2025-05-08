@@ -29,7 +29,7 @@ import subprocess                               # for calling shell scripts to r
 import matplotlib.pyplot as plt                 # for plotting graphs
 from matplotlib.ticker import FuncFormatter     # for formatting axis ticks
 import matplotlib.tri as tri                    # for manual triangulation before drawing a contour plot
-
+import matplotlib.colors as colors
 import structs as st                            # my own module file of structs (classes, and read-only dicts)
 
 
@@ -180,7 +180,7 @@ def write_file(path, text):
 
 '''
 
-def remove_inline_comments(split_string):
+def remove_inline_comments(split_string, line_index):
     """
     A function to remove inline comments from a line of text read from the config file.
     If the character "*" appears in the line, it marks the remainder of the line
@@ -199,6 +199,11 @@ def remove_inline_comments(split_string):
     """
     for n in range(len(split_string)):                                          
         word = split_string[n]
+        
+        if len(word) == 0:
+            #raise ValueError("extra space on line = " + str(line_index+1))
+            continue # this error doesn't actually matter, it just means there's accidentally a double space somewhere, we can ingore it
+        
         if word[0] == '*':
             return split_string[:n]
     return split_string
@@ -250,10 +255,10 @@ def check_line_format(split_string, line, l):
     else: expected_num_words = 2                                                
     
     if len(split_string)>expected_num_words : 
-        raise ValueError("Line "+str(l)+ " is too long: " + line)                                
+        raise ValueError("Line "+str(l+1)+ " is too long: " + line)                                
         
     elif len(split_string)<expected_num_words :
-        raise ValueError("Line "+str(l)+ " is too short:" + line)
+        raise ValueError("Line "+str(l+1)+ " is too short:" + line)
             
     
 def range_to_list(range_string):
@@ -1049,17 +1054,18 @@ def get_delta(lines):
 
 '''
 
-# find the lowest 13/2 state
-# check whether there are any 9/2 states at lower energy
-# if not, NaN
-# otherwise, get the energy gap between this 13/2 level and the closest 9/2 level below
-# check whether this gap is smaller than the experimental gap 
-# if so, AND there is another 9/2 level further down, get the gap to that level and compare with experiment (if this is closer, keep it, otherwise return to the first value)
-# otherwise, stop
-# find the next 13/2 state
-# get the best energy gap to its 9/2 below 
-# if this gap is closer to experiment, keep 
 def find_gaps(spin_b_energies, index_b , spin_t_energies, index_t, exp):
+
+    # find the lowest 13/2 state
+    # check whether there are any 9/2 states at lower energy
+    # if not, NaN
+    # otherwise, get the energy gap between this 13/2 level and the closest 9/2 level below
+    # check whether this gap is smaller than the experimental gap 
+    # if so, AND there is another 9/2 level further down, get the gap to that level and compare with experiment (if this is closer, keep it, otherwise return to the first value)
+    # otherwise, stop
+    # find the next 13/2 state
+    # get the best energy gap to its 9/2 below 
+    # if this gap is closer to experiment, keep 
 
     gaps = []
     
@@ -1088,12 +1094,10 @@ def find_gaps(spin_b_energies, index_b , spin_t_energies, index_t, exp):
         
         for t in all_t:
             for b in all_b:
-                if b<t:
-                    if abs(t-b-exp) < gap_ref:
-                        gap = t - b
-                        gap_ref = abs(gap-exp)
-                    else:
-                        continue
+                
+                if abs(t-b-exp) < gap_ref:
+                    gap = t - b
+                    gap_ref = abs(gap-exp)
                 else:
                     continue
         gaps.append(gap)
@@ -1488,7 +1492,7 @@ def fill_gaps(multi_level_data):
 
 
 
-def collate_energy_data(output_data, num_points, expected_gs_spin_string):
+def collate_energy_data(output_data, num_points, expected_gs_spin_string, experimental):
     """
     A function that takes all of the separate spin_n/2_energies data sets
     and combines them into a single collection.
@@ -1531,11 +1535,22 @@ def collate_energy_data(output_data, num_points, expected_gs_spin_string):
     spins = np.array(spins)
     spins = spins[indices]
     
+    experimental_data = []
+    expspins = []
+    
+    for e in experimental:
+        if e[0:3] == "jp_":
+            for i in experimental[e]:
+                experimental_data.append(i)
+                expspins.append(e[3:-1])
+            
+    
     all_energy_levels = st.PropertyData(all_level_data, "All Energy Levels")
     all_energy_levels.contour_levels = 10
     all_energy_levels.cbar_ticks = 0
     all_energy_levels.cbar_tick_labels = 0
-    all_energy_levels.experimental_data = np.NaN
+    all_energy_levels.experimental_data = experimental_data
+    all_energy_levels.explabels = expspins
     all_energy_levels.error_tolerance = np.NaN
     all_energy_levels.spins = [spin_string_to_float(n) for n in spins]
     all_energy_levels.shifts = gs_spin_energies
@@ -1683,12 +1698,12 @@ def try_experimental(inputs, key, tolerance):
     """
     try:
         exp = inputs[key]
-        tol = tolerance
+        tol = tolerance 
         
     except KeyError:
         exp = np.NaN
         tol = np.NaN
-        
+    
     return exp, tol
 
 
@@ -1763,15 +1778,20 @@ def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
         # set the number of decimal places 
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))    
         
-        plt.xlabel("ε")
+        plt.xlabel("ε", size="xx-large")
+        
+        plt.xticks(size="large")
+        #plt.yticks(size="xx-large") # doesn't seem to work for polar plots
+
+        
         # gamma axis label
-        ax.text(45*np.pi/180, ax.get_rmax()*1.2, "γ", ha='center', va='center') 
+        ax.text(45*np.pi/180, ax.get_rmax()*1.2, "γ", ha='center', va='center', fontsize="xx-large") 
         
         if len(legend_handles) > 0:
-            ax.legend(handles=legend_handles, loc="upper left", 
-                           facecolor = '#D2D2D2', framealpha=0.9, bbox_to_anchor=(-0.4, 1.0))
+            ax.legend(handles=legend_handles, loc="upper left", fontsize="x-large", 
+                           bbox_to_anchor=(-0.5, 1.0))#, facecolor = '#D2D2D2', framealpha=0.9, )
         
-        ax.set_title(title, va='bottom', y=1.1)  
+        ax.set_title(title, va='bottom', y=1.1, fontsize="xx-large")  
         
         if subtitle != "":
             ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=12, #verticalalignment='top')
@@ -1784,22 +1804,32 @@ def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):
         y_label = kwargs.get("y_label", None)
         legend_title = kwargs.get("legend_title", "")
     
-        pad = 0.05*(varied[-1]-varied[0])
+        pad = 0.00*(varied[-1]-varied[0])
         ax.set_xlim([varied[0]-pad, varied[-1]+pad]) 
         
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
+        #ax.margins(0) 
         
-        ax.set_title(title, va='bottom', y=1.1) 
+        plt.xlabel(x_label, size="xx-large")
+        plt.ylabel(y_label, size="x-large")
+        
+        
+        ax.set_title(title, va='bottom', y=1.1, fontsize="xx-large") 
+        
+        plt.xticks(size="large")
+        plt.yticks(size="large")
         
         if "All " in title:
-            legend = ax.legend(handles = legend_handles, loc="center left", bbox_to_anchor=(1.0, 0.5))
-        else: 
-            legend = ax.legend(handles = legend_handles, loc="upper center", bbox_to_anchor=(0.5, -0.15))
-        
+            legend1 = plt.legend(handles = legend_handles[len(legend_handles)//2:], loc="center left", bbox_to_anchor=(1.0, 0.75), fontsize="large", title_fontsize="x-large")
+            legend2 = plt.legend(handles = legend_handles[:len(legend_handles)//2], loc="center left", bbox_to_anchor=(1.0, 0.25), fontsize="large", title_fontsize="large")
+            plt.gca().add_artist(legend1)
             
-        if legend_title != "x":
-            legend.set_title(legend_title)
+            legend1.set_title(legend_title)
+            legend2.set_title("experiment")
+        else: 
+            legend = ax.legend(handles = legend_handles, loc="upper center", bbox_to_anchor=(0.5, -0.15), fontsize="large", title_fontsize="x-large")
+            
+            if legend_title != "x":
+                legend.set_title(legend_title)
         
         if subtitle != "":
             ax.text(0.05, 0.95, subtitle, transform=ax.transAxes, fontsize=10, horizontalalignment = 'center', #verticalalignment='top')
@@ -1870,16 +1900,26 @@ def draw_contour_plot(ax, prop, data_points):
     mask = np.any(np.isnan(plot_data[triang.triangles]), axis=1)
     triang.set_mask(mask)
     
-    cax = ax.tricontourf(triang, plot_data, levels=prop.contour_levels)
-    cbar = plt.colorbar(cax, pad=0.1, label=prop.axis_label)
+    if prop.sort == "rms":
+        mycmap = plt.get_cmap("viridis_r").copy()
+        #mycmap.set_extremes(under='yellow', over='black', bad = 'red')
+        cax = ax.tricontourf(triang, plot_data, levels=prop.contour_levels, cmap=mycmap, norm=colors.LogNorm(vmin=prop.range_min, vmax=500))
+        cbar = plt.colorbar(cax, pad=0.1, extend='both')
+    else:
+        mycmap = plt.get_cmap("viridis").copy()
+        cax = ax.tricontourf(triang, plot_data, levels=prop.contour_levels, cmap=mycmap)
+        cbar = plt.colorbar(cax, pad=0.1)
+        
+    
 
-
+    cbar.set_label(prop.axis_label, fontsize="x-large") 
     
     if prop.cbar_tick_labels:        # then format for discrete values
         
         cbar.set_ticks(prop.cbar_ticks)
         cbar.set_ticklabels(prop.cbar_tick_labels)
     
+    cbar.ax.tick_params(labelsize="large")
         
     return cax, cbar
 
@@ -2076,17 +2116,17 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
                                [prop.experimental_data[e], prop.experimental_data[e]], 
                                'r-', label = "experimental value")
             # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
-            
+           
     else:
         exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 
                            'r-', label = "experimental value")
         # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
-        
+
    
     legend_handles.append(exp[0])
     
     return legend_handles
-
+    
 
 def plot_points(data_points, prop, legend_handles, cbar, inputs):
     """
@@ -2133,8 +2173,8 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
         for r in range(len(data_points["eps"])):
             
             # use a smaller marker size for large data sets
-            if len(data_points["file_tags"]) < 100: marker_size = 2
-            else: marker_size = 5
+            if len(data_points["file_tags"]) < 100: marker_size = 10
+            else: marker_size = 1
             
             if prop.sort == "Spin ":
                 error = [abs(prop.data[r][0] - exp) for exp in prop.experimental_data]
@@ -2150,8 +2190,8 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
                 if inputs["mark_points"]==1:
                     
                     hit = plt.scatter(data_points["gamma_radians"][r], 
-                          data_points["eps"][r], s=marker_size, edgecolor='red', 
-                          facecolor='None', label="data point that agrees \nwith experiment")
+                          data_points["eps"][r], s=marker_size, #edgecolor='red', 
+                          facecolor='red', label="data point that agrees \nwith experiment")
                     
                     legend_hit = True
                 
@@ -2172,17 +2212,17 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
                 for e in range(len(prop.experimental_data)):
                     exp = cbar.ax.plot([0, 1], 
                                        [prop.experimental_data[e], prop.experimental_data[e]], 
-                                       'r-', label = "experimental value")
+                                       'r-', label = "experimental value", linewidth=5)
                     # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
                     
             else:
                 exp = cbar.ax.plot([0, 1], [prop.experimental_data, prop.experimental_data], 
-                                   'r-', label = "experimental value")
+                                   'r-', label = "experimental value", linewidth=5)
                 # exp_tol = cbar.ax.axhspan(prop.experimental_data[e]-prop.error_tolerance, prop.experimental_data[e]+prop.error_tolerance, facecolor='r', alpha=0.3, label="experimental tolerance")
                 
        
         legend_handles.append(exp[0])
-    
+    '''
     else: 
         # use a smaller marker size for large data sets
         if len(data_points["file_tags"]) < 100: marker_size = 5
@@ -2192,6 +2232,7 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
             all_points = plt.scatter(data_points["gamma_radians"], 
                       data_points["eps"], s=marker_size, c='w', label="data point")
             legend_handles.append(all_points) 
+    '''
     
     return legend_handles
     
@@ -2298,7 +2339,7 @@ def assign_parameters(inputs, data_points):
         
     elif len(data_points["e2plus"]) > 1:
         
-        var_sym = "E2PLUS / MeV"
+        var_sym = r"$E(2^+)$ / MeV"
         var = data_points["e2plus"]
         fix_sym = "(ε, γ)"
         fix = []
@@ -2403,24 +2444,60 @@ def plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix_val):
     num_lines = np.size(prop.data, axis=1)
     
     
-    line_colours = ['k', 'b', 'y', 'c', 'm', 'g', 'r']
+    line_colours = ['y', 'b', 'm', 'k', 'c', 'g', 'r']
     line_labels = ["1/2", "3/2", "5/2", "7/2", "9/2", "11/2", "13/2"]
     
-    line_style = '-x'
+    line_styles = ['', '-', '', '', '-', '', '-']
     
     idx = [int(((2*a)-1)/2) for a in prop.spins]
     used = []
     
-    for s in range(num_lines):
+    for s in range(num_lines): 
         if idx[s] in used:
             l = "_hidden"
+            #continue #!!!
         else: 
             l = line_labels[idx[s]]
             used.append(idx[s])
-        data, = plt.plot(var, data_by_line[s], line_colours[idx[s]]+line_style, label=l, markersize=marker_size) # line_colours[s] // 'kx'
+            
+        if line_styles[idx[s]] == "":
+            continue
+        
+        data, = plt.plot(var, data_by_line[s], line_colours[idx[s]]+line_styles[idx[s]], label=l, markersize=marker_size, linewidth=0.75) # line_colours[s] // 'kx'
         legend_handles.append(data)
         
     legend_title = "%s = %s" % (fix_sym, fix_val)
+    
+    
+    ''
+    xrange = [min(var),max(var)]
+    experimental_data = prop.experimental_data
+    explabs = prop.explabels
+    
+    expidx = [int(((2*spin_string_to_float(a))-1)/2) for a in explabs]
+    
+    for e in range(len(experimental_data)):
+        expl = plt.plot(xrange, [experimental_data[e],experimental_data[e]], line_colours[expidx[e]]+"--", label=explabs[e], linewidth=1.25)
+        legend_handles.append(expl[0])
+    
+    '''
+    exp_tol_1 = plt.plot(xrange, [experimental_data[0],experimental_data[0]], label="1/2")
+    exp_tol_3  = plt.plot(xrange, [experimental_data[0],experimental_data[0]], label="3/2")
+    exp_tol_5 = plt.plot(xrange, [experimental_data[0],experimental_data[0]], label="5/2")
+    exp_tol_7 = plt.axhspan(xrange, [experimental_data[1],experimental_data[1]], label="7/2")
+    exp_tol_9 = plt.axhspan(xrange, [experimental_data[2],experimental_data[2]], label="9/2")
+    exp_tol_11 = plt.axhspan(xrange, [experimental_data[3],experimental_data[3]],label="11/2")
+    exp_tol_13 = plt.axhspan(xrange, [experimental_data[4],experimental_data[4]],  label="13/2")
+
+    legend_handles.append(exp_tol_1)
+    legend_handles.append(exp_tol_3)
+    legend_handles.append(exp_tol_5)
+    legend_handles.append(exp_tol_7)
+    legend_handles.append(exp_tol_9)
+    legend_handles.append(exp_tol_11)
+    legend_handles.append(exp_tol_13)
+    '''
+    
     
     return legend_handles, legend_title
 
@@ -2558,6 +2635,9 @@ def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
     if len(data_points["file_tags"]) < 100: marker_size = 5
     else: marker_size = 1 # use smaller markers if the data set is large
     
+    if len(fix)==0:
+        fix= ["(%.3f, %.1f)"  % (data_points["eps"][0],data_points["gamma_degrees"][1] )]
+        
     if prop.sort == "Spin ":
         
         if prop.num == "all":
@@ -2566,6 +2646,7 @@ def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
             legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix[0])
         
     else:
+        
         data, = plt.plot(var, prop.data, 'k-x', markersize=marker_size, label="%s = %s" % (fix_sym, fix[0]))
         legend_handles.append(data)
         legend_title = ""
@@ -2578,12 +2659,12 @@ def plot_exp_line(prop, inputs, var, legend_handles):
             if inputs["mark_exp"]:
                 exp, = plt.plot(var, np.full(len(var), prop.experimental_data[_]), 'r-', label="experimental value")
             if inputs["mark_exp_tol"]:
-                exp_tol = plt.axhspan(prop.experimental_data[_]-prop.error_tolerance, prop.experimental_data[_]+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
+                exp_tol = plt.axhspan(prop.experimental_data[_]-prop.error_tolerance, prop.experimental_data[_]+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental value")
     else:
         if inputs["mark_exp"]:
             exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
         if inputs["mark_exp_tol"]:
-            exp_tol = plt.axhspan(prop.experimental_data-prop.error_tolerance, prop.experimental_data+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental range with tolerance")
+            exp_tol = plt.axhspan(prop.experimental_data-prop.error_tolerance, prop.experimental_data+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental value")
     
     if inputs["mark_exp"]:
         legend_handles.append(exp)
@@ -2609,8 +2690,93 @@ def shift_energy_levels(default_energy_levels):
     shifted_energies.contour_levels = 10
     shifted_energies.cbar_ticks = 0
     shifted_energies.cbar_tick_labels = 0
-    shifted_energies.experimental_data = np.NaN
+    shifted_energies.experimental_data = default_energy_levels.experimental_data
+    shifted_energies.explabels = default_energy_levels.explabels
     shifted_energies.error_tolerance = np.NaN
     shifted_energies.spins = default_energy_levels.spins
             
     return shifted_energies
+
+
+def report_mean(prop):
+    
+    data = prop.data
+    mask = ~np.isnan(data)
+    not_nan = np.sum(mask, axis=0)
+    
+    mean = np.mean(data, axis=0, where=mask)
+    stdv = np.std(data, axis=0, where=mask)
+    
+    print("\n" + prop.axis_label + ":")
+    print("\t # \t  mean ± sterr (stdv)")
+    
+    if isinstance(stdv, np.ndarray):
+        sterr = [stdv[s]/np.sqrt(not_nan[s]) for s in range(len(stdv))]
+        
+        for i in range(len(mean)):
+            print("\t", i+1, "\t ", mean[i], " ± ", sterr[i], "\t (", stdv[i], ")" )
+            
+        
+    else:
+        sterr = stdv/np.sqrt(not_nan)
+        
+        print("\t", 0, "\t ", mean, " ± ", sterr, "\t (", stdv, ")" )
+    
+
+        
+   
+def calc_rms_err(*props):
+    
+    rms_data = np.zeros(np.size(props[0].data, axis=0)) # start a counter (for each data point) at zero
+    num_nan = np.zeros(np.size(props[0].data, axis=0), dtype=int)
+    
+    
+    for a in props:
+        
+        data = a.data
+        exp = a.experimental_data
+        
+        if np.isnan(exp):
+            continue
+        
+        if np.size(data, axis=1)>1:
+            data = np.transpose(data)[0]
+        
+        if isinstance(exp, list):
+            exp = exp[0]
+        
+        
+        for d in range(len(data)):
+            if np.isnan(data[d]):
+                num_nan[d] += 1
+                continue
+        
+            rms_data[d] += ((data[d]-exp)/1000)**2 # calculate in MeV to avoid overflow (the numbers get big quickly!)
+    
+    for d in range(len(rms_data)):
+        rms_data[d] = np.sqrt( rms_data[d] / (np.size(props[0].data, axis=1)-num_nan[d])) * 1000
+    
+    range_min = 10 # or 2 if you want to really differentiate the best
+    
+    if range_min == 10:
+        contour_levels = [10, 20, 30, 40, 50, 100, 200, 300, 400, 500,1000]
+        cbar_ticks = [10, 20, 50, 100, 200, 500, 1000]
+        cbar_tick_labels = [str(x) for x in cbar_ticks] # ["10", "20", "50", "100", "200", "500", "1000"]
+    else:
+        contour_levels = [2,5, 10, 20, 30, 40, 50, 100, 200, 300, 400, 500,1000]
+        cbar_ticks = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
+        cbar_tick_labels = [str(x) for x in cbar_ticks] # ["1", "5", "10", "20", "50", "100", "200", "500", "1000"]
+        
+        
+    rms = st.PropertyData(np.array(rms_data), "RMS energies")
+    rms.range_min = range_min
+    rms.contour_levels = contour_levels
+    rms.cbar_ticks = cbar_ticks
+    rms.cbar_tick_labels = cbar_tick_labels
+    rms.experimental_data = np.NaN
+    rms.error_tolerance = np.NaN
+    
+    return rms
+            
+    
+    
