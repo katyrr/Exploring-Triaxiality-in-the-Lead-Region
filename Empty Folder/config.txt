@@ -1,7 +1,7 @@
-********** config file ******* 24/04/25 ******* Benchmark Calculation with Pb207 *************
+********** config file - example, originally made for 177Pt *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
-* each line is split into words with delimiter " "
+* each line is split into words with a blank space delimiter " "
 * the first word is the variable name
 * the second word is the variable value
 * the third word and beyond are ignored (except for the deformation parameters)
@@ -15,25 +15,35 @@
 
 ***************************** experimental results *******************************************
 
-*** ground state magnetic dipole moment and spin:
-gs_mu 0.5925 ********** μN
-gs_spin 1/2 
-gs_energy 0.0 ********* keV
+*** ground state properties (magnetic dipole moment, spin, and energy):
+* comment out any missing data with "*"
+
+* gs_mu none * units μN 
+gs_spin 5/2 * input as a fraction
+gs_energy 0.0 * units keV
 
 
-****** energy levels grouped by spin parity:
 
-jp_1/2- 0.0,3181 ******** e.g. jp_1/2- 0.0,100,1000 **** a list of energies of states that have this jp
-jp_3/2- 897.698 *** 3929,4104
-jp_5/2- 569.6982 *** 3203
-jp_7/2- 2339.9921 *** 3218,4558
-jp_9/2- 3415
+*** energy levels:
+* format: jp_spin± value * units keV
+* or input as a list: jp_spin± value1,value2,value3,etc
 
-****** error tolerances
+* jp_1/2- none
+* jp_3/2- none
+jp_5/2- 0.0
+jp_7/2- 81.2 
+jp_9/2- 197.4
+jp_11/2- 336.3
+jp_13/2- 491.8
 
-mu_tol 0.1 *** mu_N
-abs_en_tol 5 *** keV
-gap_en_tol 0 **** keV
+
+
+*** error tolerances
+* for no tolerance, comment out the lines with "*"
+
+* mu_tol 0.2 * units mu_N 
+* abs_en_tol 50 * units keV
+* gap_en_tol 20 * units keV
 
 **********************************************************************************************
 
@@ -45,10 +55,10 @@ gap_en_tol 0 **** keV
 
 ****************************** graph plotting options ****************************************
 
-mark_spin 1 ******* (1 or 0) highlight region of correct ground state spin in green
+mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
 mark_exp 1 ******** (1 or 0) draw experimental value lines
-mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
-mark_points 1 ******* (1 or 0) plot data points
+mark_exp_tol 0 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
+mark_points 1 ***** (1 or 0) plot data points (in addition to lines or colours)
 
 **********************************************************************************************
 
@@ -87,25 +97,29 @@ mark_points 1 ******* (1 or 0) plot data points
 *
 ***********************************************************************************************
 
+* single 0.26 24 ***** eps gamma
 
-* single 0.001 20 ***** eps gamma
+* gamma 0.28 16,34,0.5 *** eps min_gamma,max_gamma,step
+* eps 0.25,0.35,0.001 22 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-gamma 0.001 0,60,0.5 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.13,0.001 20 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
+mesh 0.5,40 ********* max_eps,outer_points ** 
+ 
+***********************************************************************************************
 
-* mesh 0.5,40 ********* max_eps,outer_points ** 
-        
 
+
+
+
+
+******************************* other input options *******************************************
 
 *********** BASIC  ***********
 
-par - *** the parity calculated in gampn and displayed in probamo
+par - ***** (+ or -) the parity of matrix elements in gampn and  energy levels in asyrmo/probamo
 
-nucleus Pb207
-Z 82
-A 207
-*** therefore N = 125 (magic 126 - 1, a hole)
-*** and Z is magic 82
+nucleus Pt177
+Z 78
+A 177
 
 
 
@@ -113,10 +127,15 @@ A 207
 ********** COMMON ************
 
 
-cutoff 5000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
-gsfac 0.7 ****** scaling factor applied to free internal spin g-factor (g_s)
-e2plus 0 **** 0.1,10,0.1 *** 4.085 *** 0.803 ****** 4.085 * 0.1,1.5,0.1 *** 0 ***** for calculating MoI (fixes value of the first E(2+)/MeV), enter 0 to calculate with Grodzins relation
+cutoff 1000.0 * units keV * energy cutoff for printing energy levels in probamo
 
+gsfac 0.7 ***** scaling factor applied to free internal spin g-factor of odd particle
+
+e2plus 0.17 *** 0.1448 *** 0.264 *** 0.1703  *** 0.1,1.5,0.1 *** 0 ***
+* for calculating effective MoI (fixes value of the first E(2+) core rotor state)
+* format: e2plus value * units MeV
+* or:     e2plus start,end,step *** for a range (only works with "single" deformation input)
+* or:     0 *** calculate dynamically with Grodzins relation
 
 
 
@@ -126,8 +145,9 @@ e2plus 0 **** 0.1,10,0.1 *** 4.085 *** 0.803 ****** 4.085 * 0.1,1.5,0.1 *** 0 **
 
 irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
-emin 6.5
-emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
+
+emin 6.5 **** min
+emax 8.0 **** max energy of levels for which to print SP wavefunctions (Nilsson state composition) in gampn
 
 chsi 1.0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
 eta 1.0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
@@ -136,11 +156,12 @@ nantj 5,5,5,5,5,5,5 **** number of states to calculate at each        spin I = 1
 noutj 5,5,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
-nu 15 ******* the number of orbitals to consider
-imin 1 ***** min spin I 
-ispin 13 *** max spin I
-kmax 13 **** max 29; set kmax=ispin if no truncation required
+nu 15 ******* the number of orbitals to input to the strong coupling basis (in gampn and asyrmo)
 
+imin 1 ***** min
+ispin 13 *** max spin I to calculate
+
+kmax 13 **** max 29 **** option to truncate to low K states, set kmax=ispin if no truncation required
 
 
 
@@ -151,7 +172,6 @@ kmax 13 **** max 29; set kmax=ispin if no truncation required
 * gampn *
 
 istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
-***** nneupr -1 *** protons (1) neutrons (-1) or both (2) *** calculated in macro code
 num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
 nuu 0 ****** number of coupled oscillator shells **************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
 nprot 10 **** number of proton oscillator shells (max 10)
@@ -177,23 +197,33 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 
 *********** FIXED ************
+* these parameters are currently hard coded and cannot be changed with this config file
 
-* gampn *
+
+
+
+**** gampn: ****
+
+* nneupr -1 *** odd proton (1) neutron (-1) or both (2) *** calculated automatically in code
 
 * ipkt 1 ***** number of data sets to read
 * iskip 0 **** number of data sets to skip before collecting ipkt
-**** these are just for calculating multiple deformations in a single run
+*** these are just for calculating multiple deformations in a single run
 
 * noyes 1 **** wavefunctions and matrix elements (1) or just s.p. energies (0) (1 for PR calculations)
 * omrot 0 **** rotation frequency (0 for PR calculations)
 
-* itrans 0 *** if odd-odd, transform wfncs to NLls basis ?
-* nshelp 0 *** if odd-odd, and pure N-shells, which N-shell for levelp(j) ? 
-* nsheln 0 *** if odd-odd, and pure N-shells, which N-shell for leveln(k) ?
+*** these parameters are only relevant for odd-odd inputs:
+* itrans 0 *** 
+* nshelp 0 *** 
+* nsheln 0 *** 
 
-* NKAMYL 0 *** the number of N-Shells for which KAPPA and MY are dependent on L **************(requires subsequent provision of the values of KAPPA and MY at each L and N)
+* NKAMYL 0 *** the number of N-Shells for which KAPPA and MY are dependent on L 
+************** (requires subsequent provision of the values of KAPPA and MY at each L and N)
 
-* asyrmo *
+
+
+**** asyrmo ****
 
 vmi 0 ************ account for core states (1) or assume rigid rotor core (0, standard)
 nmin 1 ********* min N-shell in deformed s.p. wvfncs
@@ -203,7 +233,9 @@ nmax 9 ********* max
 * stiff 100.00 *** parameter for vmi (both calculated from Harris Parameters)
 ****************** these parameters are only used if vmi = 1
 
-* probamo *
+
+
+**** probamo ****
 
 * bs2s 0.000 **** for calculating the hyperfine anomaly (0 if no calc)
 * bs4s 0.000
@@ -211,4 +243,4 @@ nmax 9 ********* max
 * bs4p 0.000
 
 
-**********************************************************************************************
+************************************** end of file *******************************************

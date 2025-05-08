@@ -77,9 +77,9 @@ mark_points 0 ******* (1 or 0) plot data points
 
 * single 0.19 35 ***** eps gamma
 
-* gamma 0.12 0,60,0.5 *** eps min_gamma,max_gamma,step
+gamma 0.12 0,60,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.001,0.3,0.001 35 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
-mesh 0.5,40 ********* max_eps,outer_points ** 
+* mesh 0.5,10 ********* max_eps,outer_points ** 
         
 
 
