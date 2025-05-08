@@ -9,17 +9,6 @@
 
 
 
-
-**************** nucleus info *************************************************
-
-nucleus Au179 **** remember to update this in the main.py code as well!
-Z 79
-A 197
-*** therefore N = 100
-
-
-
-
 ************** experimental results *******************************************
 
 *** ground state magnetic dipole moment and spin:
@@ -29,7 +18,7 @@ gs_spin 1/2 *** (+) **** [Physics Letters B 786 (2018) 355–363]
 
 ********* excited states (absolute energies):
 
-jp_1/2+ 0 ***** [Physical Review C 106 (2022) 064324]
+*jp_1/2+ 0 ***** [Physical Review C 106 (2022) 064324]
 jp_3/2+ 17 **** [Physical Review C 106 (2022) 064324]
 jp_9/2+ 498 *** [Physical Review C 106 (2022) 064324]
 jp_13/2+ 515 ** [Physical Review C 106 (2022) 064324]
@@ -44,15 +33,15 @@ gap_9_13 20 ** [Physical Review C 106 (2022) 064324]
 ****** error tolerances
 
 mu_tol 0.2 *** mu_N
-abs_en_tol 50 **** keV
+abs_en_tol 50 *** keV
 gap_en_tol 20 **** keV
 
 ************** graph plotting options ****************************************
 
 mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
-mark_exp 1 ******** (1 or 0) draw experimental value lines
+mark_exp 0 ******** (1 or 0) draw experimental value lines
 mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
-mark_points 1 ******* (1 or 0) plot data points
+mark_points 0 ******* (1 or 0) plot data points
 
 
 
@@ -86,56 +75,46 @@ mark_points 1 ******* (1 or 0) plot data points
 *
 *********************************************************************************
 
-* single 0.167 0.0 ***** eps gamma
+* single 0.19 35 ***** eps gamma
 
-* gamma 0.18 0,60,0.5 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.5,0.001 33 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
-
+* gamma 0.12 0,60,0.5 *** eps min_gamma,max_gamma,step
+* eps 0.001,0.3,0.001 35 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
 
-******************** program settings ************************************
+
+*********** BASIC  ***********
+
+par + *** the parity calculated in gampn and displayed in probamo
+
+nucleus Au179 **** remember to update this in the main.py code as well!
+Z 79
+A 197
+*** therefore N = 100
 
 
-* gampn *
 
-istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
-************* also used in asyrmo
 
-***** nneupr 1 *** protons (1) neutrons (-1) or both (2) *** calculated in macro code
-par - ******* the parity calculated in gampn and displayed in probamo
+********** COMMON ************
+
+
+cutoff 1400 *** energy cutoff in keV for printing trans prob and elec/mag moments
+gsfac 0.7 ****** scaling factor applied to free internal spin g-factor (g_s)
+e2plus 0.17 *** 0.170 **** 0.147 ** 0.434 **** 0.1,10,0.1 *** 0 ***** for calculating MoI (fixes value of the first E(2+)/MeV), enter 0 to calculate with Grodzins relation
+
+
+
+
+
+
+********** OCCASIONAL ********
 
 irec 0 ****** treat recoil terms as 2-body operators in asyrmo (1) or 1-body with pairing factors (0)
-************* also used in asyrmo
 icorr 0 ***** include corrections to J+/J-/Jz/etc from the stretched basis (1) or not (0)
-
 emin 5.0
 emax 8.0 ****** range of energies in which to calculate s.p. wvfncs
-
-num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
-
-nuu 0 ****** number of coupled oscillator shells 
-**************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
-
-nprot 10 **** number of proton oscillator shells (max 10)
-nneutr 10 *** number of neutron oscillator shells (max 10)
-
-
-* asyrmo *
-
-imin 1 ***** min spin I 
-ispin 13 *** max spin I
-
-
-kmax 13 **** max 29; set kmax=ispin if no truncation required
-
-
-e2plus 0.434 ** 0.170 **** 0.147 ** 0.434 ***  ** 0.1,1.5,0.1 *** for calculating MoI (fixes value of the first E(2+)/MeV)
-e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
-
-nu 15 ******* the number of orbitals to consider
 
 chsi 1.0 *** coriolis attenuation (1 for no attenuation, 0 for no mixing, 0.7 for standard)
 eta 1.0 **** coriolis attenuation (1 for no attenuation, 0 for no mixing, 5.0 for standard)
@@ -144,22 +123,39 @@ nantj 5,5,5,5,5,5,5 **** number of states to calculate at each        spin I = 1
 noutj 5,5,5,5,5,5,5 **** number of calculated states to print at each spin I = 1/2,3/2,5/2,7/2,9/2,11/2,13/2
 ipout 2,3,1,1,1,1,1 **** number of core rotor wavefunctions to print at each rotational level R = 1,2,3,4,5,6,7
 
-* ipout ********** number of core states to print
+nu 15 ******* the number of orbitals to consider
+imin 1 ***** min spin I 
+ispin 13 *** max spin I
+kmax 13 **** max 29; set kmax=ispin if no truncation required
 
+
+
+
+
+
+************* RARE ***********
+
+* gampn *
+
+istrch 1 **** use spherical (0: delta) or stretched (1: eps) coordinates
+***** nneupr -1 *** protons (1) neutrons (-1) or both (2) *** calculated in macro code
+num_orbs 15 ** the number of orbitals to include in calculations and forward to asyrmo ** max 15
+nuu 0 ****** number of coupled oscillator shells **************(meaningless when N-shells are pure - i.e. when eps4/6=0 and omrot=0 and istrch = 1)
+nprot 10 **** number of proton oscillator shells (max 10)
+nneutr 10 *** number of neutron oscillator shells (max 10)
+
+* asyrmo *
+
+e2plur 0.0 ******** for calculating MoI (fixes value of the second E(2+), not recommended)
 * gn0 19.2 ******* for calculating pairing strength (19.2 standard for N, Z > 60)
 * gn1 7.4 ******** for calculating pairing strength (7.4 standard for N, Z > 60)
 * ipair 15 ******* number of orbitals ± fermi level to include in pairing calculations
 ****************** (15 standard for N, Z > 60)
 
-
-
-
 * probamo *
 
-cutoff 1500.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
 ispec 1 *** calculate spectroscopic factors 
 iq 0 *** for odd-Z (1), for odd-Z or odd-N (0)
-gsfac 0.6 *** scaling factor applied to free internal spin g-factor (g_s)
 gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 
@@ -167,7 +163,7 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 
 
 
-************** parameters that are fixed in the code, and should not need to be changed: ***************
+*********** FIXED ************
 
 * gampn *
 
@@ -182,8 +178,7 @@ gr -1 *** g-factor of core (-1 to automatically calculate as Z/AA)
 * nshelp 0 *** if odd-odd, and pure N-shells, which N-shell for levelp(j) ? 
 * nsheln 0 *** if odd-odd, and pure N-shells, which N-shell for leveln(k) ?
 
-* NKAMYL 0 *** the number of N-Shells for which KAPPA and MY are dependent on L 
-**************(requires subsequent provision of the values of KAPPA and MY at each L and N)
+* NKAMYL 0 *** the number of N-Shells for which KAPPA and MY are dependent on L **************(requires subsequent provision of the values of KAPPA and MY at each L and N)
 
 * asyrmo *
 
@@ -196,11 +191,12 @@ nmax 9 ********* max
 ****************** these parameters are only used if vmi = 1
 
 * probamo *
-** parameters that are currently still fixed: 
+
 * bs2s 0.000 **** for calculating the hyperfine anomaly (0 if no calc)
 * bs4s 0.000
 * bs2p 0.000
 * bs4p 0.000
 
 
+**********************************************************************************************
 
