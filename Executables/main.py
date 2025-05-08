@@ -56,7 +56,7 @@ plt.rcParams['figure.dpi'] = 150  # set figure resolution
 _timer = st.Timer()
 _sub_timer = st.Timer()
 
-nucleus = "Au179" #  "Pb207" # "Pt177" #  "Au179_test10000" # "Fixing_Discontinuities_Pb207" #!!!
+nucleus = "Examples" # "Au179" #  "Pb207" # "Pt177" #  "Au179_test10000" # "Fixing_Discontinuities_Pb207" #!!!
 verbose = False # whether to print a lot of info, or just the essentials
 
 
