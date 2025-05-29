@@ -1087,8 +1087,10 @@ def read_data(line):
     
     # read data.
     mag_moment = float(line[-8:].strip())
+    quad_moment = float(line[-26:-16].strip())
+    
     line_data = {'spin_string': spin_string, 'spin_float':spin_float, 
-                 'energy':this_energy, 'mag_moment':mag_moment}
+                 'energy':this_energy, 'mag_moment':mag_moment, 'quad_moment':quad_moment}
     
     return line_data
 
@@ -1123,10 +1125,12 @@ def sort_by_spin(line_data, file_data):
     if (spin+"_energies") in file_data:
         file_data[(spin+"_energies")].append(line_data["energy"])
         file_data[(spin+"_mag_moments")].append(line_data["mag_moment"])
+        file_data[(spin+"_quad_moments")].append(line_data["quad_moment"])
         
     else:
         file_data[(spin+"_energies")] = [line_data["energy"]]
         file_data[(spin+"_mag_moments")] = [line_data["mag_moment"]]
+        file_data[(spin+"_quad_moments")] = [line_data["quad_moment"]]
     
     return file_data
 
@@ -1169,6 +1173,7 @@ def sort_by_expectation(line_data, file_data, inputs):
         file_data["gs_spin_strings"] = line_data["spin_string"]
         file_data["gs_spin_floats"] = line_data["spin_float"]
         file_data["gs_mag_moments"] = line_data["mag_moment"]
+        file_data["gs_quad_moments"] = line_data["quad_moment"]
     
     if "x1_spin" in inputs: # assume that if x1_spin is input, then x1_energy will also have been input
         if line_data["spin_string"] == inputs["x1_spin"]:
@@ -1184,6 +1189,7 @@ def sort_by_expectation(line_data, file_data, inputs):
                 
                 file_data["x1_energies"] = line_data["energy"]
                 file_data["x1_mag_moments"] = line_data["mag_moment"]
+                file_data["x1_quad_moments"] = line_data["quad_moment"]
     
     if "x2_spin" in inputs:
         if line_data["spin_string"] == inputs["x2_spin"]:
@@ -1199,6 +1205,7 @@ def sort_by_expectation(line_data, file_data, inputs):
     
                 file_data["x2_energies"] = line_data["energy"]
                 file_data["x2_mag_moments"] = line_data["mag_moment"]
+                file_data["x2_quad_moments"] = line_data["quad_moment"]
 
     if "x3_spin" in inputs:
         if line_data["spin_string"] == inputs["x3_spin"]:
@@ -1213,6 +1220,7 @@ def sort_by_expectation(line_data, file_data, inputs):
             if new_energy_error < existing_energy_error: # then overwrite
                 file_data["x3_energies"] = line_data["energy"]
                 file_data["x3_mag_moments"] = line_data["mag_moment"]
+                file_data["x3_quad_moments"] = line_data["quad_moment"]
     
     return file_data
             
@@ -1329,6 +1337,10 @@ def restructure_data(old_data, ispin, verbose):
     new_data["x1_mag_moments"] = []
     new_data["x2_mag_moments"] = []
     new_data["x3_mag_moments"] = []
+    new_data["gs_quad_moments"] = []
+    new_data["x1_quad_moments"] = []
+    new_data["x2_quad_moments"] = []
+    new_data["x3_quad_moments"] = []
     new_data["x1_energies"] = []
     new_data["x2_energies"] = []
     new_data["x3_energies"] = []
@@ -1338,33 +1350,40 @@ def restructure_data(old_data, ispin, verbose):
         new_data["gs_spin_strings"].append(old_data[d]["gs_spin_strings"])
         new_data["gs_spin_floats"].append(old_data[d]["gs_spin_floats"])
         new_data["gs_mag_moments"].append(old_data[d]["gs_mag_moments"])
+        new_data["gs_quad_moments"].append(old_data[d]["gs_quad_moments"])
         
         try:
             new_data["x1_energies"].append(old_data[d]["x1_energies"])
             new_data["x1_mag_moments"].append(old_data[d]["x1_mag_moments"])
+            new_data["x1_quad_moments"].append(old_data[d]["x1_quad_moments"])
         except(KeyError):
             if verbose: 
                 print("Could not find any states with first excited spin in file " + str(d))
             new_data["x1_energies"].append(np.NaN)
             new_data["x1_mag_moments"].append(np.NaN)
+            new_data["x1_quad_moments"].append(np.NaN)
         
         try:
             new_data["x2_energies"].append(old_data[d]["x2_energies"])
             new_data["x2_mag_moments"].append(old_data[d]["x2_mag_moments"])
+            new_data["x2_quad_moments"].append(old_data[d]["x2_quad_moments"])
         except(KeyError):
             if verbose: 
                 print("Could not find any states with second excited spin in file " + str(d))
             new_data["x2_energies"].append(np.NaN)
             new_data["x2_mag_moments"].append(np.NaN)
+            new_data["x2_quad_moments"].append(np.NaN)
         
         try:
             new_data["x3_mag_moments"].append(old_data[d]["x3_mag_moments"])
+            new_data["x3_quad_moments"].append(old_data[d]["x3_quad_moments"])
             new_data["x3_energies"].append(old_data[d]["x3_energies"])
         except(KeyError):
             if verbose: 
                 print("Could not find any states with third excited spin in file " + str(d))
             new_data["x3_energies"].append(np.NaN)
             new_data["x3_mag_moments"].append(np.NaN)
+            new_data["x3_quad_moments"].append(np.NaN)
     
     
     max_val = int(ispin)+1
@@ -1378,11 +1397,13 @@ def restructure_data(old_data, ispin, verbose):
         
         new_data[spin+"_energies"] = []
         new_data[spin+"_mag_moments"] = []
+        new_data[spin+"_quad_moments"] = []
         
         for d in range(len(old_data)):
            
             new_data[spin+"_energies"].append(old_data[d][spin+"_energies"])
             new_data[spin+"_mag_moments"].append(old_data[d][spin+"_mag_moments"])
+            new_data[spin+"_quad_moments"].append(old_data[d][spin+"_quad_moments"])
             
     return new_data
 

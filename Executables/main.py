@@ -56,7 +56,7 @@ plt.rcParams['figure.dpi'] = 150  # set figure resolution
 _timer = st.Timer()
 _sub_timer = st.Timer()
 
-nucleus = "Examples" # "Au179" #  "Pb207" # "Pt177" #  "Au179_test10000" # "Fixing_Discontinuities_Pb207" #!!!
+nucleus = "Pt177" #  "Examples" # "Au179" #  "Pb207" #  "Au179_test10000" # "Fixing_Discontinuities_Pb207" #!!!
 verbose = False # whether to print a lot of info, or just the essentials
 
 
@@ -613,6 +613,26 @@ for i in _output_data_dict:
             
         else: raise ValueError("property not recognised: " + i)
         
+    elif output_data[i].prop == "quad_moments":
+        
+        output_data[i].contour_levels = 6
+        output_data[i].cbar_tick_labels = 0
+            
+        if output_data[i].sort == "Excited State ":
+            
+            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "x" + output_data[i].num + "_mu", experimental["mu_tol"])
+    
+        elif output_data[i].sort == "Spin ":
+            
+            output_data[i].experimental_data = np.NaN
+            output_data[i].error_tolerance = np.NaN
+            
+        elif output_data[i].sort == "Ground":
+            
+            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "gs_mu", experimental["mu_tol"])
+            
+        else: raise ValueError("property not recognised: " + i)
+        
     
     elif output_data[i].sort == "Ground":
         
@@ -709,6 +729,7 @@ output_data["fermi_energies_mev"].plot = 0
 output_data["fermi_energies_hw"].plot = 0
 
 output_data["gs_mag_moments"].plot = 1
+output_data["gs_quad_moments"].plot = 1
 output_data["gs_spin_floats"].plot = 1
 
 output_data["spin_1/2_energies"].plot = 0
@@ -728,7 +749,7 @@ output_data["x3_energies"].plot = 0
 
 output_data["x1_mag_moments"].plot = 0
 
-output_data["rms"].plot = 1
+output_data["rms"].plot = 0
 
 output_data["all_energies"].plot = 0
 output_data["shifted_energies"].plot = 0

@@ -39,11 +39,10 @@ jp_13/2- 491.8
 
 
 *** error tolerances
-* for no tolerance, comment out the lines with "*"
 
-* mu_tol 0.2 * units mu_N 
-* abs_en_tol 50 * units keV
-* gap_en_tol 20 * units keV
+mu_tol 0.2 * units mu_N 
+abs_en_tol 50 * units keV
+gap_en_tol 20 * units keV
 
 **********************************************************************************************
 
@@ -99,10 +98,10 @@ mark_points 1 ***** (1 or 0) plot data points (in addition to lines or colours)
 
 * single 0.26 24 ***** eps gamma
 
-* gamma 0.28 16,34,0.5 *** eps min_gamma,max_gamma,step
+gamma 0.30 18,32,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.25,0.35,0.001 22 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-mesh 0.5,40 ********* max_eps,outer_points ** 
+* mesh 0.5,40 ********* max_eps,outer_points ** 
  
 ***********************************************************************************************
 

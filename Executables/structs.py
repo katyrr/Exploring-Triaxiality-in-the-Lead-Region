@@ -376,6 +376,21 @@ class PropertyData:
             else: raise ValueError("property not recognised: " + self.name)
             
             self.axis_label = self.title + r' / $μ_{N}$'
+        
+        elif prop == "quad_moments":
+                
+            if sort == "Excited State ": 
+                self.title = "Electric Quadrupole Moment of Excited State " + num 
+                
+            elif sort == "Spin ": 
+                self.title = "Electric Quadrupole Moment of Spin " + num + " States"
+                
+            elif sort == "Ground": 
+                self.title = "Ground State Electric Quadrupole Moment"
+                
+            else: raise ValueError("property not recognised: " + self.name)
+            
+            self.axis_label = self.title + r' / $eb$'
             
         elif sort == "Ground":
             
