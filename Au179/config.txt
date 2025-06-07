@@ -6,7 +6,26 @@
 * the second word is the variable value
 * the third word and beyond are ignored (except for the deformation parameters)
 *
+**********************************************************************************************
 
+
+***************************** system settings ************************************************
+
+
+*** set your operating system as MacOS or Windows64bit
+OS MacOS 
+
+
+*** set how many cores to parallelise over
+num_cores 8
+
+
+*** set figure resolution
+figure_res 150 *** dpi
+
+
+*** set how much detail to print (0 for only the essentials, or 1 for more detail)
+detailed_print 0
 
 
 ************** experimental results *******************************************

@@ -22,24 +22,27 @@ HOW TO USE:
         /Code/Pb207/Run/Batch2/         (where the second batch of data points 
                                          is run through the programs in parallel)
         /Code/Pb207/Run/Batch3/         (etc. up to batch 8)
+        
+        (download the Examples folder from Github to make sure you have the right file structure)
     
     - Before running, check that config.txt has been filled in with the desired input parameters.
     - Also set which graphs to plot in section 11 of this file
     
-    - Run from terminal in working directory /Code/Executables using command: python3 main.py
+    - Run from terminal in working directory "/Code/Executables" using command: "python3 main.py"
     
 
 """
 
 #%% 
 """ 1. SET UP 
-    
-- Import modules.
-- Set figure resolution.
-- Create timers (one to time the whole program, and one to time small sections).
+
 - State the nucleus being studied (for navigating file directories).
+- Import modules.
+- Create timers (one to time the whole program, and one to time small sections).
 
 """
+
+folder = "Pt177" #  "Examples" # "Au179" #  "Pb207" #!!! this is the name of the directory folder that contains your config file
 
 
 import numpy as np                                  
@@ -50,39 +53,34 @@ import functions as fn
 import structs as st
 import graph_plotting as gr
 
-
-plt.rcParams['figure.dpi'] = 150  # set figure resolution
-
 _timer = st.Timer()
 _sub_timer = st.Timer()
-
-nucleus = "Pt177" #  "Examples" # "Au179" #  "Pb207" #  "Au179_test10000" # "Fixing_Discontinuities_Pb207" #!!!
-verbose = False # whether to print a lot of info, or just the essentials
 
 
 #%%
 ''' 2. READ CONFIG FILE 
 
 - Ignores empty lines, and lines beginning with * (to mark a comment).
-- Check that the format of each line is correct (var_name value),
-  else raise a ValueError.
+- Checks that the format of each line is correct (var_name value),
+  else raises a ValueError.
   
-- Saves deformation input, converting range inputs into arrays. 
+- Saves deformation input (converting any range inputs into arrays). 
 - Raises a RuntimeError if: 
     deformation is input more than once, 
     or a range of E2PLUS values are input with a non-constant deformation,
     or both eps and gamma are input as a linear range (rather than a mesh).
-- Raises a ValueError if any eps = 0.0, as this is not allowed in asyrmo.
+- Raises a ValueError if any eps = 0.0, because this is not allowed in asyrmo.
 
 - Converts all other inputs to the relevant type.
 - All inputs are saved as name-value pairs in a dictionary.
 
 ''' 
 
-print("\nrunning for nucleus: " + nucleus)
 _timer.start()
 
-_lines = fn.read_file("../"+ nucleus +"/config.txt")
+
+print("\nFetching config from folder: " + folder)
+_lines = fn.read_file("../"+ folder +"/config.txt")
 
 inputs = {}                                                                     
 data_points = {}
@@ -101,78 +99,39 @@ for i in range(len(_lines)):
 
     fn.check_line_format(_split_string, _line, i)         
     
-    # save deformation inputs
-    if (_split_string[0]=="eps" or _split_string[0]=="gamma" or _split_string[0]=="single" or _split_string[0]=="mesh"):
-        
-        if ("deformation_input" in inputs):
-            raise RuntimeError("Deformation has already been input: " + inputs["deformation_input"])
-        
-        inputs["deformation_input"] = _split_string[0]
-        
-        if _split_string[0]=="mesh":
-            data_points["eps"], data_points["gamma_degrees"] = fn.arrange_mesh(_split_string[1].split(","))
-            
-        else: 
-            data_points["eps"], data_points["gamma_degrees"] = fn.arrange_data_line(_split_string)
-            
-        if _split_string[0]=="eps":
-            inputs["step"] = fn.get_range_step(_split_string[1])
-        elif _split_string[0] == "gamma":
-            inputs["step"] = fn.get_range_step(_split_string[2])
-                   
-       
-    # save E2PLUS input
+    # check what kind of input is stored in this line, and save it accordinly
+    if _split_string[0] in ["eps", "gamma", "single","mesh"]:
+        inputs, data_points = fn.save_deformation_input(inputs, data_points, _split_string)
+
     elif _split_string[0]=="e2plus":
-        
-        if "eps" not in data_points:
-            raise RuntimeError("missing deformation input (or perhaps deformation was input below e2plus?)")
-            
-        if _split_string[1]=="0":
-            # if e2plus has been input with value = "0", then it will later be 
-            # calculated dynamically based on the deformation of each data point.
-            data_points["e2plus"] = [0]*len(data_points["eps"])
-        
-        else:
-            data_points["e2plus"], i = fn.range_to_list(_split_string[1])
-            
-            if (len(data_points["e2plus"])>1 
-                and not(inputs["deformation_input"] == "single")):
-                
-                raise RuntimeError("Testing a range of e2plus is only " +
-                               "supported for a single deformation input.")
-            elif (len(data_points["e2plus"])==1
-                  and len(data_points["eps"])>1):
-                data_points["e2plus"] = [data_points["e2plus"][0]]*len(data_points["eps"])
-                  
-            else: 
-                data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
-                data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
-                    
-    # save other inputs
+        inputs, data_points = fn.save_e2plus_input(inputs, data_points, _split_string)
+               
+    elif _split_string[0] == "gs_spin":
+        experimental = fn.save_gs_spin_input(experimental, _split_string)
+
     elif _split_string[0][:3]=="jp_":
         experimental[_split_string[0]] = [float(n) for n in _split_string[1].split(',')]
           
-    elif _split_string[0] in st.get_variable_list("int"):
-        inputs[_split_string[0]] = int(_split_string[1])
-        
-    elif (_split_string[0] in st.get_variable_list("float")
-          or _split_string[0][:3] in st.get_variable_list("float")):
-        experimental[_split_string[0]] = float(_split_string[1])
-                                      
-    elif _split_string[0] in st.get_variable_list("bool"):                                    
-        inputs[_split_string[0]] = bool(int(_split_string[1]))
-        
-    else: # string
-        inputs[_split_string[0]] = _split_string[1]
+    else:
+        inputs, experimental = fn.validate_input(inputs, experimental, _split_string)
+
+    # sometimes helpful when debugging (change False to True, to check that config file is reading as expected) 
+    if False: print(_split_string[0] + ": \t" + _split_string[1])
 
 
-    if verbose: print(_split_string[0] + ": \t" + _split_string[1])
+# check that we have all the inputs we need
+for i in st.get_required_inputs():
     
+    if not i in inputs and not i in experimental and not i in data_points:
+       raise RuntimeError("missing input: " + i)
 
-
-# check that there are no eps=0 values to test - this will cause the code to hang.
+# check that there are no eps=0 values to test - that would cause the code to hang.
 if 0.0 in data_points["eps"]:
     raise ValueError("Cannot test at eps=0.0.")
+    
+
+plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
+
 
 #%%
 ''' 3. PROCESS INPUTS 
@@ -181,11 +140,11 @@ if 0.0 in data_points["eps"]:
 - Convert input fractional spins to floats and save separately.
 - convert the nantj, noutj, ipout inputs to the correct format
 
-- Using input A and Z, work out which is odd, to determine the nneupr input.
+- Using input A and Z, work out which particle is odd, to determine the nneupr input.
 - Halve and ceiling for the overall index of the fermi level orbital.
-- Generate the orbitals input for gampn (e.g. orbitals_string = "+4 19 20 21 22").
+- Generate the orbitals input for gampn (e.g. "+4 19 20 21 22").
 
-- Raises ValueError if an even-mass nucleus is input, or if A≠Z+N.
+- Raises ValueError if an even-mass nucleus is input.
 
 '''
 
@@ -193,17 +152,11 @@ if 0.0 in data_points["eps"]:
 data_points["gamma_radians"] = [n*np.pi/180 for n in data_points["gamma_degrees"]]
 
 
-# add float versions of the spin parameters
-if "gs_spin" in inputs:
-    experimental["gs_spin_float"] = fn.spin_string_to_float(inputs["gs_spin"])
-    experimental["gs_spin_string"] = inputs["gs_spin"]
-
+#!!! obsolete:
 if "x1_spin" in inputs:
     experimental["x1_spin_float"] = fn.spin_string_to_float(inputs["x1_spin"])
-
 if "x2_spin" in inputs:
     experimental["x2_spin_float"] = fn.spin_string_to_float(inputs["x2_spin"])
-
 if "x3_spin" in inputs:
     experimental["x3_spin_float"] = fn.spin_string_to_float(inputs["x3_spin"])
 
@@ -216,7 +169,6 @@ inputs["ipout"] = inputs["ipout"].replace(",", " ")
 # determine nneupr and calculate fermi level
 inputs["N"] = inputs["A"]-inputs["Z"]
 
-
 if inputs["A"]%2 == 0:
     raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
 elif inputs["Z"]%2 == 0: 
@@ -228,13 +180,16 @@ elif inputs["N"]%2 == 0:
     inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
     print("Calculating for odd PROTONS...")
 else:
-    raise ValueError("A ≠ N + Z; check inputs.")
+    raise RuntimeError("Check inputs of A and Z.")
 
 
-# Generate a string that contains the number of orbitals and their indices, 
-# in the correct format for input to gampn.
+# Generate a string containing the parity to calculate, the number of orbitals, 
+#   and their indices, in the correct format for input to gampn.
 inputs["current_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
-# inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" #fn.write_orbitals(28, inputs["num_orbs"], inputs["par"]) #!! hard coded version of the above
+
+# (useful for debugging) hard coded versions of the above:
+#inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
+# inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
 
 
 #%%   
@@ -251,8 +206,12 @@ data_points["file_tags"] = []
 
 for i in range(len(data_points["eps"])):
     
-    inputs["current_eps"] = data_points["eps"][i]
-    inputs["current_gamma"] = data_points["gamma_degrees"][i]
+    if data_points["gamma_degrees"][i] > 30:
+        inputs["current_eps"] = data_points["eps"][i] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
+    else:
+        inputs["current_eps"] = data_points["eps"][i]
+        inputs["current_gamma"] = data_points["gamma_degrees"][i]
     
     if not(data_points["e2plus"][i]):
         # if the value of e2plus has been input as 0, calculate dynamically
@@ -267,11 +226,8 @@ for i in range(len(data_points["eps"])):
     inputs["current_f016"] = "f016_"+_file_tag+".dat"
     inputs["current_f017"] = "f017_"+_file_tag+".dat"
     
-    if data_points["gamma_degrees"][i] > 30:
-        inputs["current_eps"] = data_points["eps"][i] * -1
-        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
     
-    fn.write_file("../"+nucleus+"/Inputs/GAM_"+_file_tag+".DAT", st.get_template("gampn") % inputs)
+    fn.write_file("../"+folder+"/Inputs/GAM_"+_file_tag+".DAT", st.get_template("gampn") % inputs)
  
     data_points["file_tags"].append(_file_tag)
 
@@ -296,7 +252,7 @@ print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.
 
 batch_settings = {}
 
-batch_settings["num_batches"] = 8 # = number of cores for maximum efficiency with large data sets
+batch_settings["num_batches"] = inputs["num_cores"] # = number of cores for maximum efficiency with large data sets
 batch_settings["num_per_batch"] = math.ceil(len(data_points["file_tags"]) / batch_settings["num_batches"])
 
 # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worthwhile.
@@ -304,22 +260,22 @@ if batch_settings["num_per_batch"] < 20:
     batch_settings["num_per_batch"] = 20
     batch_settings["num_batches"] = math.ceil(len(data_points["eps"])/batch_settings["num_per_batch"])  
 
-# each file takes ~ 0.1 seconds to run;
-# allow double time plus an overhead of 2 s
-batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+50         
+# Each file takes ~ 0.1 seconds to run;
+#   Allow double time plus an overhead/extra of 10 seconds to ensure that the batch 
+#   will finish even if the computer is running a bit slow today! If it takes longer 
+#   than this, it is probably hanging, but you could increase 10 -> 60 seconds just to be sure.
+batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+10        
 
 
-# configure a batch script writer for gampn, and run the batches
-run_program = fn.configure_script_writer(data_points["file_tags"], nucleus, batch_settings["num_batches"], 
-                                         batch_settings["num_per_batch"], batch_settings["allowed_time"], verbose)
-
+# configure a batch script writer, and run the batches.
+run_program = fn.configure_script_writer(data_points["file_tags"], folder, batch_settings["num_batches"], 
+                                         batch_settings["num_per_batch"], batch_settings["allowed_time"], inputs["detailed_print"])
 
 print("Starting gampn...")
 _sub_timer.start()
-
 run_program("gampn")
-
 _sub_timer.stop()
+
 print("\n***** Finished running gampn in time = %.2f seconds. *****" % _sub_timer.get_lapsed_time())
 
 
@@ -331,7 +287,10 @@ print("\n***** Finished running gampn in time = %.2f seconds. *****" % _sub_time
     - Read the value of EFAC (the conversion factor from hw to eV).
     - Determine the line number of the fermi level orbital in the GAMPN.OUT file.
     - Read that line from GAMPN.OUT and get the energy, parity, and level index.
-    - Generate the orbitals input for asyrmo (e.g. orbitals_string = "+11 19 20 21 22 23 24 25 26 27 28 29")
+    - Dynamically locate the orbitals nearest to the fermi level in energy, for 
+      future input.
+      
+- Re-run gampn for all data points, using the orbitals located in the step above. 
     
 '''
 
@@ -346,7 +305,7 @@ data_points["asyrmo_orbitals"] = []
 
 for i in data_points["file_tags"] :
 
-    _lines = fn.read_file("../"+nucleus+"/Outputs/GAM_"+i+".OUT")
+    _lines = fn.read_file("../"+folder+"/Outputs/GAM_"+i+".OUT")
     
     # get the EFAC value (conversion factor from hw to MeV)
     inputs["efac"] = fn.get_efac(_lines)
@@ -361,8 +320,7 @@ for i in data_points["file_tags"] :
     output_data["fermi_energies_mev"].append(_f_energy_hw * inputs["efac"])
     output_data["fermi_indices"].append(_f_index)
     
-    # generate the orbitals input for asyrmo
-    # version 5: dynamically finds the orbitals nearest to the fermi level in energy:
+    # dynamically finds the orbitals nearest to the fermi level in energy:
     data_points["asyrmo_orbitals"].append(fn.find_orbitals(_f_index, inputs["nu"], 
                                    inputs["par"], _f_energy_hw, _f_parity, _lines))
     
@@ -390,7 +348,7 @@ for i in range(len(data_points["file_tags"])):
     inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
    
     
-    fn.write_file("../"+nucleus+"/Inputs/GAM_"+data_points["file_tags"][i]+".DAT", st.get_template("gampn") % inputs)
+    fn.write_file("../"+folder+"/Inputs/GAM_"+data_points["file_tags"][i]+".DAT", st.get_template("gampn") % inputs)
  
 
 _sub_timer.start()
@@ -421,7 +379,7 @@ for i in range(len(data_points["file_tags"])):
     inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
     
     
-    fn.write_file("../"+nucleus+"/Inputs/ASY_"+data_points["file_tags"][i]+".DAT", st.get_template("asyrmo") % inputs)
+    fn.write_file("../"+folder+"/Inputs/ASY_"+data_points["file_tags"][i]+".DAT", st.get_template("asyrmo") % inputs)
 
 _sub_timer.start()
 run_program("asyrmo")
@@ -443,7 +401,7 @@ output_data["delta"] = []
 
 for i in data_points["file_tags"] :
 
-    _lines = fn.read_file("../"+nucleus+"/Outputs/ASY_"+i+".OUT")
+    _lines = fn.read_file("../"+folder+"/Outputs/ASY_"+i+".OUT")
     
     if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
         raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
@@ -465,7 +423,7 @@ for i in range(len(data_points["file_tags"])):
     inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
     inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
 
-    fn.write_file("../"+nucleus+"/Inputs/PROB_"+data_points["file_tags"][i]+".DAT", st.get_template("probamo") % inputs)
+    fn.write_file("../"+folder+"/Inputs/PROB_"+data_points["file_tags"][i]+".DAT", st.get_template("probamo") % inputs)
 
 _sub_timer.start()
 run_program("probamo")
@@ -508,7 +466,7 @@ for i in range(len(data_points["file_tags"])):
     
     _file_data = {}
     
-    _lines = fn.read_file("../"+nucleus+"/Outputs/Prob_"+data_points["file_tags"][i]+".OUT")
+    _lines = fn.read_file("../"+folder+"/Outputs/Prob_"+data_points["file_tags"][i]+".OUT")
 
     for _line in _lines:
         
@@ -526,7 +484,7 @@ for i in range(len(data_points["file_tags"])):
     _file_data = fn.missing_data(_file_data, inputs)
     data_points["property_data"].append(_file_data)
 
-output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], verbose)
+output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], inputs["detailed_print"])
 
 # get energy gap between 9/2 and 13/2
 output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
@@ -852,7 +810,7 @@ for i in output_data:
 
 '''
     
-gr.check_agreement(verbose, data_points, num_comparisons)
+gr.check_agreement(inputs["detailed_print"], data_points, num_comparisons)
 
 agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
 agreement.contour_levels = np.arange(0, num_comparisons+2, dtype=int) #fn.calc_contour_levels(agreement.data)
@@ -870,14 +828,14 @@ if inputs["deformation_input"] == "mesh" and agreement.plot:
     
 print("\n******** mean and standard error in the mean ******")
 
-fn.report_mean(output_data["spin_1/2_energies"], verbose)
-fn.report_mean(output_data["spin_3/2_energies"], verbose)
-fn.report_mean(output_data["spin_5/2_energies"], verbose)
-fn.report_mean(output_data["spin_7/2_energies"], verbose)
-fn.report_mean(output_data["spin_9/2_energies"], verbose)
-fn.report_mean(output_data["spin_11/2_energies"], verbose)
-fn.report_mean(output_data["spin_13/2_energies"], verbose)
-fn.report_mean(output_data["gs_mag_moments"], verbose)
+fn.report_mean(output_data["spin_1/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_3/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_5/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_7/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
+fn.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
 
 
 

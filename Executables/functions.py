@@ -404,6 +404,107 @@ def arrange_mesh(split_string):
 
 
 
+def save_deformation_input(inputs, data_points, split_string):
+    if ("deformation_input" in inputs):
+        raise RuntimeError("Deformation has already been input: " + inputs["deformation_input"])
+    
+    inputs["deformation_input"] = split_string[0]
+    
+    if split_string[0]=="mesh":
+        data_points["eps"], data_points["gamma_degrees"] = arrange_mesh(split_string[1].split(","))
+        
+    else: 
+        data_points["eps"], data_points["gamma_degrees"] = arrange_data_line(split_string)
+        
+    if split_string[0]=="eps":
+        inputs["step"] = get_range_step(split_string[1])
+    elif split_string[0] == "gamma":
+        inputs["step"] = get_range_step(split_string[2])
+        
+    return inputs, data_points
+
+def save_e2plus_input(inputs, data_points, split_string):
+    
+    if "eps" not in data_points:
+        raise RuntimeError("missing deformation input (or perhaps deformation was input below e2plus?)")
+        
+    if split_string[1]=="0":
+        # if e2plus has been input with value = "0", then it will later be 
+        # calculated dynamically based on the deformation of each data point.
+        data_points["e2plus"] = [0]*len(data_points["eps"])
+    
+    else:
+        data_points["e2plus"], i = range_to_list(split_string[1])
+        
+        if (len(data_points["e2plus"])>1 
+            and not(inputs["deformation_input"] == "single")):
+            
+            raise RuntimeError("Testing a range of e2plus is only " +
+                           "supported for a single deformation input.")
+        elif (len(data_points["e2plus"])==1
+              and len(data_points["eps"])>1):
+            data_points["e2plus"] = [data_points["e2plus"][0]]*len(data_points["eps"])
+              
+        else: 
+            data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
+            data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
+
+    return inputs, data_points
+
+def save_gs_spin_input(experimental, split_string):
+    
+    try:
+        experimental["gs_spin_float"] = spin_string_to_float(split_string[1])
+    except ValueError:
+        raise ValueError("wrong format for input of gs_spin, please input in the format '1/2' or '13/2', etc.")
+
+    experimental["gs_spin_string"] = split_string[1]
+        
+    return experimental
+
+
+def validate_input(inputs, experimental, split_string):
+    
+    if split_string[0] in st.get_variable_list("int"):
+        
+        split_string[1] = int(split_string[1])
+        dictionary = inputs
+        
+    elif (split_string[0] in st.get_variable_list("experimental_float")
+          or split_string[0][:3] in st.get_variable_list("experimental_float")):
+        
+        split_string[1] = float(split_string[1])
+        dictionary = experimental
+        
+    elif split_string[0] in st.get_variable_list("settings_float"):
+        
+        split_string[1] = float(split_string[1])
+        dictionary = inputs
+                                  
+    elif split_string[0] in st.get_variable_list("bool"):  
+                                  
+        split_string[1] = bool(int(split_string[1]))
+        dictionary = inputs
+    
+    elif split_string[0] in st.get_variable_list("string"): 
+        
+        dictionary = inputs                                  
+        
+    else: raise ValueError("unrecognised input: " + split_string[0])
+
+    restricted_inputs = st.get_restricted_inputs()
+    
+    if split_string[0] in restricted_inputs:
+        allowed_values = restricted_inputs[split_string[0]]
+
+        if not split_string[1] in allowed_values:
+            raise ValueError("Invalid input: \t" + split_string[0] + " = " + split_string[1] + ".\nPlease choose from allowed values: " + str(allowed_values))
+            
+    dictionary[split_string[0]] = split_string[1]
+    
+    
+    return inputs, experimental
+
 
 #%%
 
@@ -738,7 +839,7 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
             
             for file in file_tag_batch :
                 script_text += ("\n(cd ../"+nucleus+"/Run/"+batch_folder+";" +  # start a subprocess and move to the Run folder for this batch.
-                                " ./../../../Executables/MO/" + program +       # call the program from the Run folder.
+                                " ./../../../Executables/MacOS/MO/" + program +       # call the program from the Run folder.
                                 " < ../../Inputs/"+ abr +"_"+ file +".DAT;" +   # input the relevant .DAT file to the program.
                                 " cp "+program.upper()+ ".out"+                 # copy the default .OUT file... 
                                 " ../../Outputs/"+ abr +"_" + file + ".OUT)")   # ...to a new .OUT file with a more descriptive name, in the Outputs folder.

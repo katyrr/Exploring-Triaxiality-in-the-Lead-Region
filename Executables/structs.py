@@ -12,6 +12,8 @@ CONTENTS:
 
 - class Timer()
 
+- essential_inputs = get_essentials()
+
 - template = get_template(program)
 
 - var_list = get_variable_list(var_type)
@@ -83,6 +85,85 @@ class Timer():
         total_time= self.end_time - self.start_time
         return total_time
     
+
+
+def get_restricted_inputs():
+
+    
+    restricted_input_values = {
+        'par': ['+', '-'],
+        'irec': [0,1],
+        'icorr': [0,1],
+        'istrch': [0,1],
+        'iq': [0,1],
+        'vmi': 	[0,1],
+        'OS': ['MacOS', 'Windows64bit'],
+        'detailed_print': [0,1],
+        'mark_spin': [0,1],
+        'mark_exp': [0,1],
+        'mark_exp_tol': [0,1],
+        'mark_points': [0,1],
+        }
+    
+    return restricted_input_values
+
+
+def get_required_inputs():
+    
+    required_inputs = ['par', 'nucleus', 'Z','A', 'cutoff', 'gsfac', 'irec', 
+                       'icorr', 'emin', 'emax', 'chsi', 'eta', 'nantj', 'noutj', 
+                       'ipout', 'nu', 'imin', 'ispin', 'kmax', 'istrch', 'num_orbs', 
+                       'nuu', 'nprot', 'nneutr', 'e2plur', 'ispec', 'iq', 'gr', 
+                       'vmi', 'nmin', 'nmax', 'OS', 'num_cores', 'figure_res', 
+                       'detailed_print', 'mu_tol', 'abs_en_tol', 'gap_en_tol', 
+                       'mark_spin', 'mark_exp', 'mark_exp_tol', 'mark_points',
+                       'e2plus']
+    
+    return required_inputs
+
+
+def get_variable_list(var_type):
+    """
+
+    Parameters
+    ----------
+    var_type : string
+        The name of the type of variable being sought.
+        Allowed values: "bool", "int", "float".
+
+    Raises
+    ------
+    ValueError
+        Occurs when the 'var_type' parameter is not one of bool/int/float.
+
+    Returns
+    -------
+    var_list : list of strings
+        A list of the variable inputs whose values are expected to have the
+        requested type, and should be converted to this type when being read.
+
+    """
+    
+    if var_type == "bool":
+        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points", "detailed_print"]
+
+    elif var_type == "int":
+        var_list = ["A", "Z", "num_to_record", "num_orbs", "nu", "num_cores", "figure_res",
+                    "irec", "icorr", "imin", "ispin", "kmax", "istrch", "nuu", "nprot", 
+                    "nneutr", "ispec", "iq", "gr", "vmi", "nmin", "nmax"]
+
+    elif var_type == "experimental_float":
+        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "abs_en_tol", "gap_en_tol"]
+        
+    elif var_type == "settings_float":
+        var_list = ["cutoff", "gsfac", "emin", "emax", "chsi", "eta", "e2plur"]
+        
+    elif var_type == "string":
+        var_list = ["nucleus", "nantj", "noutj", "ipout", "OS", "par"]
+        
+    else: raise ValueError("unrecognised type: " + var_type)
+    
+    return var_list
 
 
 
@@ -167,42 +248,6 @@ def get_template(program):
     
     return template
 
-
-
-def get_variable_list(var_type):
-    """
-
-    Parameters
-    ----------
-    var_type : string
-        The name of the type of variable being sought.
-        Allowed values: "bool", "int", "float".
-
-    Raises
-    ------
-    ValueError
-        Occurs when the 'var_type' parameter is not one of bool/int/float.
-
-    Returns
-    -------
-    var_list : list of strings
-        A list of the variable inputs whose values are expected to have the
-        requested type, and should be converted to this type when being read.
-
-    """
-    
-    if var_type == "bool":
-        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points"]
-
-    elif var_type == "int":
-        var_list = ["A", "Z", "num_to_record", "num_orbs", "nu"]
-
-    elif var_type == "float":
-        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "abs_en_tol", "gap_en_tol"]
-        
-    else: raise ValueError("unrecognised type: " + var_type)
-    
-    return var_list
 
 
 class PropertyData:
@@ -434,6 +479,9 @@ class PropertyData:
         else:
             raise ValueError("property not recognised: " + name)
         
-        
+
+
+
+
         
         
