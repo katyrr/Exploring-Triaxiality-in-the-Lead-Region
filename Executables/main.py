@@ -85,6 +85,7 @@ _lines = fn.read_file("../"+ folder +"/config.txt")
 inputs = {}                                                                     
 data_points = {}
 experimental = {}
+plot_props = {}
 
 for i in range(len(_lines)):                       
     
@@ -111,6 +112,12 @@ for i in range(len(_lines)):
 
     elif _split_string[0][:3]=="jp_":
         experimental[_split_string[0]] = [float(n) for n in _split_string[1].split(',')]
+        
+    elif _split_string[0][:5]=="plot_":
+        plot_props[_split_string[0][5:]] = bool(int(_split_string[1]))
+    
+    elif _split_string[0][:6]=="engap_":
+        experimental[_split_string[0]] = float(_split_string[1])
           
     else:
         inputs, experimental = fn.validate_input(inputs, experimental, _split_string)
@@ -202,36 +209,32 @@ inputs["current_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs[
 
  '''
 
+inputs["num"] = len(data_points["eps"])
+print("Number of data points = ", inputs["num"])
+
 data_points["file_tags"] = []
 
-for i in range(len(data_points["eps"])):
+for i in range(inputs["num"]):
     
-    if data_points["gamma_degrees"][i] > 30:
-        inputs["current_eps"] = data_points["eps"][i] * -1
-        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
-    else:
-        inputs["current_eps"] = data_points["eps"][i]
-        inputs["current_gamma"] = data_points["gamma_degrees"][i]
-    
-    if not(data_points["e2plus"][i]):
+    if data_points["e2plus"][i] == 0:
         # if the value of e2plus has been input as 0, calculate dynamically
         data_points["e2plus"][i] = fn.est_e2plus(data_points["eps"][i], inputs["A"])
     
-    inputs["current_e2plus"] = data_points["e2plus"][i]
-    
+    inputs, data_points = fn.set_current(inputs, data_points, i)
+
     _file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"],  inputs["current_gamma"],
                                         inputs["current_e2plus"], inputs["nucleus"])
+    data_points["file_tags"].append(_file_tag)
     
     inputs["current_f002"] = "f002_"+_file_tag+".dat"
     inputs["current_f016"] = "f016_"+_file_tag+".dat"
     inputs["current_f017"] = "f017_"+_file_tag+".dat"
     
-    
+
     fn.write_file("../"+folder+"/Inputs/GAM_"+_file_tag+".DAT", st.get_template("gampn") % inputs)
  
-    data_points["file_tags"].append(_file_tag)
+    
 
-print("Number of data points = " + str(len(data_points["file_tags"])))
 print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.1f, %.1f]."
       % (data_points["eps"][0], data_points["eps"][-1], data_points["gamma_degrees"][0], data_points["gamma_degrees"][-1]))
 
@@ -295,89 +298,66 @@ print("\n***** Finished running gampn in time = %.2f seconds. *****" % _sub_time
 '''
 
 # set up arrays to store data 
-output_data = {}
-output_data["fermi_parities"] = []
-output_data["fermi_energies_hw"] = []
-output_data["fermi_energies_mev"] = []
-output_data["fermi_indices"] = []
+output_data = {"fermi_parities": [0]*inputs["num"], "fermi_energies_hw": [0]*inputs["num"], 
+               "fermi_energies_mev": [0]*inputs["num"], "fermi_indices": [0]*inputs["num"]}
 data_points["asyrmo_orbitals"] = []
 
+for i in range(inputs["num"]):
 
-for i in data_points["file_tags"] :
-
-    _lines = fn.read_file("../"+folder+"/Outputs/GAM_"+i+".OUT")
+    _lines = fn.read_file("../"+folder+"/Outputs/GAM_"+data_points["file_tags"][i]+".OUT")
     
-    # get the EFAC value (conversion factor from hw to MeV)
     inputs["efac"] = fn.get_efac(_lines)
-    
-    # locate the fermi level and extract data
     _fermi_level_line = fn.get_sp_level(_lines, inputs["fermi_level"], '0')
-    
     _f_parity, _f_energy_hw, _f_index = fn.get_info(_fermi_level_line)
     
-    output_data["fermi_parities"].append(_f_parity)                              
-    output_data["fermi_energies_hw"].append(_f_energy_hw)   
-    output_data["fermi_energies_mev"].append(_f_energy_hw * inputs["efac"])
-    output_data["fermi_indices"].append(_f_index)
+    output_data["fermi_parities"][i] = _f_parity                             
+    output_data["fermi_energies_hw"][i] = _f_energy_hw
+    output_data["fermi_energies_mev"][i] = _f_energy_hw * inputs["efac"]
+    output_data["fermi_indices"][i] = _f_index
     
     # dynamically finds the orbitals nearest to the fermi level in energy:
     data_points["asyrmo_orbitals"].append(fn.find_orbitals(_f_index, inputs["nu"], 
                                    inputs["par"], _f_energy_hw, _f_parity, _lines))
-    
 
 
+#%% 
+'''6. RE-RUN GAMPN
 
-# Re-run gampn with the new set of orbitals, so that the strong-coupling basis can be maximised. 
-# No need to re-read outputs, as the values read manually (energy levels etc) will be unaffected,
-# only the matrix elements (read automatically by asyrmo) will be affected.
-    
+'''
+
+# Re-run gampn with the new set of orbitals, so that the strong-coupling basis can be maximised when calculating matrix elements.
 for i in range(len(data_points["file_tags"])):
     
-    if data_points["gamma_degrees"][i] > 30:
-        inputs["current_eps"] = data_points["eps"][i] * -1
-        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
-    else:
-        inputs["current_eps"] = data_points["eps"][i]
-        inputs["current_gamma"] = data_points["gamma_degrees"][i]
-        
-    inputs["current_e2plus"] = data_points["e2plus"][i]
+    inputs, data_points = fn.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
     inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
-    
-    inputs["current_f002"] = "f002_"+data_points["file_tags"][i]+".dat"
-    inputs["current_f016"] = "f016_"+data_points["file_tags"][i]+".dat"
-    inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
    
-    
     fn.write_file("../"+folder+"/Inputs/GAM_"+data_points["file_tags"][i]+".DAT", st.get_template("gampn") % inputs)
  
-
 _sub_timer.start()
 run_program("gampn")
 _sub_timer.stop()
 print("***** Finished running gampn (again) in time = %.2f seconds. *****" % _sub_timer.get_lapsed_time())
 
-
-_output_data = output_data # save a copy of the original before it's overwritten
-
+_output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
 
 
 #%%
-''' 6. WRITE AND RUN ASYRMO 
+''' 7. WRITE AND RUN ASYRMO 
 
 - Use the existing list of file tags to write a .DAT file for each data point.
 - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
 
 '''
 
-for i in range(len(data_points["file_tags"])):
+for i in range(inputs["num"]):
         
     inputs["current_e2plus"] = data_points["e2plus"][i]
     inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
+    
     inputs["current_f016"] = "f016_"+data_points["file_tags"][i]+".dat"
     inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
     inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
-    
     
     fn.write_file("../"+folder+"/Inputs/ASY_"+data_points["file_tags"][i]+".DAT", st.get_template("asyrmo") % inputs)
 
@@ -389,7 +369,7 @@ print("***** Finished running asyrmo in time = %.2f seconds. *****" % _sub_timer
 
 #%%
 
-''' 7. READ ASYRMO 
+''' 8. READ ASYRMO 
 
 - Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
 - Record the value of the DELTA parameter.
@@ -399,7 +379,7 @@ print("***** Finished running asyrmo in time = %.2f seconds. *****" % _sub_timer
 
 output_data["delta"] = []
 
-for i in data_points["file_tags"] :
+for i in data_points["file_tags"]:
 
     _lines = fn.read_file("../"+folder+"/Outputs/ASY_"+i+".OUT")
     
@@ -410,14 +390,14 @@ for i in data_points["file_tags"] :
         
 
 #%%
-''' 8. WRITE AND RUN PROBAMO 
+''' 9. WRITE AND RUN PROBAMO 
 
 - Use the existing list of file tags to write a .DAT file for each data point.
 - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
 
 '''
 
-for i in range(len(data_points["file_tags"])):
+for i in range(inputs["num"]):
 
     inputs["current_e2plus"] = data_points["e2plus"][i]
     inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
@@ -434,7 +414,7 @@ print("***** Finished running probamo in time = %.2f seconds. *****\n" % _sub_ti
 
 #%%
 
-''' 9. READ PROBAMO.OUT FILE
+''' 10. READ PROBAMO.OUT FILE
 
 For each file:
     
@@ -456,29 +436,25 @@ For each file:
     - Restructure the data set and save separately (now each property is recorded
       as a list of values for all data points, rather than each data point having
       a list of properties associated with it). 
-      
 
 '''
 
 data_points["property_data"] = []
 
-for i in range(len(data_points["file_tags"])):
-    
-    _file_data = {}
+for i in range(inputs["num"]):
     
     _lines = fn.read_file("../"+folder+"/Outputs/Prob_"+data_points["file_tags"][i]+".OUT")
-
+    
+    _file_data = {}
     for _line in _lines:
         
         _line_data = fn.read_data(_line)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
-        
         if not(_line_data):
             continue # to next line in file
         
         # sort line_data into file_data according to its spin
         _file_data = fn.sort_by_spin(_line_data, _file_data)
-        
-        # additionally save data that corresponds to the experimental ground state and input excited states
+        # additionally save data that corresponds to the expected experimental ground state
         _file_data = fn.sort_by_expectation(_line_data, _file_data, inputs)
     
     _file_data = fn.missing_data(_file_data, inputs)
@@ -486,8 +462,26 @@ for i in range(len(data_points["file_tags"])):
 
 output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], inputs["detailed_print"])
 
-# get energy gap between 9/2 and 13/2
-output_data["gap_9_13"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
+# get energy gap between third 9/2 and first 13/2 states
+for i in experimental:
+    if not "engap_" in i:
+        continue
+    
+    first_dot = i.index(".")
+    first_spin = i[first_dot-2:first_dot]
+    if first_spin[0] == "_":
+        first_spin = first_spin[1]
+    first_index = int(i[first_dot+1:first_dot+2])
+    
+    second_dot = i.index(".", first_dot+1)
+    second_spin = i[second_dot-2:second_dot]
+    if second_spin[0] == "_":
+        second_spin = second_spin[1]
+    second_index = int(i[second_dot+1:second_dot+2])
+    
+    output_data[i] = fn.find_gaps(output_data["spin_"+first_spin+"/2_energies"], first_index, output_data["spin_"+second_spin+"/2_energies"], second_index, experimental[i])
+
+# output_data["engap_9.3_13.1"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
 
 
 # ensure all data sets have the same size and shape
@@ -509,7 +503,7 @@ _output_data_dict = output_data # save a copy of the original before it's overwr
 
 
 #%%
-''' 10. PREPARE TO PLOT GRAPHS 
+''' 11. PREPARE TO PLOT GRAPHS 
 
 - Record each data set in an instance of class PropertyData
 - Calculate graph plotting attributes and store within the class
@@ -524,119 +518,14 @@ _output_data_dict = output_data # save a copy of the original before it's overwr
 # convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
 output_data = {}
 for i in _output_data_dict:
-    
-    #print(i)
-    
+    # print(i)
     output_data[i] = st.PropertyData(_output_data_dict[i], i)
     
     # calculate contour levels, colour bar ticks and labels, 
     # and assign experimental values and error tolerance if available.
     
-    if output_data[i].prop == "energies" and not(output_data[i].sort=="Fermi"): 
-        
-        output_data[i].contour_levels = 10
-        output_data[i].cbar_tick_labels = 0
-        
-        if output_data[i].sort == "gap":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, i, experimental["gap_en_tol"])
-        
-        elif output_data[i].sort == "Excited State ":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "x" + output_data[i].num + "_energy", experimental["abs_en_tol"])
-        
-        elif output_data[i].sort == "Spin ":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "jp_"+ output_data[i].num + inputs["par"], experimental["abs_en_tol"])
-            
-        else: raise ValueError("property not recognised: " + i)
-        
-    elif output_data[i].prop == "mag_moments":
-        
-        output_data[i].contour_levels = 6
-        output_data[i].cbar_tick_labels = 0
-            
-        if output_data[i].sort == "Excited State ":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "x" + output_data[i].num + "_mu", experimental["mu_tol"])
+    output_data[i] = gr.calculate_format_data(output_data[i], i, experimental)
     
-        elif output_data[i].sort == "Spin ":
-            
-            output_data[i].experimental_data = np.NaN
-            output_data[i].error_tolerance = np.NaN
-            
-        elif output_data[i].sort == "Ground":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "gs_mu", experimental["mu_tol"])
-            
-        else: raise ValueError("property not recognised: " + i)
-        
-    elif output_data[i].prop == "quad_moments":
-        
-        output_data[i].contour_levels = 6
-        output_data[i].cbar_tick_labels = 0
-            
-        if output_data[i].sort == "Excited State ":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "x" + output_data[i].num + "_mu", experimental["mu_tol"])
-    
-        elif output_data[i].sort == "Spin ":
-            
-            output_data[i].experimental_data = np.NaN
-            output_data[i].error_tolerance = np.NaN
-            
-        elif output_data[i].sort == "Ground":
-            
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "gs_mu", experimental["mu_tol"])
-            
-        else: raise ValueError("property not recognised: " + i)
-        
-    
-    elif output_data[i].sort == "Ground":
-        
-        if output_data[i].prop == "spin_floats": 
-        
-            output_data[i].contour_levels = gr.calc_contour_levels(output_data[i].data)
-            output_data[i].experimental_data, output_data[i].error_tolerance = gr.try_experimental(experimental, "gs_spin_float", experimental["mu_tol"])
-            output_data[i].cbar_tick_labels = gr.calc_cbar_tick_labels(output_data[i].data, "half")
-            output_data[i].cbar_ticks = gr.calc_cbar_ticks(output_data[i].contour_levels)
-            
-        elif output_data[i].prop == "spin_strings": continue
-        else: raise ValueError("property not recognised: " + i)
-    
-    elif output_data[i].sort == "Fermi":
-    
-        if output_data[i].prop == "indices": 
-            
-            output_data[i].contour_levels = gr.calc_contour_levels(output_data[i].data)
-            output_data[i].cbar_tick_labels = gr.calc_cbar_tick_labels(output_data[i].data, "int")
-            output_data[i].cbar_ticks = gr.calc_cbar_ticks(output_data[i].contour_levels)
-        
-        elif output_data[i].prop == "energies":
-        
-            output_data[i].contour_levels = 10
-            output_data[i].cbar_tick_labels = 0
-        
-        elif output_data[i].prop == "parities":
-        
-            output_data[i].contour_levels = 2
-            output_data[i].cbar_tick_labels = 0
-        
-        else: raise ValueError("property not recognised: " + i)
-            
-        output_data[i].experimental_data = np.NaN
-        output_data[i].error_tolerance = np.NaN
-    
-    elif output_data[i].prop == "delta":
-        output_data[i].contour_levels = 10
-        output_data[i].cbar_ticks = 0
-        output_data[i].cbar_tick_labels = 0
-        output_data[i].experimental_data = np.NaN
-        output_data[i].error_tolerance = np.NaN
-        
-    else: raise ValueError("property not recognised: " + i)
-    
-
 
 output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), experimental["gs_spin_string"], experimental)
 
@@ -650,7 +539,7 @@ output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],output
 #%%
 
 
-''' 11. PLOT GRAPHS
+''' 12. PLOT GRAPHS
 
 - Set which graphs should be plotted. Any not listed are False by default.
 
@@ -670,57 +559,61 @@ output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],output
     
 '''
 
+
+#!!! set graph subtitle:
+if inputs["include_subtitle"]:
+    subtitle = r'$E(2^+)$ = ' + str(inputs["current_e2plus"]) + '; gsfac = ' + str(inputs["gsfac"])
+else:
+    subtitle = ''
+    
+    
+# set which graphs to plot:
+for i in plot_props:
+    if i in output_data:
+        output_data[i].plot = plot_props[i]
+    else:
+        print("property not recorded, check that it is included in experimental data inputs:\n\t", i)
+
+# override graph plotting options (useful when running cell by cell): #!!!
+    
+# output_data["fermi_indices"].plot = 0
+# output_data["delta"].plot = 0
+# output_data["fermi_energies_mev"].plot = 0
+# output_data["fermi_energies_hw"].plot = 0
+
+# output_data["gs_mag_moments"].plot = 0
+# output_data["gs_quad_moments"].plot = 0
+# output_data["gs_spin_floats"].plot = 1
+
+# output_data["spin_1/2_energies"].plot = 0
+# output_data["spin_3/2_energies"].plot = 0
+# output_data["spin_5/2_energies"].plot = 0
+# output_data["spin_7/2_energies"].plot = 0
+# output_data["spin_9/2_energies"].plot = 0
+# output_data["spin_11/2_energies"].plot = 0
+# output_data["spin_13/2_energies"].plot = 0
+
+# output_data["spin_1/2_mag_moments"].plot = 0
+# output_data["spin_3/2_mag_moments"].plot = 0
+
+# output_data["rms"].plot = 0
+
+# output_data["all_energies"].plot = 0
+# output_data["shifted_energies"].plot = 0
+
+# output_data["gap_9_13"].plot = 0
+
 # override settings
 # inputs["mark_exp"] = 1
 # inputs["mark_exp_tol"] = 0
 # inputs["mark_points"] = 1
 # inputs["mark_spin"] = 0
 
-#!!! set graph subtitle:
-subtitle = r'$E(2^+)$ = ' + str(inputs["current_e2plus"])
-
-#!!! set which graphs to plot:
-
-output_data["fermi_indices"].plot = 0
-output_data["delta"].plot = 0
-output_data["fermi_energies_mev"].plot = 0
-output_data["fermi_energies_hw"].plot = 0
-
-output_data["gs_mag_moments"].plot = 1
-output_data["gs_quad_moments"].plot = 1
-output_data["gs_spin_floats"].plot = 1
-
-output_data["spin_1/2_energies"].plot = 0
-output_data["spin_3/2_energies"].plot = 0
-output_data["spin_5/2_energies"].plot = 0
-output_data["spin_7/2_energies"].plot = 0
-output_data["spin_9/2_energies"].plot = 0
-output_data["spin_11/2_energies"].plot = 0
-output_data["spin_13/2_energies"].plot = 0
-
-output_data["spin_1/2_mag_moments"].plot = 0
-output_data["spin_3/2_mag_moments"].plot = 0
-
-output_data["x1_energies"].plot = 0
-output_data["x2_energies"].plot = 0
-output_data["x3_energies"].plot = 0
-
-output_data["x1_mag_moments"].plot = 0
-
-output_data["rms"].plot = 0
-
-output_data["all_energies"].plot = 0
-output_data["shifted_energies"].plot = 0
-
-output_data["gap_9_13"].plot = 0
-
-
-data_points["agreed"] = [0]*len(data_points["eps"])
-num_comparisons = 0 
 
 _sub_timer.start()
 
-
+data_points["agreed"] = [0]*len(data_points["eps"])
+num_comparisons = 0 
 
 # start plotting graphs:
 for i in output_data:
@@ -729,6 +622,7 @@ for i in output_data:
     
     if not(prop.plot):
         continue
+    
     inputs["current_graph"] = prop.title # makes several later inputs more efficient
     print("plotting graph: %(current_graph)s" % inputs) 
     
@@ -736,7 +630,6 @@ for i in output_data:
         
         _fig, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
         cax, cbar = gr.draw_contour_plot(_ax, prop, data_points)
-        
         
         legend_handles = []
         
@@ -801,7 +694,7 @@ for i in output_data:
        
 
 #%%
-''' 12. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
+''' 13. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
 
 - Print information to the console about the best agreement and its location.
 - Plot a graph to show data point agreement across all data points.
@@ -820,10 +713,7 @@ agreement.experimental_data = np.NaN
 agreement.error_tolerance = np.NaN
 
 agreement.plot = 0
-
-
 if inputs["deformation_input"] == "mesh" and agreement.plot:  
-    
     gr.plot_agreement(inputs, agreement, data_points, output_data, subtitle)
     
 print("\n******** mean and standard error in the mean ******")
@@ -836,9 +726,6 @@ fn.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
-
-
-
 
 # note how long it took
 _sub_timer.stop()

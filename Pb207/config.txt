@@ -46,7 +46,7 @@ jp_5/2- 569.6982 *** 3203
 jp_7/2- 2339.9921 *** 3218,4558
 jp_9/2- 3415
 
-****** error tolerances
+****** error tolerances (for line graphs, can be used to shade a region around the experimental line)
 
 mu_tol 0.1 *** mu_N
 abs_en_tol 5 *** keV
@@ -66,6 +66,36 @@ mark_spin 1 ******* (1 or 0) highlight region of correct ground state spin in gr
 mark_exp 1 ******** (1 or 0) draw experimental value lines
 mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
 mark_points 1 ******* (1 or 0) plot data points
+include_subtitle 1 *** (1 or 0) write a subtitle on graphs, stating the value of e2plus and gsfac input
+
+**** set which graphs to plot (1 or 0) *** unspecified properties are not plotted by default
+
+plot_fermi_indices 0
+plot_delta 0
+plot_fermi_energies_mev 0
+plot_fermi_energies_hw 0
+
+plot_gs_mag_moments 0
+plot_gs_quad_moments 0
+plot_gs_spin_floats 1
+
+plot_spin_1/2_energies 0
+plot_spin_3/2_energies 0
+plot_spin_5/2_energies 0
+plot_spin_7/2_energies 0
+plot_spin_9/2_energies 0
+plot_spin_11/2_energies 0
+plot_spin_13/2_energies 0
+
+plot_spin_1/2_mag_moments 0
+plot_spin_3/2_mag_moments 0
+
+plot_rms 0
+
+plot_all_energies 0
+plot_shifted_energies 0
+
+plot_engap_9.3_13.1 0
 
 **********************************************************************************************
 

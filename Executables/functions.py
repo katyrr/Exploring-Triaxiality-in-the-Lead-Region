@@ -431,7 +431,7 @@ def save_e2plus_input(inputs, data_points, split_string):
     if split_string[1]=="0":
         # if e2plus has been input with value = "0", then it will later be 
         # calculated dynamically based on the deformation of each data point.
-        data_points["e2plus"] = [0]*len(data_points["eps"])
+        data_points["e2plus"] = np.zeros((len(data_points["eps"]),), dtype=int)
     
     else:
         data_points["e2plus"], i = range_to_list(split_string[1])
@@ -509,6 +509,27 @@ def validate_input(inputs, experimental, split_string):
 #%%
 
 ''' FUNCTIONS FOR RUNNING CODES '''
+
+def set_current(inputs, data_points, i, **kwargs):
+    
+    file_tag = kwargs.get("file_tag", False)
+    
+    
+    inputs["current_e2plus"] = data_points["e2plus"][i]
+    
+    if data_points["gamma_degrees"][i] > 30:
+        inputs["current_eps"] = data_points["eps"][i] * -1
+        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
+    else:
+        inputs["current_eps"] = data_points["eps"][i]
+        inputs["current_gamma"] = data_points["gamma_degrees"][i]
+    
+    if file_tag:
+        inputs["current_f002"] = "f002_"+file_tag+".dat"
+        inputs["current_f016"] = "f016_"+file_tag+".dat"
+        inputs["current_f017"] = "f017_"+file_tag+".dat"
+    
+    return inputs, data_points
 
 def write_orbitals(fermi_level, number, parity):
     """
@@ -1275,6 +1296,10 @@ def sort_by_expectation(line_data, file_data, inputs):
         file_data["gs_spin_floats"] = line_data["spin_float"]
         file_data["gs_mag_moments"] = line_data["mag_moment"]
         file_data["gs_quad_moments"] = line_data["quad_moment"]
+    
+    
+    
+    # the rest of this function is obsolete
     
     if "x1_spin" in inputs: # assume that if x1_spin is input, then x1_energy will also have been input
         if line_data["spin_string"] == inputs["x1_spin"]:

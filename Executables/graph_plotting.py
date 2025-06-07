@@ -158,6 +158,10 @@ def try_experimental(inputs, key, tolerance):
         The absolute error tolerance.
 
     """
+    
+    if key[:2] == "jp":
+        key = key[:-1] # remove the parity
+    
     try:
         exp = inputs[key]
         tol = tolerance 
@@ -167,6 +171,122 @@ def try_experimental(inputs, key, tolerance):
         tol = np.NaN
     
     return exp, tol
+
+
+def calculate_format_data(output_item, name, experimental):
+
+    if output_item.prop == "energies" and not(output_item.sort=="Fermi"): 
+        
+        output_item.contour_levels = 10
+        output_item.cbar_tick_labels = 0
+        
+        if output_item.sort == "gap":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, name, experimental["gap_en_tol"])
+        
+        elif output_item.sort == "Excited State ":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_energy", experimental["abs_en_tol"])
+        
+        elif output_item.sort == "Spin ":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "jp_"+ output_item.num, experimental["abs_en_tol"])
+            
+        else: raise ValueError("property not recognised: " + name)
+        
+    elif output_item.prop == "mag_moments":
+        
+        output_item.contour_levels = 6
+        output_item.cbar_tick_labels = 0
+            
+        if output_item.sort == "Excited State ":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_mu", experimental["mu_tol"])
+    
+        elif output_item.sort == "Spin ":
+            
+            output_item.experimental_data = np.NaN
+            output_item.error_tolerance = np.NaN
+            
+        elif output_item.sort == "Ground":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_mu", experimental["mu_tol"])
+            
+        else: raise ValueError("property not recognised: " + name)
+        
+    elif output_item.prop == "quad_moments":
+        
+        output_item.contour_levels = 6
+        output_item.cbar_tick_labels = 0
+            
+        if output_item.sort == "Excited State ":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_mu", experimental["mu_tol"])
+    
+        elif output_item.sort == "Spin ":
+            
+            output_item.experimental_data = np.NaN
+            output_item.error_tolerance = np.NaN
+            
+        elif output_item.sort == "Ground":
+            
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_mu", experimental["mu_tol"])
+            
+        else: raise ValueError("property not recognised: " + name)
+        
+    
+    elif output_item.sort == "Ground":
+        
+        if output_item.prop == "spin_floats": 
+        
+            output_item.contour_levels = calc_contour_levels(output_item.data)
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_spin_float", experimental["mu_tol"])
+            output_item.cbar_tick_labels = calc_cbar_tick_labels(output_item.data, "half")
+            output_item.cbar_ticks = calc_cbar_ticks(output_item.contour_levels)
+            
+        elif output_item.prop == "spin_strings": 
+            output_item.contour_levels = 10
+            output_item.cbar_ticks = 0
+            output_item.cbar_tick_labels = 0
+            output_item.experimental_data = np.NaN
+            output_item.error_tolerance = np.NaN
+            
+        else: raise ValueError("property not recognised: " + name)
+    
+    elif output_item.sort == "Fermi":
+    
+        if output_item.prop == "indices": 
+            
+            output_item.contour_levels = calc_contour_levels(output_item.data)
+            output_item.cbar_tick_labels = calc_cbar_tick_labels(output_item.data, "int")
+            output_item.cbar_ticks = calc_cbar_ticks(output_item.contour_levels)
+        
+        elif output_item.prop == "energies":
+        
+            output_item.contour_levels = 10
+            output_item.cbar_tick_labels = 0
+        
+        elif output_item.prop == "parities":
+        
+            output_item.contour_levels = 2
+            output_item.cbar_tick_labels = 0
+        
+        else: raise ValueError("property not recognised: " + name)
+            
+        output_item.experimental_data = np.NaN
+        output_item.error_tolerance = np.NaN
+    
+    elif output_item.prop == "delta":
+        output_item.contour_levels = 10
+        output_item.cbar_ticks = 0
+        output_item.cbar_tick_labels = 0
+        output_item.experimental_data = np.NaN
+        output_item.error_tolerance = np.NaN
+        
+    else: raise ValueError("property not recognised: " + name)
+    
+    return output_item
+
 
 
 def format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs):

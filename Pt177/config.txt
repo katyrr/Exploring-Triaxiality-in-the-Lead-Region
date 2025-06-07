@@ -15,14 +15,11 @@
 *** set your operating system as MacOS or Windows64bit
 OS MacOS 
 
-
 *** set how many cores to parallelise over
 num_cores 8
 
-
 *** set figure resolution
 figure_res 150 *** dpi
-
 
 *** set how much detail to print (0 for only the essentials, or 1 for more detail)
 detailed_print 0
@@ -53,7 +50,17 @@ jp_13/2- 491.8
 
 
 
-*** error tolerances
+*** energy gaps between specific calculated levels 
+*** (hard to set on the first run, but useful for fiddling later 
+*** - make sure it's also included in the list of graphs to plot (below))
+
+engap_9.3_13.1 20 **** 20 keV between 3rd 9/2 state and 1st 13/2 state
+engap_7.1_7.2 100 **** 100 keV between 1st 7/2 state and 2nd 7/2 state
+engap_9.1_11.1 50 **** 50 keV between 1st 9/2 state and 1st 11/2 state
+
+
+
+*** error tolerances (for line graphs, can be used to shade a region around the experimental line)
 
 mu_tol 0.2 * units mu_N 
 abs_en_tol 50 * units keV
@@ -69,10 +76,41 @@ gap_en_tol 20 * units keV
 
 ****************************** graph plotting options ****************************************
 
-mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
-mark_exp 1 ******** (1 or 0) draw experimental value lines
-mark_exp_tol 0 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
-mark_points 1 ***** (1 or 0) plot data points (in addition to lines or colours)
+mark_spin 0 ********** (1 or 0) highlight region of correct ground state spin in green
+mark_exp 1 *********** (1 or 0) draw experimental value lines
+mark_exp_tol 0 ******* (1 or 0) draw a shaded region around experimental value to indicate tolerance
+mark_points 1 ******** (1 or 0) plot data points (in addition to lines or colours)
+include_subtitle 1 *** (1 or 0) write a subtitle on graphs, stating the value of e2plus and gsfac input
+
+**** set which graphs to plot (1 or 0) *** unspecified properties are not plotted by default
+
+plot_fermi_indices 0
+plot_delta 0
+plot_fermi_energies_mev 0
+plot_fermi_energies_hw 0
+
+plot_gs_mag_moments 0
+plot_gs_quad_moments 0
+plot_gs_spin_floats 1
+
+plot_spin_1/2_energies 0
+plot_spin_3/2_energies 0
+plot_spin_5/2_energies 0
+plot_spin_7/2_energies 0
+plot_spin_9/2_energies 0
+plot_spin_11/2_energies 0
+plot_spin_13/2_energies 0
+
+plot_spin_1/2_mag_moments 0
+plot_spin_3/2_mag_moments 0
+
+plot_rms 0
+
+plot_all_energies 0
+plot_shifted_energies 0
+
+plot_engap_9.3_13.1 1
+
 
 **********************************************************************************************
 

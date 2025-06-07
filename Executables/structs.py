@@ -103,6 +103,7 @@ def get_restricted_inputs():
         'mark_exp': [0,1],
         'mark_exp_tol': [0,1],
         'mark_points': [0,1],
+        'include_subtitle': [0,1]
         }
     
     return restricted_input_values
@@ -117,7 +118,7 @@ def get_required_inputs():
                        'vmi', 'nmin', 'nmax', 'OS', 'num_cores', 'figure_res', 
                        'detailed_print', 'mu_tol', 'abs_en_tol', 'gap_en_tol', 
                        'mark_spin', 'mark_exp', 'mark_exp_tol', 'mark_points',
-                       'e2plus']
+                       'e2plus', 'include_subtitle']
     
     return required_inputs
 
@@ -145,7 +146,8 @@ def get_variable_list(var_type):
     """
     
     if var_type == "bool":
-        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points", "detailed_print"]
+        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points", 
+                    "detailed_print", "include_subtitle"]
 
     elif var_type == "int":
         var_list = ["A", "Z", "num_to_record", "num_orbs", "nu", "num_cores", "figure_res",
@@ -153,7 +155,7 @@ def get_variable_list(var_type):
                     "nneutr", "ispec", "iq", "gr", "vmi", "nmin", "nmax"]
 
     elif var_type == "experimental_float":
-        var_list = ["gs_energy", "gs_mu", "jp_", "gap", "mu_tol", "abs_en_tol", "gap_en_tol"]
+        var_list = ["gs_energy", "gs_mu", "jp_", "engap", "mu_tol", "abs_en_tol", "gap_en_tol"]
         
     elif var_type == "settings_float":
         var_list = ["cutoff", "gsfac", "emin", "emax", "chsi", "eta", "e2plur"]
@@ -344,144 +346,152 @@ class PropertyData:
         
         self.data = data
         
-        # work out what kind of property it is from its name
-        if name[0:4] == "spin":
-            num = name[5:9]
-            if num[-1] == "_": num = num[0:3]
-            prop = name[9:] 
-            if prop[0] == "_": prop = prop[1:]
-            sort = "Spin "
-            
-        elif name[0] == "x":
-            num = name[1]
-            prop = name[3:]
-            sort = "Excited State "
-            
-        elif name[0:2] == "gs":
-            num = ""
-            prop = name[3:]
-            sort = "Ground"
+        self.num, self.prop, self.sort = identify(name)
         
-        elif name[0:5] == "fermi":
-            num = ""
-            prop = name[6:14]
-            sort = "Fermi"
-            
-        elif (name == "Agreement of Data Points With Experimental Data"
-              or "All E" in name 
-              or name == "delta"):
-            num = ""
-            prop = ""
-            sort = ""
-            
-        elif name[0:3] == "gap":
-            num = name[3:].replace("_", " ").strip().replace(" ", "/2 and ")
-            prop = "energies"
-            sort = "gap"
-            
-        elif name == "RMS energies":
-            num = ""
-            prop = ""
-            sort = "rms"
-        
-        else: 
-            raise ValueError("property not regonised: " + name)
-        
-        self.num = num
-        self.prop = prop
-        self.sort = sort
-        
-        # set graph title and axis label strings
-        if sort == "gap":
-            
-            self.title = "Energy Gaps Between Spin States "+ num + "/2"
-            self.axis_label = "Energy Gap / keV"
-            
-        elif prop == "energies" and not(sort=="Fermi"): 
-            
-            self.title = "Energies of "+ sort + num + " States"
-            self.axis_label = self.title + " / keV"
-        
-        elif sort == "rms":
-             
-            self.title = "RMS error in energies"
-            self.axis_label = self.title + " / keV"
-           
-        elif prop == "mag_moments":
-                
-            if sort == "Excited State ": 
-                self.title = "Magnetic Dipole Moment of Excited State " + num 
-                
-            elif sort == "Spin ": 
-                self.title = "Magnetic Dipole Moment of Spin " + num + " States"
-                
-            elif sort == "Ground": 
-                self.title = "Ground State Magnetic Dipole Moment"
-                
-            else: raise ValueError("property not recognised: " + self.name)
-            
-            self.axis_label = self.title + r' / $μ_{N}$'
-        
-        elif prop == "quad_moments":
-                
-            if sort == "Excited State ": 
-                self.title = "Electric Quadrupole Moment of Excited State " + num 
-                
-            elif sort == "Spin ": 
-                self.title = "Electric Quadrupole Moment of Spin " + num + " States"
-                
-            elif sort == "Ground": 
-                self.title = "Ground State Electric Quadrupole Moment"
-                
-            else: raise ValueError("property not recognised: " + self.name)
-            
-            self.axis_label = self.title + r' / $eb$'
-            
-        elif sort == "Ground":
-            
-            self.title = "Ground State Spin"
-            self.axis_label = self.title
-        
-        elif sort == "Fermi":
-        
-            if prop == "indices": 
-                self.title = "Fermi Level Index"
-                self.axis_label = self.title
-                
-            elif prop == "energies":
-            
-                self.title = "Fermi Energy"
-                self.axis_label = self.title + name[-3:-1]
-                
-            elif prop == "parities":
-            
-                self.title = "Fermi Parity"
-                self.axis_label = self.title
-                
-            else: raise ValueError("property not recognised: " + name)
-        
-        elif name == "Agreement of Data Points With Experimental Data":
-            self.title = name
-            self.axis_label = "Number of Matches"
-            
-        elif "All E" in name:
-            self.title = name
-            self.axis_label = "Energy / keV"
-            self.sort = "Spin "
-            self.num = "all"
-        
-        elif name == "delta":
-            self.title = "Pairing Gap Energy Δ"
-            self.prop = "delta"
-            self.axis_label = "Δ / MeV"
-            
-            
-        else:
-            raise ValueError("property not recognised: " + name)
+        self.title, self.axis_label = set_labels(self.num, self.prop, self.sort, name)
         
 
 
-
+def identify(name):
+    
+    # work out what kind of property it is from its name
+    if name[0:4] == "spin":
+        num = name[5:9]
+        if num[-1] == "_": num = num[0:3]
+        prop = name[9:] 
+        if prop[0] == "_": prop = prop[1:]
+        sort = "Spin "
+        
+    elif name[0] == "x": # obsolete
+        num = name[1]
+        prop = name[3:]
+        sort = "Excited State "
+        
+    elif name[0:2] == "gs":
+        num = ""
+        prop = name[3:]
+        sort = "Ground"
+    
+    elif name[0:5] == "fermi":
+        num = ""
+        prop = name[6:14]
+        sort = "Fermi"
+        
+    elif "Agreement" in name:
+        num = ""
+        prop = ""
+        sort = ""
+        
+    elif name[0:5] == "engap":
+        num = name[6:].replace("_", " ").strip().replace(" ", ") and ").replace(".", " (#") + ")"
+        prop = "energies"
+        sort = "gap"
+        
+    elif name == "RMS energies":
+        num = ""
+        prop = ""
+        sort = "rms"
+        
+    elif "All E" in name:
+        sort = "Spin "
+        num = "all"
+        prop = ""
+    
+    elif name == "delta":
+        prop = "delta"
+        num = ""
+        sort = ""
+    
+    else: 
+        raise ValueError("property not regonised: " + name)
+    
+    return num, prop, sort
 
         
+def set_labels(num, prop, sort, name):
+
+    # set graph title and axis label strings
+    if sort == "gap":
         
+        title = "Energy Gaps Between Spin States "+ num
+        axis_label = "Energy Gap / keV"
+        
+    elif prop == "energies" and not(sort=="Fermi"): 
+        
+        title = "Energies of "+ sort + num + " States"
+        axis_label = title + " / keV"
+    
+    elif sort == "rms":
+         
+        title = "RMS error in energies"
+        axis_label = title + " / keV"
+       
+    elif prop == "mag_moments":
+            
+        if sort == "Excited State ": 
+            title = "Magnetic Dipole Moment of Excited State " + num 
+            
+        elif sort == "Spin ": 
+            title = "Magnetic Dipole Moment of Spin " + num + " States"
+            
+        elif sort == "Ground": 
+            title = "Ground State Magnetic Dipole Moment"
+            
+        else: raise ValueError("property not recognised: " + name)
+        
+        axis_label = title + r' / $μ_{N}$'
+    
+    elif prop == "quad_moments":
+            
+        if sort == "Excited State ": 
+            title = "Electric Quadrupole Moment of Excited State " + num 
+            
+        elif sort == "Spin ": 
+            title = "Electric Quadrupole Moment of Spin " + num + " States"
+            
+        elif sort == "Ground": 
+            title = "Ground State Electric Quadrupole Moment"
+            
+        else: raise ValueError("property not recognised: " + name)
+        
+        axis_label = title + r' / $eb$'
+        
+    elif sort == "Ground":
+        
+        title = "Ground State Spin"
+        axis_label = title
+    
+    elif sort == "Fermi":
+    
+        if prop == "indices": 
+            title = "Fermi Level Index"
+            axis_label = title
+            
+        elif prop == "energies":
+        
+            title = "Fermi Energy"
+            axis_label = title + name[-3:-1]
+            
+        elif prop == "parities":
+        
+            title = "Fermi Parity"
+            axis_label = title
+            
+        else: raise ValueError("property not recognised: " + name)
+    
+    elif name == "Agreement of Data Points With Experimental Data":
+        title = name
+        axis_label = "Number of Matches"
+        
+    elif "All E" in name:
+        title = name
+        axis_label = "Energy / keV"
+    
+    elif name == "delta":
+        title = "Pairing Gap Energy Δ"
+        axis_label = "Δ / MeV"
+        
+    else:
+        raise ValueError("property not recognised: " + name)
+        
+    return title, axis_label
