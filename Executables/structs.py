@@ -7,18 +7,6 @@ Created on Fri Feb  7 10:58:19 2025
 
 A separate module file to contain structs such as classes and read-only data.
 
-CONTENTS:
---------
-
-- class Timer()
-
-- essential_inputs = get_essentials()
-
-- template = get_template(program)
-
-- var_list = get_variable_list(var_type)
-
-- class PropertyData(data, name)
 
 """
 
@@ -97,7 +85,7 @@ def get_restricted_inputs():
         'istrch': [0,1],
         'iq': [0,1],
         'vmi': 	[0,1],
-        'OS': ['MacOS', 'Windows64bit'],
+        'OS': ['MacOS', '64bit'],
         'detailed_print': [0,1],
         'mark_spin': [0,1],
         'mark_exp': [0,1],

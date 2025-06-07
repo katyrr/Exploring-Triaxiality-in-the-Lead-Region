@@ -405,6 +405,39 @@ def arrange_mesh(split_string):
 
 
 def save_deformation_input(inputs, data_points, split_string):
+    '''
+    A function that reads the deformation input line of the config file, to determine
+    what kind of deformation input has been made, and to arrange lists of eps and gamma
+    values to test. Also records the step size, for linear inputs.
+    
+
+    Parameters
+    ----------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    split_string : list of strings
+        A single line of text, split into words by delimeter " ".
+
+    Raises
+    ------
+    RuntimeError
+        Occurs if multiple deformation inputs are made.
+
+    Returns
+    -------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        Now contains a new entry.
+        
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc).
+        Now contains a new entry.
+
+    '''
     if ("deformation_input" in inputs):
         raise RuntimeError("Deformation has already been input: " + inputs["deformation_input"])
     
@@ -424,6 +457,37 @@ def save_deformation_input(inputs, data_points, split_string):
     return inputs, data_points
 
 def save_e2plus_input(inputs, data_points, split_string):
+    '''
+    
+
+    Parameters
+    ----------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    split_string : list of strings
+        A single line of text, split into words by delimeter " ".
+
+    Raises
+    ------
+    RuntimeError
+        Occurs if deformation is not input (or if e2plus is input before deformation).
+        Also if the input deformation is not just a single point.
+
+    Returns
+    -------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        Now contains a new entry.
+        
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc).
+        Now contains a new entry.
+
+    '''
     
     if "eps" not in data_points:
         raise RuntimeError("missing deformation input (or perhaps deformation was input below e2plus?)")
@@ -452,6 +516,29 @@ def save_e2plus_input(inputs, data_points, split_string):
     return inputs, data_points
 
 def save_gs_spin_input(experimental, split_string):
+    '''
+    A function that reads the config line which states the experimental ground state spin.
+    The formatting is checked, converted to float, and both string and float versions are recorded.
+
+    Parameters
+    ----------
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+        
+    split_string : list of strings
+        A single line of text, split into words by delimeter " ".
+
+    Raises
+    ------
+    ValueError
+        Occurs if the spin is not input in the format 'n/2' where n is an (odd) integer.
+
+    Returns
+    -------
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    '''
     
     try:
         experimental["gs_spin_float"] = spin_string_to_float(split_string[1])
@@ -464,6 +551,35 @@ def save_gs_spin_input(experimental, split_string):
 
 
 def validate_input(inputs, experimental, split_string):
+    '''
+    Some inputs can only take certain values (e.g. OS = "MacOS" or "64bit").
+    This function checks that those inputs have a valid value.
+
+    Parameters
+    ----------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    split_string : list of strings
+        A single line of text, split into words by delimeter " ".
+
+    Raises
+    ------
+    ValueError
+        Occurs if the input is not one of the valid values.
+
+    Returns
+    -------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    '''
     
     if split_string[0] in st.get_variable_list("int"):
         
@@ -511,6 +627,35 @@ def validate_input(inputs, experimental, split_string):
 ''' FUNCTIONS FOR RUNNING CODES '''
 
 def set_current(inputs, data_points, i, **kwargs):
+    '''
+    A function which sets the current values of the deformation parameters, E2PLUS input, 
+    and binary file names. For use in the "run gampn" loops.
+
+    Parameters
+    ----------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    i : int
+        The index for the iteration of the loop.
+        
+    **kwargs : 
+        "file_tag" : string
+            Optionally input the file tag. If input, use to set current file names
+            for binary files. Otherwise those will have to be set outside this function.
+
+    Returns
+    -------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+        
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+
+    '''
     
     file_tag = kwargs.get("file_tag", False)
     
@@ -737,7 +882,7 @@ def est_e2plus(eps, A):
     
     return e2plus
 
-def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time, verbose): 
+def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time, verbose, OS): 
     """
     A closure to configure a general script writer, which can then be customised to 
     each program (gampn, asyrmo, probamo) while maintaining a consistent strategy 
@@ -771,6 +916,10 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
     verbose : bool
         True to print high detail messages to console
         False to print only essential information to console
+    
+    OS : either "MacOS" or "64bit"
+        Which version of the pre-compiled PTRM Fortran codes to use, depending 
+        on your computer's operating system (Mac, or Windows/Linux)
 
     Returns
     -------
@@ -858,11 +1007,16 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
             batch_folder = "Batch"+str(batch_index)
             script_text = ""
             
+            if OS == "64bit":
+                ext = ".exe"
+            else:
+                ext = ""
+            
             for file in file_tag_batch :
                 script_text += ("\n(cd ../"+nucleus+"/Run/"+batch_folder+";" +  # start a subprocess and move to the Run folder for this batch.
-                                " ./../../../Executables/MacOS/MO/" + program +       # call the program from the Run folder.
-                                " < ../../Inputs/"+ abr +"_"+ file +".DAT;" +   # input the relevant .DAT file to the program.
-                                " cp "+program.upper()+ ".out"+                 # copy the default .OUT file... 
+                                " ./../../../Executables/"+OS+"/MO/"+program +  # call the program from the Run folder.
+                                ext + " < ../../Inputs/"+ abr +"_"+ file +      # input the relevant .DAT file to the program.
+                                ".DAT;" + " cp "+program.upper()+ ".out"+       # copy the default .OUT file... 
                                 " ../../Outputs/"+ abr +"_" + file + ".OUT)")   # ...to a new .OUT file with a more descriptive name, in the Outputs folder.
             
             if verbose:
@@ -1105,17 +1259,51 @@ def get_delta(lines):
 ''' FUNCTIONS FOR READING PROBAMO.OUT '''
 
 def find_gaps(spin_b_energies, index_b , spin_t_energies, index_t, exp):
+    '''
+    A function which calculates the energy gap between two energy levels of specified spins.
+    Can specify which state of each spin to use (e.g. the lowest, or the second lowest, etc).
+    Or can look at all states of the given spin, and use the one that returns an energy gap
+    closest to the experimental value.
+    
 
-    # find the lowest 13/2 state
-    # check whether there are any 9/2 states at lower energy
-    # if not, NaN
-    # otherwise, get the energy gap between this 13/2 level and the closest 9/2 level below
-    # check whether this gap is smaller than the experimental gap 
-    # if so, AND there is another 9/2 level further down, get the gap to that level and compare with experiment (if this is closer, keep it, otherwise return to the first value)
-    # otherwise, stop
-    # find the next 13/2 state
-    # get the best energy gap to its 9/2 below 
-    # if this gap is closer to experiment, keep 
+    Parameters
+    ----------
+    spin_b_energies : list of floats
+        The calculated energies of the first specified spin (b).
+        
+    index_b : int
+        Which calculated state of spin b to use (e.g 1 for the lowest state, 2 for the 
+        second lowest, etc) - or 0 to look at all states of spin b.
+        
+    spin_t_energies : list of floats
+        The calculated energies of the second specified spin (t).
+        
+    index_t : int
+        Which calculated state of spin t to use (e.g 1 for the lowest state, 2 for the 
+        second lowest, etc) - or 0 to look at all states of this spin t.
+        
+    exp : float
+        Experimental value for the energy gap, in keV.
+
+    Returns
+    -------
+    gaps : list of floats
+        The calculated energy gap between the two states, at each deformation.
+
+    '''
+
+    # algorithm when index_b and index_t = 0:
+    #   find the lowest spin b state
+    #   check whether there are any spin t states at lower energy
+    #   if not, NaN
+    #   otherwise, get the energy gap between this spin t level and the closest spin b level below
+    #   check whether this gap is smaller than the experimental gap 
+    #   if so, AND there is another spin b level further down, get the gap to that level and compare with experiment 
+    #   (if this is closer, keep it, otherwise return to the first value)
+    #   otherwise, stop
+    #   find the next spin t state
+    #   get the best energy gap to its spin b below 
+    #   if this gap is closer to experiment, keep 
 
     gaps = []
     
@@ -1570,7 +1758,10 @@ def fill_gaps(multi_level_data):
 def collate_energy_data(output_data, num_points, expected_gs_spin_string, experimental):
     """
     A function that takes all of the separate spin_n/2_energies data sets
-    and combines them into a single collection.
+    and combines them into a single collection. 
+    
+    Additionally makes a note of the energies of the lowest state of the expected 
+    ground state spin, for future use. Saved as a list in the "shifts" property.
     
 
     Parameters
@@ -1600,7 +1791,8 @@ def collate_energy_data(output_data, num_points, expected_gs_spin_string, experi
             spins += [output_data[d].num]*np.size(this_level_data,1)
             
             if output_data[d].num == expected_gs_spin_string:
-                gs_spin_energies = this_level_data[:,0]  # the energies of the lowest state of the expected gs spin
+                gs_spin_energies = this_level_data[:,0]  
+                # the energies of the lowest state of the expected gs spin
             
             
     all_level_data = np.delete(all_level_data, [0], axis=1)
@@ -1633,6 +1825,24 @@ def collate_energy_data(output_data, num_points, expected_gs_spin_string, experi
     return all_energy_levels
 
 def shift_energy_levels(default_energy_levels):
+    '''
+    A function which takes a collated list of all energy levels, and recalculates
+    them relative to the lowest state with the expected ground state spin.
+
+    Parameters
+    ----------
+    default_energy_levels : PropertyData object
+        All of the calculated energy levels, wrapped up in a PropertyData object.
+        Contains a "shifts" property, which is a list of the energies of the lowest
+        state with the expected ground state spin. These are used to perform the shift.
+
+    Returns
+    -------
+    shifted_energies :  PropertyData object
+        All energies, calculated relative to the expected ground state, and wrapped
+        in a PropertyData object.
+
+    '''
     
     shifted_energy_levels = []
     
@@ -1812,5 +2022,43 @@ def report_mean(prop, verbose):
             print("\t %.1f ± %.1f " % (mean, sterr))
     
 
+def parse_engap_input(engap_input):
+    '''
+    Get the spins and indices being requested in energy gap inputs.
+    e.g. the config input "engap_9.3_13.1" is asking for the third 9/2 state
+    and the first 13/2 state.
+
+    Parameters
+    ----------
+    engap_input : string
+        The input variable name for energy gap experimental data.
+
+    Returns
+    -------
+    first_spin : string
+        The numerator of the fractional spin, e.g. for 9/2 this is "9".
+        
+    first_index : int
+        The index of the state, e.g. for the third state this is 3.
+        
+    second_spin : string
+        The numerator of the fractional spin, e.g. for 13/2 this is "13".
+        
+    second_index : int
+        The index of the state, e.g. for the first state this is 1.
+
+    '''
+    first_dot = engap_input.index(".")
+    first_spin = engap_input[first_dot-2:first_dot]
+    if first_spin[0] == "_":
+        first_spin = first_spin[1]
+    first_index = int(engap_input[first_dot+1:first_dot+2])
     
+    second_dot = engap_input.index(".", first_dot+1)
+    second_spin = engap_input[second_dot-2:second_dot]
+    if second_spin[0] == "_":
+        second_spin = second_spin[1]
+    second_index = int(engap_input[second_dot+1:second_dot+2])
+    
+    return first_spin, first_index, second_spin, second_index
             

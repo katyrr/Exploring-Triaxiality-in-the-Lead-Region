@@ -272,7 +272,8 @@ batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+10
 
 # configure a batch script writer, and run the batches.
 run_program = fn.configure_script_writer(data_points["file_tags"], folder, batch_settings["num_batches"], 
-                                         batch_settings["num_per_batch"], batch_settings["allowed_time"], inputs["detailed_print"])
+                                         batch_settings["num_per_batch"], batch_settings["allowed_time"], 
+                                         inputs["detailed_print"], inputs["OS"])
 
 print("Starting gampn...")
 _sub_timer.start()
@@ -323,9 +324,16 @@ for i in range(inputs["num"]):
 #%% 
 '''6. RE-RUN GAMPN
 
+- Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
+  can be maximised (to 15 orbitals) when calculating matrix elements.
+- No need to re-read the outputs, because the properties we read earlier are 
+  not affected, and the recalculated matrix elements will be passed to the next
+  program automatically.
+
+
 '''
 
-# Re-run gampn with the new set of orbitals, so that the strong-coupling basis can be maximised when calculating matrix elements.
+
 for i in range(len(data_points["file_tags"])):
     
     inputs, data_points = fn.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
@@ -424,18 +432,21 @@ For each file:
     
 - Sort the file data into categories:
     - Group lines by spin (e.g. spin 1/2 energies, spin 1/2 magnetic dipole moments, etc).
-    - Additionally (separately) group lines by association with experimental data,
-      (e.g. ground state energies, first excited state energies, etc).
-      (this assumes that each input experimental excited state is the yrast state of that spin).
+    - Additionally (separately) record the expected ground state (the lowest state with the 
+      same spin as the experimental gs) properties as a group.
     - Fill missing gaps with NaN values, such that the same set of properties has 
-      been recorded for every data point 
-      
-      (and if e.g. one data point found three spin 1/2 states, then all data points 
-      should have a list of three spin 1/2 states, even if some of them are NaN)
-    
+      been recorded for every data point (and if e.g. one data point found three 
+      spin 1/2 states, then all data points should have a list of three spin 1/2 states, 
+      even if some of them are NaN).
     - Restructure the data set and save separately (now each property is recorded
       as a list of values for all data points, rather than each data point having
       a list of properties associated with it). 
+
+- Calculate energy gaps between levels specified in the experimental section of the config input.
+
+- Ensure all data sets have the same size and shape.
+- Mask bad data points with reference to the DELTA data 
+  (any DETLA = NaN values are bad, caused by some kind of convergence issue with BCS pairing).
 
 '''
 
@@ -467,25 +478,14 @@ for i in experimental:
     if not "engap_" in i:
         continue
     
-    first_dot = i.index(".")
-    first_spin = i[first_dot-2:first_dot]
-    if first_spin[0] == "_":
-        first_spin = first_spin[1]
-    first_index = int(i[first_dot+1:first_dot+2])
+    _spin1, _idx1, _spin2, _idx2 = fn.parse_engap_input(i)
     
-    second_dot = i.index(".", first_dot+1)
-    second_spin = i[second_dot-2:second_dot]
-    if second_spin[0] == "_":
-        second_spin = second_spin[1]
-    second_index = int(i[second_dot+1:second_dot+2])
-    
-    output_data[i] = fn.find_gaps(output_data["spin_"+first_spin+"/2_energies"], first_index, output_data["spin_"+second_spin+"/2_energies"], second_index, experimental[i])
+    output_data[i] = fn.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental[i])
 
 # output_data["engap_9.3_13.1"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
 
 
-# ensure all data sets have the same size and shape
-# and mask ill-defined data poitns with reference to the DELTA data (any NaN values are ill-defined).
+# ensure all data sets have the same size and shape, and mask bad points
 
 _mask = np.array([0 if np.isnan(x) else 1 for x in output_data["delta"]])
 
@@ -505,13 +505,20 @@ _output_data_dict = output_data # save a copy of the original before it's overwr
 #%%
 ''' 11. PREPARE TO PLOT GRAPHS 
 
-- Record each data set in an instance of class PropertyData
-- Calculate graph plotting attributes and store within the class
+- Record each data set in an instance of class PropertyData.
+- Calculate graph plotting attributes and store within the class.
 
 - Raise a ValueError if the property isn't recognised 
-  (i.e. if more data sets are read in the future, they cannot be plotted without
+  (i.e. if more data sets are recorded in the future, they cannot be plotted without
    first hard-coding the calculation of things like axis labels, contour levels,
    colour bar ticks, etc).
+  
+- Create a new data set containing all energies (of all spins) to plot together.
+- Create a new data set with all energies shifted to be relative to the expected 
+  ground state (not necessarily the same as the calculated ground state at all points).
+  This makes the output lines look smoother (no sharp bends when the ground state changes).
+- Create a new data set containing root mean squared error (i.e. discrepancy) between 
+  the calculated lowest energy states of each spin and the exeperimental values (where available).
 
 '''
 
@@ -527,11 +534,16 @@ for i in _output_data_dict:
     output_data[i] = gr.calculate_format_data(output_data[i], i, experimental)
     
 
-output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), experimental["gs_spin_string"], experimental)
+output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), 
+                                                     experimental["gs_spin_string"], experimental)
 
-output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energies"]) # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
+# recalculate all energies relative to the spin entered into fn.collate_energy_data() above
+output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energies"]) 
 
-output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],output_data["spin_3/2_energies"], output_data["spin_5/2_energies"], output_data["spin_7/2_energies"], output_data["spin_9/2_energies"], output_data["spin_11/2_energies"], output_data["spin_13/2_energies"])
+output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],
+                     output_data["spin_3/2_energies"], output_data["spin_5/2_energies"], 
+                     output_data["spin_7/2_energies"], output_data["spin_9/2_energies"], 
+                     output_data["spin_11/2_energies"], output_data["spin_13/2_energies"])
 
 
 
@@ -541,7 +553,9 @@ output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],output
 
 ''' 12. PLOT GRAPHS
 
-- Set which graphs should be plotted. Any not listed are False by default.
+- Set a subtitle containing the values of E2PLUS and GSFAC input, if requested.
+- Set which graphs should be plotted (from config, or overwritten below). 
+  Any not listed are False by default.
 
 - If deformation was input as a mesh:
     - Plot filled contours in polar coordinates.
@@ -696,10 +710,10 @@ for i in output_data:
 #%%
 ''' 13. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
 
-- Print information to the console about the best agreement and its location.
+- Print information about the best agreement and its location.
 - Plot a graph to show data point agreement across all data points.
-- Print the mean energies of each level and the mean gs mag moment
-
+- Print the mean energies of each level and the mean gs moments, with standard error.
+- Print the total runtime.
 
 '''
     
@@ -726,6 +740,7 @@ fn.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
 fn.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
+fn.report_mean(output_data["gs_quad_moments"], inputs["detailed_print"])
 
 # note how long it took
 _sub_timer.stop()

@@ -12,7 +12,7 @@
 ***************************** system settings ************************************************
 
 
-*** set your operating system as MacOS or Windows64bit
+*** set your operating system as MacOS (for Mac) or 64bit (for Windows/Linux)
 OS MacOS 
 
 

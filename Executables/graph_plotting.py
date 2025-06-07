@@ -5,39 +5,7 @@ Created on Thu May  8 23:07:07 2025
 
 @author: katyrr
 
-
-CONTENTS:
---------
-
-- contour_levels = calc_contour_levels(data)
-
-- cbar_tick_labels = calc_cbar_tick_labels(data, style)
-
-- cbar_ticks = calc_cbar_ticks(contours)
-
-- exp, tol = try_experimental(inputs, key, tolerance)
-    
-- void = format_fig(polar_or_linear, ax, legend_handles, title, subtitle, **kwargs)
-
-- cax, cbar = draw_contour_plot(ax, prop, data_points)
-
-- correct_spin_range = find_correct_spin(gs_spins, experimental_value)
-
-- correct_spin_handle = plot_correct_spin(correct_spin_range, var, step, prop)
-
-- legend_handles = plot_points_with_experiment(data_points, prop, legend_handles, cbar)
-
-- legend_handles = plot_points_without_experiment(data_points, legend_handles)
-
-- var_sym, var, fix_sym, fix = assign_parameters(inputs, data_points)
-    
-- legend_handles, legend_title = plot_multi_lines(prop, var, legend_handles, marker_size, fix_sym, fix_val)
-
-- legend_handles = mark_spin(inputs, data_points, output_data, legend_handles, ax)
-
 """
-
-
 
 
 import matplotlib.pyplot as plt                 # for plotting graphs
@@ -174,6 +142,40 @@ def try_experimental(inputs, key, tolerance):
 
 
 def calculate_format_data(output_item, name, experimental):
+    '''
+    Take a PropertyData object which has been initialised with data, and categorised
+    with "num", "prop", and "sort" properties. Uses this info to determine/calculate
+    graph plotting properties:
+        - contour levels
+        - colour bar ticks and tick labels
+        - experimental data and tolerance
+        
+
+    Parameters
+    ----------
+    output_item : PropertyData object
+        One property, which has been initialised as a PropertyData object but
+        does not yet contain any information about graph plotting properties.
+    
+    name : string
+        The name of the property.
+        
+    experimental : dictionary
+        A dictionary of experimental data about the nucleus, input in the config file.
+
+    Raises
+    ------
+    ValueError
+        If an unregonsied property is input. This may be triggered when making extentsions
+        to the code, to record more properties. Any new property will need to have its graph
+        plotting properties hard coded in this function.
+
+    Returns
+    -------
+    output_item : PropertyData object
+        The same as the input objectm but now also including graph plotting information.
+
+    '''
 
     if output_item.prop == "energies" and not(output_item.sort=="Fermi"): 
         
@@ -1135,13 +1137,6 @@ def check_agreement(verbose, data_points, num_comparisons):
     A function to check how well data points agreed with experimental values,
     and which data point(s) had the highest agreement.
     
-    Parameters
-    ----------
-    #!!! missing docs
-
-    Returns
-    -------
-    None.
 
     """
     
@@ -1212,6 +1207,37 @@ def check_agreement(verbose, data_points, num_comparisons):
         
        
 def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
+    '''
+    Plot the line and "x" data point markers on a line graph. May be multiple lines,
+    if the property is for all calculated states (of a given spin).
+
+    Parameters
+    ----------
+    data_points : dictionary
+        
+    prop : PropertyData object
+        The property being plotted.
+        
+    var : list of floats
+        The independent variable.
+        
+    fix_sym : string
+        The name/symbol of the controlled variable. Usually either ε or γ.
+        
+    fix : float
+        The value of the controlled variable.
+        
+    legend_handles : list of handles
+
+
+    Returns
+    -------
+    legend_handles : list of handles
+
+    legend_title : string
+        
+
+    '''
 
     # now plot the actual data
     if len(data_points["file_tags"]) < 100: marker_size = 5
@@ -1236,6 +1262,30 @@ def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
     return legend_handles, legend_title
 
 def plot_exp_line(prop, inputs, var, legend_handles):
+    '''
+    A function for plotting a red line on a line graph to indicate the experimental value.
+    Can include a shaded region to indicate tolerance if requested.
+
+    Parameters
+    ----------
+    prop : PropertyData object
+        The property being plotted.
+        
+    inputs : dictionary
+        Dictionary of inputs from config file.
+        
+    var : list of floats
+        The independent variable (usually either eps or gamma)
+        
+    legend_handles : list of handles
+        A list of handles of objects already drawn on the graph, to be included in the legend.
+
+    Returns
+    -------
+    legend_handles : list of handles
+        Same as input, now including the experimental line.
+
+    '''
     if prop.sort == "Spin ":
         for _ in range(len(prop.experimental_data)):
             if inputs["mark_exp"]:
@@ -1257,23 +1307,30 @@ def plot_exp_line(prop, inputs, var, legend_handles):
 
 
 def plot_agreement(inputs, agreement, data_points, output_data, subtitle):
+    '''
+    For plotting a polar filled contour plot of "agreement" (the number of properties
+    which agreed with experiment). 
+    
+    Obsolete - better to use rms error data. 
+
+    '''
     
     inputs["current_graph"] = agreement.title
     print("plotting graph: %(current_graph)s" % inputs) 
     
-    _fig, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
-    cax, cbar = draw_contour_plot(_ax, agreement, data_points)
+    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+    cax, cbar = draw_contour_plot(ax, agreement, data_points)
     
-    _legend_handles = []
+    legend_handles = []
     
     if inputs["mark_spin"]:
-        _legend_handles = mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, _legend_handles, _ax)
+        legend_handles = mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
     
     if inputs["mark_points"]:
-        _legend_handles =  plot_points_without_experiment(data_points, _legend_handles)
+        legend_handles =  plot_points_without_experiment(data_points, legend_handles)
            
     
-    format_fig('polar', _ax, _legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
+    format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
     
     plt.show()
     

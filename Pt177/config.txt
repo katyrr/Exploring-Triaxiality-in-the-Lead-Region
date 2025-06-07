@@ -12,8 +12,8 @@
 ***************************** system settings ************************************************
 
 
-*** set your operating system as MacOS or Windows64bit
-OS MacOS 
+*** set your operating system as MacOS (for Mac) or 64bit (for Windows/Linux)
+OS MacOS ***** 64bit 
 
 *** set how many cores to parallelise over
 num_cores 8
