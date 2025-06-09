@@ -1,4 +1,16 @@
 echo checking directory setup...
+if [ ! -x "./64bit/MO/GAMPN.exe" ]; then
+chmod +x ./64bit/MO/GAMPN.exe
+echo modified permissions to make GAMPN.exe executable
+fi
+if [ ! -x "./64bit/MO/ASYRMO.exe" ]; then
+chmod +x ./64bit/MO/ASYRMO.exe
+echo modified permissions to make ASYRMO.exe executable
+fi
+if [ ! -x "./64bit/MO/PROBAMO.exe" ]; then
+chmod +x ./64bit/MO/PROBAMO.exe
+echo modified permissions to make PROBAMO.exe executable
+fi
 if [ ! -d "../Pt177/Inputs" ]; then
 mkdir ../Pt177/Inputs
 fi

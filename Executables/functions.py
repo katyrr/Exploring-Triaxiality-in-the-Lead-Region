@@ -627,7 +627,7 @@ def validate_input(inputs, experimental, split_string):
 ''' FUNCTIONS FOR RUNNING CODES '''
 
 
-def setup_directory(folder, num_batches):
+def setup_directory(folder, num_batches, OS):
     '''
     Generates and runs a shell script to check that the working directory has
     been correctly set up with all the required folders in the correct structure.
@@ -673,7 +673,18 @@ def setup_directory(folder, num_batches):
     
     file_path = "wd_setup.sh"
     script_text = "echo checking directory setup..."
-
+    
+    programs = ["gampn", "asyrmo", "probamo"]
+    
+    for i in programs:
+            
+        if OS == "64bit":
+            i = i.upper() + ".exe"
+            
+        script_text += ('\nif [ ! -x "./'+OS+'/MO/'+i+'" ]; then' +
+                        '\nchmod +x '+'./'+OS+'/MO/'+i+
+                        '\necho modified permissions to make '+i+' executable'+
+                        '\nfi')
 
     
     required_folders = ["Inputs", "Scripts", "Run", "Outputs"]
@@ -1028,10 +1039,22 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
         None.
 
         """
-        if program == "gampn": abr = "GAM"
-        elif program == "asyrmo": abr = "ASY"
-        elif program == "probamo": abr = "PROB"
+        if program == "gampn": 
+            abr = "GAM"
+                
+        elif program == "asyrmo": 
+            abr = "ASY"
+            
+                
+        elif program == "probamo": 
+            abr = "PROB"
+            
         else: raise ValueError("Input program ["+ program +"] not supported.")
+        
+        
+        if OS == "64bit":
+            program = program.upper() + ".exe"
+            
         
         def write_script_batch(file_tag_batch, batch_index, nucleus, file_path): 
             """
@@ -1075,15 +1098,10 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
             batch_folder = "Batch"+str(batch_index)
             script_text = ""
             
-            if OS == "64bit":
-                ext = ".exe"
-            else:
-                ext = ""
-            
             for file in file_tag_batch :
                 script_text += ("\n(cd ../"+nucleus+"/Run/"+batch_folder+";" +  # start a subprocess and move to the Run folder for this batch.
                                 " ./../../../Executables/"+OS+"/MO/"+program +  # call the program from the Run folder.
-                                ext + " < ../../Inputs/"+ abr +"_"+ file +      # input the relevant .DAT file to the program.
+                                " < ../../Inputs/"+ abr +"_"+ file +            # input the relevant .DAT file to the program.
                                 ".DAT;" + " cp "+program.upper()+ ".out"+       # copy the default .OUT file... 
                                 " ../../Outputs/"+ abr +"_" + file + ".OUT)")   # ...to a new .OUT file with a more descriptive name, in the Outputs folder.
             
