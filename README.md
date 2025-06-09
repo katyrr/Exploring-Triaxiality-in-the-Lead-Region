@@ -29,44 +29,54 @@ The Code/Examples folder contains example inputs, outputs, binary files, shell s
 
 ## HOW TO USE 
 
-
 **For the first time:**
 
-1. Download the repository from GitHub. 
-2. Check that the pre-compiled original PTRM codes in the /Code/Executables/MacOS/MO/ or /Code/Executables/64bit/MO/ folder have execute permissions turned on. See the troubleshooting section at the bottom for how to do this.
-3. Make a new folder in /Code.
-4. Copy the config file from /Code/Examples to your new folder.
-5. Make any necessary changes to the settings in the config file.
-6. Open main.py in a text editor. At the top of section "1. SET UP", change the 'folder' variable to the name of your new folder. This is so that it can find your config file.
-7. Navigate to the /Code/Executables folder in you computer terminal. Run the codes with command "python main.py".
+    1. Download the repository from GitHub. 
+    
+    2. Check that the pre-compiled original PTRM codes in the /Code/Executables/MacOS/MO/ 
+       or /Code/Executables/64bit/MO/ folder have execute permissions turned on. 
+       
+       On Mac you can fix this by navigating to the /Code/Executables/MacOS/MO folder 
+       in Terminal, and then using the commands "chmod 775 gampn", "chmod 775 asyrmo", 
+       "chmod 775 probamo". Then use "ls -ltr" to see that the permissions (in the 
+       leftmost column) now have 'x's (execute). 
+       
+       On Windows you can fix this by navigating to the /Code/Executables/64bit/MO 
+       folder in PowerShell, and then using the commands "Unblock-File -Path GAMPN.exe", 
+       "Unblock-File -Path ASYRMO.exe", "Unblock-File -Path PROBAMO.exe".
+       
+    3. Make a new folder in /Code.
+    
+    4. Copy the config file from /Code/Examples to your new folder. (All the other
+       necessary folders and files will be created automatically when you run the
+       code for the first time).
+    
+    5. Make any necessary changes to the settings in the config file.
+    
+    6. Open main.py in a text editor. At the top of section "1. SET UP", change 
+       the 'folder' variable to the name of your new folder. This is so that it 
+       can find your config file.
+       
+    7. Navigate to the /Code/Executables folder in you computer terminal. Run the 
+       codes with command "python main.py".
 
 
 **After the first time:**
 
-1. Make changes to your config file.
-2. Check that the 'folder' variable at the top of section "1. SET UP" in main.py is correctly set to the name of the folder you want to run.
-3. Navigate to the /Code/Executables folder in you computer terminal. Run the codes with command "python main.py".
-
+    1. Make changes to your config file.
+    
+    2. Check that the 'folder' variable at the top of section "1. SET UP" in 
+       main.py is correctly set to the name of the folder you want to run.
+       
+    3. Navigate to the /Code/Executables folder in you computer terminal. Run 
+       the codes with command "python main.py".
+    
 
 **If you don't need to run the whole thing:**
 
-If you open it in Spyder (or similar) then you can run it cell by cell. Especially useful when calculating large data sets, since you can fiddle with graph plotting easily and quickly *after* doing the calculations.
+    If you open it in Spyder (or similar) then you can run it cell by cell. 
+    Especially useful when calculating large data sets, since you can fiddle
+    with graph plotting easily and quickly *after* doing the calculations.
+    
 
-
-
-
-## TROUBLESHOOTING
-
-**Exec format error**
-
-Trying to run the 64bit codes in a Linux operating system (or via ssh)? It won't work; you have to use either Windows or MacOS.
-
-**Permission denied**
-
-The pre-compiled original PTRM codes in the /Code/Executables folder don't have execute permissions. On Mac you can fix this by navigating to the /Code/Executables/MacOS/MO folder in terminal, and then using the commands "chmod 775 gampn", "chmod 775 asyrmo", chmod 775 probamo". Then use "ls -ltr" to see that the permissions (in the leftmost column) now have 'x's (execute). 
-
-On windows this doesn't seem to work. You can get around it by rebooting in linux (or using ssh), modifying the permissions with the same method as above, then returning to Windows to actually run the codes.
-
-
-The "/Examples" folder shows the file structure, and provides some example input and output files. The three nuclei folders contain example config files for input to the code.
 
