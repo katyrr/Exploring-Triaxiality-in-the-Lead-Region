@@ -626,6 +626,73 @@ def validate_input(inputs, experimental, split_string):
 
 ''' FUNCTIONS FOR RUNNING CODES '''
 
+
+def setup_directory(folder, num_batches):
+    '''
+    Generates and runs a shell script to check that the working directory has
+    been correctly set up with all the required folders in the correct structure.
+    It adds the necessary folders, if they don't already exist.
+    
+    Prerequisite structure:
+        
+        "Code/Executables/main.py"
+        "Code/Executables/functions.py"
+                          etc. for structs.py and graph_plotting.py
+        
+        "Code/Executables/[OS]/MO/gampn" ([OS] can be "64bit" or "MacOS")
+                                  etc. for asyrmo and probamo
+                                  
+        "Code/[folder]/config"  ([folder] can be anything, as set by the "folder" 
+                                 variable at the top of main.py)
+        
+        
+    This function then adds the following directories to "Code/[folder]/" (if they don't already exist):
+        
+        "Code/[folder]/Inputs" 
+        "Code/[folder]/Scripts"
+        "Code/[folder]/Run"
+        "Code/[folder]/Run/Batch1"
+                           etc. up to BatchN for N=num_batches
+        "Code/[folder]/Outputs"
+
+
+    Parameters
+    ----------
+    folder : string
+        The name of the folder that contains the config file.
+        
+    num_batches : int
+        The number of batches to run the calculations in (i.e. the number of 
+        computer processors to utilise, typically between 4-8 for most PCs).
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    file_path = "wd_setup.sh"
+    script_text = "echo checking directory setup..."
+
+
+    
+    required_folders = ["Inputs", "Scripts", "Run", "Outputs"]
+    
+    for i in range(1, num_batches+1):
+        required_folders.append("Run/Batch"+str(i))
+        
+    for i in required_folders:
+        script_text += ('\nif [ ! -d "../'+folder+'/'+i+'" ]; then'+
+                        '\nmkdir ../'+folder+'/'+i+
+                        '\nfi')
+    
+    script_file = open(file_path, 'w')
+    script_file.write(script_text)
+    script_file.close()
+    
+    subprocess.Popen(["sh", file_path])     
+    
+    
 def set_current(inputs, data_points, i, **kwargs):
     '''
     A function which sets the current values of the deformation parameters, E2PLUS input, 
@@ -656,6 +723,7 @@ def set_current(inputs, data_points, i, **kwargs):
         A dictionary that contains lists of the variable inputs (deformations, etc)
 
     '''
+    
     
     file_tag = kwargs.get("file_tag", False)
     

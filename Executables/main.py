@@ -139,6 +139,7 @@ if 0.0 in data_points["eps"]:
 
 plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
 
+fn.setup_directory(folder, inputs["num_cores"])
 
 #%%
 ''' 3. PROCESS INPUTS 
