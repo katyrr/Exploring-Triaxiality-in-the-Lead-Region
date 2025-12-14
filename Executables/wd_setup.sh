@@ -1,15 +1,15 @@
 echo checking directory setup...
-if [ ! -x "./64bit/MO/GAMPN.exe" ]; then
-chmod +x ./64bit/MO/GAMPN.exe
-echo modified permissions to make GAMPN.exe executable
+if [ ! -x "./MacOS/MO/gampn" ]; then
+chmod +x ./MacOS/MO/gampn
+echo modified permissions to make gampn executable
 fi
-if [ ! -x "./64bit/MO/ASYRMO.exe" ]; then
-chmod +x ./64bit/MO/ASYRMO.exe
-echo modified permissions to make ASYRMO.exe executable
+if [ ! -x "./MacOS/MO/asyrmo" ]; then
+chmod +x ./MacOS/MO/asyrmo
+echo modified permissions to make asyrmo executable
 fi
-if [ ! -x "./64bit/MO/PROBAMO.exe" ]; then
-chmod +x ./64bit/MO/PROBAMO.exe
-echo modified permissions to make PROBAMO.exe executable
+if [ ! -x "./MacOS/MO/probamo" ]; then
+chmod +x ./MacOS/MO/probamo
+echo modified permissions to make probamo executable
 fi
 if [ ! -d "../Pt177/Inputs" ]; then
 mkdir ../Pt177/Inputs
