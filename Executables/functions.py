@@ -27,6 +27,7 @@ CONTENTS:
 import numpy as np                              # for np.arrays
 import subprocess                               # for calling shell scripts to run 
 import structs as st                            # my own module file of structs (classes, and read-only dicts)
+import os
 
 #%%
 
@@ -150,6 +151,43 @@ def write_file(path, text):
 
 
 ''' FUNCTIONS FOR READING CONFIG '''
+
+def check_args(argv):
+    '''
+    Check command line arguments for validity.
+    Expecting 1 argument (required): the location of the desired config file.
+    (Usually just a folder with the name of the nucleus being studied, e.g. Pt177).
+
+    Checks that this argument has been provided and is a valid folder in the parent directory.
+
+    Parameters
+    ------
+    argv : list of strings
+        A list of the input command line arguments.
+
+    Returns
+    -------
+    abs_dir : string
+        The absolute directory path to the folder containing the config file.
+
+    Errors
+    ------
+    ValueError if there is no input
+    ValueError if the input is not a valid directory
+
+    '''
+    if len(argv) <= 1:
+        raise ValueError("missing argument: name of folder in parent directory containing config file ")
+
+    folder = argv[1]
+
+    rel_path = os.path.join(os.pardir, folder)
+    abs_path = os.path.abspath(rel_path)
+    if not os.path.isdir(abs_path):
+        raise ValueError(f"invalid argument: {folder} is not a folder in the parent directory")
+    
+    return abs_path
+        
 
 def remove_inline_comments(split_string, line_index):
     """

@@ -15,7 +15,16 @@ HOW TO USE:
 
 - How to use for the first time:
 
-    1. Download the repository from GitHub. 
+    1. Download the repository from GitHub: 
+            git clone https://github.com/katyrr/Exploring-Triaxiality-in-the-Lead-Region
+            cd Exploring-Triaxiality-in-the-Lead-Region
+    
+       If you have uv installed, you can then run:
+            uv venv
+            uv sync
+       
+       There is no need to activate the venv before running. Using uv is optional, but
+       might reduce the risk of errors caused by a mismatch in python or framework versions.
     
     2. Check that the pre-compiled original PTRM codes in the /Code/Executables/MacOS/MO/ 
        or /Code/Executables/64bit/MO/ folder have execute permissions turned on. 
@@ -23,37 +32,39 @@ HOW TO USE:
        On Mac you can fix this by navigating to the /Code/Executables/MacOS/MO folder 
        in Terminal, and then using the commands "chmod 775 gampn", "chmod 775 asyrmo", 
        "chmod 775 probamo". Then use "ls -ltr" to see that the permissions (in the 
-       leftmost column) now have 'x's (execute). 
+       leftmost column) now have 'x's (execute). You might also have to grant permission
+       in settings (after attempting to run for the first time, the permission request 
+       will appear in Privacy).
        
        On Windows you can fix this by navigating to the /Code/Executables/64bit/MO 
        folder in PowerShell, and then using the commands "Unblock-File -Path GAMPN.exe", 
        "Unblock-File -Path ASYRMO.exe", "Unblock-File -Path PROBAMO.exe".
        
-    3. Make a new folder in /Code.
+    3. Make a new folder in /Code, typically named as the nuclide you're calculating,
+       e.g. /Code/Pt177.
     
     4. Copy the config file from /Code/Examples to your new folder. (All the other
        necessary folders and files will be created automatically when you run the
        code for the first time).
     
-    5. Make any necessary changes to the settings in the config file.
-    
-    6. Open main.py in a text editor. At the top of section "1. SET UP", change 
-       the 'folder' variable to the name of your new folder. This is so that it 
-       can find your config file.
+    5. Make any necessary changes to the settings in your config file in /Code/<folder>.
        
-    7. Navigate to the /Code/Executables folder in you computer terminal. Run the 
-       codes with command "python main.py".
+    6. Navigate to the /Code/Executables folder in you computer terminal. 
+
+    7. Run the codes with command: "python main.py <folder>" 
+                                or "Python3 main.py <folder>" 
+                                or "uv run python main.py <folder>"
 
 
 - How to use after the first time:
 
-    1. Make changes to your config file.
-    
-    2. Check that the 'folder' variable at the top of section "1. SET UP" in 
-       main.py is correctly set to the name of the folder you want to run.
+    1. Make changes to your config file in /Code/<folder>.
        
-    3. Navigate to the /Code/Executables folder in you computer terminal. Run 
-       the codes with command "python main.py".
+    2. Navigate to the /Code/Executables folder in you computer terminal. 
+    
+    3. Run the codes with command: "python main.py <folder>" 
+                                or "Python3 main.py <folder>" 
+                                or "uv run python main.py <folder>"
     
 
 - If you don't need to run the whole thing:
@@ -61,34 +72,41 @@ HOW TO USE:
     If you open it in Spyder (or similar) then you can run it cell by cell. 
     Especially useful when calculating large data sets, since you can fiddle
     with graph plotting easily and quickly *after* doing the calculations.
+
+    You might need to overwrite the "folder" variable in section "1. SET UP", 
+    and hard code it to the folder where your config is stored. 
     
 
 """
 
-#%% 
-""" 1. SET UP 
-
-- State the nucleus being studied (for navigating file directories).
-- Import modules.
-- Create timers (one to time the whole program, and one to time small sections).
-
-"""
-
-folder = "Pt177" #  "Examples" # "Au179" #  "Pb207" #!!! this is the name of the directory folder that contains your config file
-
-
 import numpy as np                                  
 import math                                        
-import matplotlib.pyplot as plt                      
+import matplotlib.pyplot as plt   
+import sys          
+import os         
 
 import functions as fn                              
 import structs as st
 import graph_plotting as gr
 
-_timer = st.Timer()
-_sub_timer = st.Timer()
+
 
 def main():
+
+    #%% 
+    """ 1. SET UP 
+
+    - Read command line arguments (location of config file) and check validity
+    - Create timers (one to time the whole program, and one to time small sections).
+
+    """
+
+    argv = sys.argv
+    abs_dir = fn.check_args(argv) # set abs_dir = "" if you want to hard-code the "folder" variable
+
+    _timer = st.Timer()
+    _sub_timer = st.Timer()
+
     #%%
     ''' 2. READ CONFIG FILE 
 
@@ -110,8 +128,8 @@ def main():
 
     _timer.start()
 
-
-    print("\nFetching config from folder: " + folder)
+    print(f"\nFetching config file from folder: {folder}")
+    if abs_dir != "": print(f"at location: {abs_dir}")
     _lines = fn.read_file("../"+ folder +"/config.txt")
 
     inputs = {}                                                                     
