@@ -102,7 +102,7 @@ def main():
     """
 
     argv = sys.argv
-    abs_dir = fn.check_args(argv) # set abs_dir = "" if you want to hard-code the "folder" variable
+    folder, abs_dir = fn.check_args(argv) # set abs_dir = "" if you want to hard-code the "folder" variable
 
     _timer = st.Timer()
     _sub_timer = st.Timer()

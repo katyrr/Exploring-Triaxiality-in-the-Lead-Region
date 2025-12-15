@@ -167,6 +167,9 @@ def check_args(argv):
 
     Returns
     -------
+    folder : string
+        The name of the folder containing the config file 
+        
     abs_dir : string
         The absolute directory path to the folder containing the config file.
 
@@ -186,7 +189,7 @@ def check_args(argv):
     if not os.path.isdir(abs_path):
         raise ValueError(f"invalid argument: {folder} is not a folder in the parent directory")
     
-    return abs_path
+    return folder, abs_path
         
 
 def remove_inline_comments(split_string, line_index):
