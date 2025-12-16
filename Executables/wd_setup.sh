@@ -11,39 +11,39 @@ if [ ! -x "./MacOS/MO/probamo" ]; then
 chmod +x ./MacOS/MO/probamo
 echo modified permissions to make probamo executable
 fi
-if [ ! -d "../Pt177/Inputs" ]; then
-mkdir ../Pt177/Inputs
+if [ ! -d "../Examples/Inputs" ]; then
+mkdir ../Examples/Inputs
 fi
-if [ ! -d "../Pt177/Scripts" ]; then
-mkdir ../Pt177/Scripts
+if [ ! -d "../Examples/Scripts" ]; then
+mkdir ../Examples/Scripts
 fi
-if [ ! -d "../Pt177/Run" ]; then
-mkdir ../Pt177/Run
+if [ ! -d "../Examples/Run" ]; then
+mkdir ../Examples/Run
 fi
-if [ ! -d "../Pt177/Outputs" ]; then
-mkdir ../Pt177/Outputs
+if [ ! -d "../Examples/Outputs" ]; then
+mkdir ../Examples/Outputs
 fi
-if [ ! -d "../Pt177/Run/Batch1" ]; then
-mkdir ../Pt177/Run/Batch1
+if [ ! -d "../Examples/Run/Batch1" ]; then
+mkdir ../Examples/Run/Batch1
 fi
-if [ ! -d "../Pt177/Run/Batch2" ]; then
-mkdir ../Pt177/Run/Batch2
+if [ ! -d "../Examples/Run/Batch2" ]; then
+mkdir ../Examples/Run/Batch2
 fi
-if [ ! -d "../Pt177/Run/Batch3" ]; then
-mkdir ../Pt177/Run/Batch3
+if [ ! -d "../Examples/Run/Batch3" ]; then
+mkdir ../Examples/Run/Batch3
 fi
-if [ ! -d "../Pt177/Run/Batch4" ]; then
-mkdir ../Pt177/Run/Batch4
+if [ ! -d "../Examples/Run/Batch4" ]; then
+mkdir ../Examples/Run/Batch4
 fi
-if [ ! -d "../Pt177/Run/Batch5" ]; then
-mkdir ../Pt177/Run/Batch5
+if [ ! -d "../Examples/Run/Batch5" ]; then
+mkdir ../Examples/Run/Batch5
 fi
-if [ ! -d "../Pt177/Run/Batch6" ]; then
-mkdir ../Pt177/Run/Batch6
+if [ ! -d "../Examples/Run/Batch6" ]; then
+mkdir ../Examples/Run/Batch6
 fi
-if [ ! -d "../Pt177/Run/Batch7" ]; then
-mkdir ../Pt177/Run/Batch7
+if [ ! -d "../Examples/Run/Batch7" ]; then
+mkdir ../Examples/Run/Batch7
 fi
-if [ ! -d "../Pt177/Run/Batch8" ]; then
-mkdir ../Pt177/Run/Batch8
+if [ ! -d "../Examples/Run/Batch8" ]; then
+mkdir ../Examples/Run/Batch8
 fi

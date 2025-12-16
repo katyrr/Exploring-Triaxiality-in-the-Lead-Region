@@ -65,23 +65,14 @@ HOW TO USE:
     3. Run the codes with command: "python main.py <folder>" 
                                 or "Python3 main.py <folder>" 
                                 or "uv run python main.py <folder>"
-    
-
-- If you don't need to run the whole thing:
-
-    If you open it in Spyder (or similar) then you can run it cell by cell. 
-    Especially useful when calculating large data sets, since you can fiddle
-    with graph plotting easily and quickly *after* doing the calculations.
-
-    You might need to overwrite the "folder" variable in section "1. SET UP", 
-    and hard code it to the folder where your config is stored. 
+     
     
 
 """
 
-import numpy as np                                  
+import numpy as np                                   # pyright: ignore[reportMissingImports]
 import math                                        
-import matplotlib.pyplot as plt   
+import matplotlib.pyplot as plt                      # pyright: ignore[reportMissingModuleSource]
 import sys          
 import os         
 
@@ -96,16 +87,22 @@ def main():
     #%% 
     """ 1. SET UP 
 
-    - Read command line arguments (location of config file) and check validity
     - Create timers (one to time the whole program, and one to time small sections).
+    - Read command line arguments (location of config file) and check validity
+    - If config doesn't exist, create it from template
+    
 
     """
-
-    argv = sys.argv
-    folder, abs_dir = fn.check_args(argv) # set abs_dir = "" if you want to hard-code the "folder" variable
-
     _timer = st.Timer()
     _sub_timer = st.Timer()
+
+    _timer.start()
+
+    argv = sys.argv
+    folder, folder_path = fn.check_args(argv)
+
+    config_path = fn.check_config(folder_path, folder)
+    _lines = fn.read_file(config_path)
 
     #%%
     ''' 2. READ CONFIG FILE 
@@ -126,11 +123,7 @@ def main():
 
     ''' 
 
-    _timer.start()
-
-    print(f"\nFetching config file from folder: {folder}")
-    if abs_dir != "": print(f"at location: {abs_dir}")
-    _lines = fn.read_file("../"+ folder +"/config.txt")
+    
 
     inputs = {}                                                                     
     data_points = {}

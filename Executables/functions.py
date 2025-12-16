@@ -28,6 +28,7 @@ import numpy as np                              # for np.arrays
 import subprocess                               # for calling shell scripts to run 
 import structs as st                            # my own module file of structs (classes, and read-only dicts)
 import os
+import shutil
 
 #%%
 
@@ -175,7 +176,7 @@ def check_args(argv):
 
     Errors
     ------
-    ValueError if there is no input
+    ValueError if there is no command line input
     ValueError if the input is not a valid directory
 
     '''
@@ -190,6 +191,19 @@ def check_args(argv):
         raise ValueError(f"invalid argument: {folder} is not a folder in the parent directory")
     
     return folder, abs_path
+
+def check_config(folder_path, folder_name):
+
+    print(f"\nFetching config file from folder: {folder_name}")
+    config_path = os.path.join(folder_path, f"config_{folder_name}.txt")
+    print(f"at location: {config_path}")
+
+    if not os.path.isfile(config_path):
+        template_rel_path = os.path.join(os.pardir, "static/config_template.txt")
+        template_abs_path = os.path.abspath(template_rel_path)
+        shutil.copy(template_abs_path, config_path)
+
+    return config_path
         
 
 def remove_inline_comments(split_string, line_index):

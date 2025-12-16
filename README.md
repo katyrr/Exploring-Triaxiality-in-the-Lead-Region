@@ -83,16 +83,7 @@ The Code/Examples folder contains example inputs, outputs, binary files, shell s
     3. Run the codes with command: "python main.py <folder>" 
                                 or "Python3 main.py <folder>" 
                                 or "uv run python main.py <folder>"
-    
-
-**If you don't need to run the whole thing:**
-
-    If you open it in Spyder (or similar) then you can run it cell by cell. 
-    Especially useful when calculating large data sets, since you can fiddle
-    with graph plotting easily and quickly *after* doing the calculations.
-
-    You might need to overwrite the "folder" variable in section "1. SET UP", 
-    and hard code it to the folder where your config is stored. 
+   
     
 
 
