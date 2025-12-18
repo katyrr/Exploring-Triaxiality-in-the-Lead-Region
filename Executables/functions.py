@@ -159,7 +159,7 @@ def check_args(argv):
     Expecting 1 argument (required): the location of the desired config file.
     (Usually just a folder with the name of the nucleus being studied, e.g. Pt177).
 
-    Checks that this argument has been provided and is a valid folder in the parent directory.
+    Checks that this argument has been provided and is a valid folder in the "./data" directory.
 
     Parameters
     ------
@@ -181,14 +181,15 @@ def check_args(argv):
 
     '''
     if len(argv) <= 1:
-        raise ValueError("missing argument: name of folder in parent directory containing config file ")
+        raise ValueError("missing argument: name of folder containing config file")
 
     folder = argv[1]
 
-    rel_path = os.path.join(os.pardir, folder)
+    rel_path = os.path.join("data", folder)
     abs_path = os.path.abspath(rel_path)
     if not os.path.isdir(abs_path):
-        raise ValueError(f"invalid argument: {folder} is not a folder in the parent directory")
+        print(f"folder not found at: {abs_path}, creating new folder")
+        os.mkdir(abs_path)
     
     return folder, abs_path
 
@@ -199,8 +200,9 @@ def check_config(folder_path, folder_name):
     print(f"at location: {config_path}")
 
     if not os.path.isfile(config_path):
-        template_rel_path = os.path.join(os.pardir, "static/config_template.txt")
+        template_rel_path = os.path.join("static", "config_template.txt")
         template_abs_path = os.path.abspath(template_rel_path)
+        print(f"config file not found, generating new from template at: {template_abs_path}")
         shutil.copy(template_abs_path, config_path)
 
     return config_path
@@ -735,28 +737,34 @@ def setup_directory(folder, num_batches, OS):
             
         if OS == "64bit":
             i = i.upper() + ".exe"
-            
-        script_text += ('\nif [ ! -x "./'+OS+'/MO/'+i+'" ]; then' +
-                        '\nchmod +x '+'./'+OS+'/MO/'+i+
-                        '\necho modified permissions to make '+i+' executable'+
-                        '\nfi')
 
+        path_to_program = os.path.join("Executables", OS, "MO", i)
+
+        permissions = oct(os.stat(path_to_program).st_mode)[-3:]
+        if permissions != "775":
+            os.chmod(path_to_program, 0o775)
+            print(f"modified permissions to make {path_to_program} executable")
     
     required_folders = ["Inputs", "Scripts", "Run", "Outputs"]
     
     for i in range(1, num_batches+1):
-        required_folders.append("Run/Batch"+str(i))
+        batch_folder = os.path.join("Run", f"Batch{i}")
+        required_folders.append(batch_folder)
         
     for i in required_folders:
-        script_text += ('\nif [ ! -d "../'+folder+'/'+i+'" ]; then'+
-                        '\nmkdir ../'+folder+'/'+i+
-                        '\nfi')
+        path_to_i = os.path.join(folder, i)
+        abs_path_to_i = os.path.abspath(path_to_i)
+        if not os.path.isdir(abs_path_to_i):
+            os.mkdir(abs_path_to_i)
+            print(f"created directory: {abs_path_to_i}")
     
     script_file = open(file_path, 'w')
     script_file.write(script_text)
     script_file.close()
     
-    subprocess.Popen(["sh", file_path])     
+    subprocess.Popen(["sh", file_path])  
+
+    return   
     
     
 def set_current(inputs, data_points, i, **kwargs):
@@ -1016,60 +1024,38 @@ def est_e2plus(eps, A):
     
     return e2plus
 
-def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allowed_time, verbose, OS): 
+
+def configure_script_writer(folder_path, OS, batch_settings, file_tags):
     """
-    A closure to configure a general script writer, which can then be customised to 
+    A closure for configuring a general script writer, which can then be customised to 
     each program (gampn, asyrmo, probamo) while maintaining a consistent strategy 
     for dividing up file batches.
-    
 
     Parameters
     ----------
+    folder_path : string
+        The absolute path to the folder containing the config file.
+
+    OS : either "MacOS" or "64bit"
+        Which version of the pre-compiled PTRM Fortran codes to use, depending 
+        on your computer's operating system (Mac, or Windows/Linux)
+
+    batch_settings : dict
+        A dictionary containing information on how to divide batches.
+        Includes keys: num_batches, num_per_batch, and allowed_time.
+
     file_tags : list of strings
         One tag for each data point, with format "e[eps]_g[gamma]_p[e2plus]_[nucleus]",
         e.g. "e0.001_g10.0_p0.730_Pb207".
         The list has length = number of data points.
 
-    nucleus : string
-        The nucleus being tested, with format e.g. "Pb207". 
-        Used to navigate the file directory.
-        
-    num_batches : int
-        The number of batches to divide data points into.
-        
-    num_per_batch : int
-        The maximum number of data points per batch. 
-        If the total number of data points is not exactly divisible by the 
-        number of batches, then the last batch may contain fewer data points.
-        
-    allowed_time : float
-        The maximum time in seconds to allow for the batch to run. 
-        If the runtime exceeds this then the program is assumed to be hanging, 
-        and execution is halted.
-    
-    verbose : bool
-        True to print high detail messages to console
-        False to print only essential information to console
-    
-    OS : either "MacOS" or "64bit"
-        Which version of the pre-compiled PTRM Fortran codes to use, depending 
-        on your computer's operating system (Mac, or Windows/Linux)
-
     Returns
     -------
     run_script_batches(program) : function
         A function that runs the input "program", with data points divided up into batches.
-    
-    """
-    def run_script_batches(program):
-        """
-        The inner function of the configure_script_writer closure. This is the 
-        function that is returned from the closure, which can then be called.
-        
-        Dynamically defines a script writer customised to the program requested.
-        
+
         For each batch of data points:
-            - Determines the file path to the folder from which the batch will be run.
+            - Moves the working directory to the batch folder.
             - Gets the list of file tags corresponding to that batch.
             - Writes a bash script to execute the program for all the files in the batch.
             - Starts the bash script as a subprocess.
@@ -1092,101 +1078,63 @@ def configure_script_writer(file_tags, nucleus, num_batches, num_per_batch, allo
         Returns
         -------
         None.
+    
+    """
 
-        """
-        if program == "gampn": 
-            abr = "GAM"
-                
-        elif program == "asyrmo": 
-            abr = "ASY"
-            
-                
-        elif program == "probamo": 
-            abr = "PROB"
-            
-        else: raise ValueError("Input program ["+ program +"] not supported.")
-        
-        
+    def run_script_batches(program):
+
+        print(f"running {program} in folder {folder_path}")
+        match program:
+            case "gampn": abr = "GAM"
+            case "asyrmo": abr = "ASY"
+            case "probamo": abr = "PROB"
+            case _: raise ValueError(f"unrecognised program: {program}")
+
         if OS == "64bit":
             program = program.upper() + ".exe"
-            
+
+        subprocesses = {}
+        num_per_batch = batch_settings["num_per_batch"]
+
+        program_path = os.path.join("Executables", OS, "MO", program)
+        abs_program_path = os.path.abspath(program_path)
         
-        def write_script_batch(file_tag_batch, batch_index, nucleus, file_path): 
-            """
-            A sub-function dynamically defined to write bash scripts customised 
-            to the program requested.
+        for b in range(batch_settings["num_batches"]):
+            batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
             
-            The bash script executes the following method for each file in the batch:
-                - Starts a subprocess in the [file_path] folder.
-                - From that folder, calls the requested program.
-                - Inputs the corresponding .DAT file for this data point into the program.
-                - Copies the default .OUT file from the program to the Outputs 
-                  folder with a more descriptive name.
-            
-            Then outputs a message to console to confirm that the batch script finished running. 
+            file_path = os.path.join(folder_path, "Scripts", f"Run{program.upper()}_{b+1}.sh")
+            run_folder_path = os.path.join(folder_path, "Run", f"Batch{b+1}")
 
-            Parameters
-            ----------
-            file_tag_batch : list of strings
-                One tag for each data point in the batch, with format 
-                e.g. "e0.001_g10.0_p0.730_Pb207".
-                The list has length = number of data points in this batch.
-                
-            batch_index : int
-                The index of this batch (numbered from 0 to num_batches-1).
-                
-            nucleus : string
-                The nucleus being tested, with format e.g. "Pb207". 
-                Used to navigate the file directory.
-                
-            file_path : string
-                The relative file path from the current working directory to 
-                the folder from which this batch should be run.
+            script_text = "pwd" # print the working directory for debugging
 
-            Returns
-            -------
-            None.
+            for file in batch_file_tags:
+                
+                # define input/output file paths relative to what WILL BE the working directory at runtime (run_folder_path)
+                input_file_path = os.path.join(os.pardir, os.pardir, "Inputs", f"{abr}_{file}.DAT")
+                output_file_path = os.path.join(os.pardir, os.pardir, "Outputs", f"{abr}_{file}.OUT")
 
-            """
-            
-            
-            batch_folder = "Batch"+str(batch_index)
-            script_text = ""
-            
-            for file in file_tag_batch :
-                script_text += ("\n(cd ../"+nucleus+"/Run/"+batch_folder+";" +  # start a subprocess and move to the Run folder for this batch.
-                                " ./../../../Executables/"+OS+"/MO/"+program +  # call the program from the Run folder.
-                                " < ../../Inputs/"+ abr +"_"+ file +            # input the relevant .DAT file to the program.
-                                ".DAT;" + " cp "+program.upper()+ ".out"+       # copy the default .OUT file... 
-                                " ../../Outputs/"+ abr +"_" + file + ".OUT)")   # ...to a new .OUT file with a more descriptive name, in the Outputs folder.
-            
-            if verbose:
-                script_text += ("\n\necho message from terminal: " +
-                            "finished running "+ program +" batch "+ str(batch_index))
+                # move the working directory to run_folder_path and start a subprocess in that folder
+                # call the program with the input file
+                # copy the default output file to a new .OUT file with a more descriptive name in the Outputs folder.
+                script_text += f"\n(cd {run_folder_path};{abs_program_path} < {input_file_path}; cp {program.upper()}.out {output_file_path})"
+
+            script_text += f"\n\necho message from terminal: finished running {program} batch {b+1}"
             
             script_file = open(file_path, 'w')
             script_file.write(script_text)
             script_file.close() 
+            
+            subprocesses[f"{program}_{b+1}"] = subprocess.Popen(["sh", file_path])   
 
-
-        subprocesses = {}
-
-        for b in range(num_batches):
-            file_path = "../"+nucleus+"/Scripts/Run"+program.upper()+"_"+str(b+1)+".sh"
-            batch_file_tags = file_tags[(b*num_per_batch):((b+1)*num_per_batch)]
-            write_script_batch(batch_file_tags, b+1, nucleus, file_path)
-            subprocesses[(program+"_"+str(b+1))] = subprocess.Popen(["sh", file_path])     
             # asynchronous call to start the program as a subprocess
             
-        for b in range(num_batches):
+        for b in range(batch_settings["num_batches"]):
             # wait to ensure it has finished (before starting to read outputs!), 
             # if it takes longer than the time limit seconds, throw an error to catch hangs.
-            subprocesses[(program+"_"+str(b+1))].wait(allowed_time)             
-            
+            subprocesses[f"{program}_{b+1}"].wait(batch_settings["allowed_time"])
+
+
     return run_script_batches
-
-
-
 
 
 #%%

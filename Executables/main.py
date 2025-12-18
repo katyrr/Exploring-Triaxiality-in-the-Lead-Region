@@ -182,7 +182,7 @@ def main():
 
     plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
 
-    fn.setup_directory(folder, inputs["num_cores"], inputs["OS"])
+    fn.setup_directory(folder_path, inputs["num_cores"], inputs["OS"])
 
     #%%
     ''' 3. PROCESS INPUTS 
@@ -274,9 +274,9 @@ def main():
         inputs["current_f016"] = "f016_"+_file_tag+".dat"
         inputs["current_f017"] = "f017_"+_file_tag+".dat"
         
-
-        fn.write_file("../"+folder+"/Inputs/GAM_"+_file_tag+".DAT", st.get_template("gampn") % inputs)
-    
+        file_path = os.path.join(folder_path, "Inputs", f"GAM_{_file_tag}.DAT")
+        fn.write_file(file_path, st.get_template("gampn") % inputs)
+  
         
 
     print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.1f, %.1f]."
@@ -315,10 +315,8 @@ def main():
 
 
     # configure a batch script writer, and run the batches.
-    run_program = fn.configure_script_writer(data_points["file_tags"], folder, batch_settings["num_batches"], 
-                                            batch_settings["num_per_batch"], batch_settings["allowed_time"], 
-                                            inputs["detailed_print"], inputs["OS"])
-
+    run_program = fn.configure_script_writer(folder_path, inputs["OS"], batch_settings, data_points["file_tags"])
+    
     print("Starting gampn...")
     _sub_timer.start()
     run_program("gampn")
@@ -349,7 +347,8 @@ def main():
 
     for i in range(inputs["num"]):
 
-        _lines = fn.read_file("../"+folder+"/Outputs/GAM_"+data_points["file_tags"][i]+".OUT")
+        output_file_path = os.path.join(folder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
+        _lines = fn.read_file(output_file_path)
         
         inputs["efac"] = fn.get_efac(_lines)
         _fermi_level_line = fn.get_sp_level(_lines, inputs["fermi_level"], '0')
@@ -383,7 +382,8 @@ def main():
         inputs, data_points = fn.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
         inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
     
-        fn.write_file("../"+folder+"/Inputs/GAM_"+data_points["file_tags"][i]+".DAT", st.get_template("gampn") % inputs)
+        file_path = os.path.join(folder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
+        fn.write_file(file_path, st.get_template("gampn") % inputs)
     
     _sub_timer.start()
     run_program("gampn")
@@ -411,7 +411,8 @@ def main():
         inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
         
-        fn.write_file("../"+folder+"/Inputs/ASY_"+data_points["file_tags"][i]+".DAT", st.get_template("asyrmo") % inputs)
+        file_path = os.path.join(folder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
+        fn.write_file(file_path, st.get_template("asyrmo") % inputs)
 
     _sub_timer.start()
     run_program("asyrmo")
@@ -433,7 +434,8 @@ def main():
 
     for i in data_points["file_tags"]:
 
-        _lines = fn.read_file("../"+folder+"/Outputs/ASY_"+i+".OUT")
+        output_file_path = os.path.join(folder_path, "Outputs", f"ASY_{i}.OUT")
+        _lines = fn.read_file(output_file_path)
         
         if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
             raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
@@ -455,7 +457,8 @@ def main():
         inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
 
-        fn.write_file("../"+folder+"/Inputs/PROB_"+data_points["file_tags"][i]+".DAT", st.get_template("probamo") % inputs)
+        file_path = os.path.join(folder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
+        fn.write_file(file_path, st.get_template("probamo") % inputs)
 
     _sub_timer.start()
     run_program("probamo")
@@ -498,8 +501,9 @@ def main():
 
     for i in range(inputs["num"]):
         
-        _lines = fn.read_file("../"+folder+"/Outputs/Prob_"+data_points["file_tags"][i]+".OUT")
-        
+        output_file_path = os.path.join(folder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
+        _lines = fn.read_file(output_file_path)
+
         _file_data = {}
         for _line in _lines:
             
