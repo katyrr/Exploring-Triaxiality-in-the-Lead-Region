@@ -44,25 +44,25 @@ The Code/Examples folder contains example inputs, outputs, binary files, shell s
        might reduce the risk of errors caused by a mismatch in python or framework versions.
     
     2. Check that the pre-compiled original PTRM codes in the /Code/Executables/MacOS/MO/ 
-       or /Code/Executables/64bit/MO/ folder have execute permissions turned on. 
+       or /Code/Executables/64bit/MO/ folder have execute permissions turned on. The code will attempt to do this automatically when you first run it, but if there are permission errors you might have to do it manually.
        
-       On Mac you can fix this by navigating to the /Code/Executables/MacOS/MO folder 
+       On Mac you can fix it by navigating to the /Code/Executables/MacOS/MO folder 
        in Terminal, and then using the commands "chmod 775 gampn", "chmod 775 asyrmo", 
        "chmod 775 probamo". Then use "ls -ltr" to see that the permissions (in the 
        leftmost column) now have 'x's (execute). You might also have to grant permission
        in settings (after attempting to run for the first time, the permission request 
        will appear in Privacy).
        
-       On Windows you can fix this by navigating to the /Code/Executables/64bit/MO 
+       On Windows you can fix it by navigating to the /Code/Executables/64bit/MO 
        folder in PowerShell, and then using the commands "Unblock-File -Path GAMPN.exe", 
        "Unblock-File -Path ASYRMO.exe", "Unblock-File -Path PROBAMO.exe".
        
     3. Make a new folder in /Code, typically named as the nuclide you're calculating,
        e.g. /Code/Pt177.
     
-    4. Copy the config file from /Code/Examples to your new folder. (All the other
-       necessary folders and files will be created automatically when you run the
-       code for the first time).
+    4. Copy the config file from /Code/Examples to your new folder. If you don't manually 
+       copy the config template, it will be automatically copied when you first run the code. 
+       All the other required folders and files will be automatically generated.
     
     5. Make any necessary changes to the settings in your config file in /Code/<folder>.
        
