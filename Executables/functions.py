@@ -728,9 +728,6 @@ def setup_directory(folder, num_batches, OS):
 
     '''
     
-    file_path = "wd_setup.sh"
-    script_text = "echo checking directory setup..."
-    
     programs = ["gampn", "asyrmo", "probamo"]
     
     for i in programs:
@@ -756,13 +753,7 @@ def setup_directory(folder, num_batches, OS):
         abs_path_to_i = os.path.abspath(path_to_i)
         if not os.path.isdir(abs_path_to_i):
             os.mkdir(abs_path_to_i)
-            print(f"created directory: {abs_path_to_i}")
-    
-    script_file = open(file_path, 'w')
-    script_file.write(script_text)
-    script_file.close()
-    
-    subprocess.Popen(["sh", file_path])  
+            print(f"created directory: {abs_path_to_i}") 
 
     return   
     
