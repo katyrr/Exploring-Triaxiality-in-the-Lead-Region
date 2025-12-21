@@ -70,15 +70,18 @@ HOW TO USE:
 
 """
 
-import numpy as np                                   # pyright: ignore[reportMissingImports]
+import numpy as np                                   
 import math                                        
-import matplotlib.pyplot as plt                      # pyright: ignore[reportMissingModuleSource]
+import matplotlib.pyplot as plt                      
 import sys          
 import os         
 
-import functions as fn                              
-import structs as st
-import graph_plotting as gr
+import functions.functions as fn                              
+import functions.structs as st
+import functions.graph_plotting as gr
+
+from functions.spin_processing import spin_string_to_float
+from functions.file_handling import read_file, write_file
 
 
 
@@ -102,7 +105,7 @@ def main():
     folder, folder_path = fn.check_args(argv)
 
     config_path = fn.check_config(folder_path, folder)
-    _lines = fn.read_file(config_path)
+    _lines = read_file(config_path)
 
     #%%
     ''' 2. READ CONFIG FILE 
@@ -205,11 +208,11 @@ def main():
 
     #!!! obsolete:
     if "x1_spin" in inputs:
-        experimental["x1_spin_float"] = fn.spin_string_to_float(inputs["x1_spin"])
+        experimental["x1_spin_float"] = spin_string_to_float(inputs["x1_spin"])
     if "x2_spin" in inputs:
-        experimental["x2_spin_float"] = fn.spin_string_to_float(inputs["x2_spin"])
+        experimental["x2_spin_float"] = spin_string_to_float(inputs["x2_spin"])
     if "x3_spin" in inputs:
-        experimental["x3_spin_float"] = fn.spin_string_to_float(inputs["x3_spin"])
+        experimental["x3_spin_float"] = spin_string_to_float(inputs["x3_spin"])
 
 
     # convert the nantj, noutj, ipout inputs to the correct format
@@ -275,7 +278,7 @@ def main():
         inputs["current_f017"] = "f017_"+_file_tag+".dat"
         
         file_path = os.path.join(folder_path, "Inputs", f"GAM_{_file_tag}.DAT")
-        fn.write_file(file_path, st.get_template("gampn") % inputs)
+        write_file(file_path, st.get_template("gampn") % inputs)
   
         
 
@@ -348,7 +351,7 @@ def main():
     for i in range(inputs["num"]):
 
         output_file_path = os.path.join(folder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
-        _lines = fn.read_file(output_file_path)
+        _lines = read_file(output_file_path)
         
         inputs["efac"] = fn.get_efac(_lines)
         _fermi_level_line = fn.get_sp_level(_lines, inputs["fermi_level"], '0')
@@ -383,7 +386,7 @@ def main():
         inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
     
         file_path = os.path.join(folder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
-        fn.write_file(file_path, st.get_template("gampn") % inputs)
+        write_file(file_path, st.get_template("gampn") % inputs)
     
     _sub_timer.start()
     run_program("gampn")
@@ -412,7 +415,7 @@ def main():
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
         
         file_path = os.path.join(folder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
-        fn.write_file(file_path, st.get_template("asyrmo") % inputs)
+        write_file(file_path, st.get_template("asyrmo") % inputs)
 
     _sub_timer.start()
     run_program("asyrmo")
@@ -435,7 +438,7 @@ def main():
     for i in data_points["file_tags"]:
 
         output_file_path = os.path.join(folder_path, "Outputs", f"ASY_{i}.OUT")
-        _lines = fn.read_file(output_file_path)
+        _lines = read_file(output_file_path)
         
         if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
             raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
@@ -458,7 +461,7 @@ def main():
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
 
         file_path = os.path.join(folder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
-        fn.write_file(file_path, st.get_template("probamo") % inputs)
+        write_file(file_path, st.get_template("probamo") % inputs)
 
     _sub_timer.start()
     run_program("probamo")
@@ -502,7 +505,7 @@ def main():
     for i in range(inputs["num"]):
         
         output_file_path = os.path.join(folder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
-        _lines = fn.read_file(output_file_path)
+        _lines = read_file(output_file_path)
 
         _file_data = {}
         for _line in _lines:
