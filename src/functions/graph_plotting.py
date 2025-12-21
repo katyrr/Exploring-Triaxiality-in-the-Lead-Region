@@ -13,10 +13,8 @@ from matplotlib.ticker import FuncFormatter     # for formatting axis ticks
 import matplotlib.tri as tri                    # for manual triangulation before drawing a contour plot
 import matplotlib.colors as colors
 import numpy as np                              # for np.arrays
-import structs as st                            # my own module file of structs (classes, and read-only dicts)
-import functions as fn                          # my own module file of functions
 
-
+from functions.spin_processing import spin_string_to_float, spin_float_to_string
 
 
 def calc_contour_levels(data):
@@ -65,7 +63,7 @@ def calc_cbar_tick_labels(data, style):
     cbar_ticks = np.arange(min(data), max(data)+1.0, 1.0)
     
     if style=="half":
-        cbar_tick_labels = [fn.spin_float_to_string(n) for n in cbar_ticks]
+        cbar_tick_labels = [spin_float_to_string(n) for n in cbar_ticks]
         
     elif style=="int":
         cbar_tick_labels = [int(n) for n in cbar_ticks]
@@ -1058,7 +1056,7 @@ def plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix_val):
     experimental_data = prop.experimental_data
     explabs = prop.explabels
     
-    expidx = [int(((2*fn.spin_string_to_float(a))-1)/2) for a in explabs]
+    expidx = [int(((2*spin_string_to_float(a))-1)/2) for a in explabs]
     
     for e in range(len(experimental_data)):
         expl = plt.plot(xrange, [experimental_data[e],experimental_data[e]], line_colours[expidx[e]]+"--", label=explabs[e], linewidth=1.25)

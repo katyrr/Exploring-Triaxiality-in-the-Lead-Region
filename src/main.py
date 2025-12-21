@@ -10,7 +10,7 @@ Created on Fri Feb  7 10:54:23 2025
 
 HOW TO USE:
 
-- This code file is stored in /Code/Executables
+- This code file is stored in /Code/src
 - Modules "functions.py", "structs.py", and "graph_plotting.py" are also stored in this directory.
 
 - How to use for the first time:
@@ -26,17 +26,17 @@ HOW TO USE:
        There is no need to activate the venv before running. Using uv is optional, but
        might reduce the risk of errors caused by a mismatch in python or framework versions.
     
-    2. Check that the pre-compiled original PTRM codes in the /Code/Executables/MacOS/MO/ 
-       or /Code/Executables/64bit/MO/ folder have execute permissions turned on. 
+    2. Check that the pre-compiled original PTRM codes in the /Code/src/ptrm/MacOS/MO/ 
+       or /Code/src/ptrm/64bit/MO/ folder have execute permissions turned on. 
        
-       On Mac you can fix this by navigating to the /Code/Executables/MacOS/MO folder 
+       On Mac you can fix this by navigating to the /Code/src/ptrm/MacOS/MO folder 
        in Terminal, and then using the commands "chmod 775 gampn", "chmod 775 asyrmo", 
        "chmod 775 probamo". Then use "ls -ltr" to see that the permissions (in the 
        leftmost column) now have 'x's (execute). You might also have to grant permission
        in settings (after attempting to run for the first time, the permission request 
        will appear in Privacy).
        
-       On Windows you can fix this by navigating to the /Code/Executables/64bit/MO 
+       On Windows you can fix this by navigating to the /Code/src/ptrm/64bit/MO 
        folder in PowerShell, and then using the commands "Unblock-File -Path GAMPN.exe", 
        "Unblock-File -Path ASYRMO.exe", "Unblock-File -Path PROBAMO.exe".
        
@@ -49,7 +49,7 @@ HOW TO USE:
     
     5. Make any necessary changes to the settings in your config file in /Code/<folder>.
        
-    6. Navigate to the /Code/Executables folder in you computer terminal. 
+    6. Navigate to the /Code/src folder in you computer terminal. 
 
     7. Run the codes with command: "python main.py <folder>" 
                                 or "Python3 main.py <folder>" 
@@ -59,8 +59,6 @@ HOW TO USE:
 - How to use after the first time:
 
     1. Make changes to your config file in /Code/<folder>.
-       
-    2. Navigate to the /Code/Executables folder in you computer terminal. 
     
     3. Run the codes with command: "python main.py <folder>" 
                                 or "Python3 main.py <folder>" 
@@ -75,13 +73,21 @@ import math
 import matplotlib.pyplot as plt                      
 import sys          
 import os         
-
-import functions.functions as fn                              
+                             
 import functions.structs as st
 import functions.graph_plotting as gr
 
+import functions.read_config as rc
+import functions.run_ptrm as ptrm
+import functions.read_gampn as rgam
+import functions.read_asyrmo as rasy
+import functions.read_probamo as rprob
+import functions.analyse_results as anyl
+
 from functions.spin_processing import spin_string_to_float
 from functions.file_handling import read_file, write_file
+
+
 
 
 
@@ -102,9 +108,9 @@ def main():
     _timer.start()
 
     argv = sys.argv
-    folder, folder_path = fn.check_args(argv)
+    folder, folder_path = rc.check_args(argv)
 
-    config_path = fn.check_config(folder_path, folder)
+    config_path = rc.check_config(folder_path, folder)
     _lines = read_file(config_path)
 
     #%%
@@ -142,19 +148,19 @@ def main():
         if _line[0] == "*" : continue              
         
         _split_string = _line.split(" ")  # split into name and value
-        _split_string = fn.remove_inline_comments(_split_string, i)
+        _split_string = rc.remove_inline_comments(_split_string, i)
 
-        fn.check_line_format(_split_string, _line, i)         
+        rc.check_line_format(_split_string, _line, i)         
         
         # check what kind of input is stored in this line, and save it accordinly
         if _split_string[0] in ["eps", "gamma", "single","mesh"]:
-            inputs, data_points = fn.save_deformation_input(inputs, data_points, _split_string)
+            inputs, data_points = rc.save_deformation_input(inputs, data_points, _split_string)
 
         elif _split_string[0]=="e2plus":
-            inputs, data_points = fn.save_e2plus_input(inputs, data_points, _split_string)
+            inputs, data_points = rc.save_e2plus_input(inputs, data_points, _split_string)
                 
         elif _split_string[0] == "gs_spin":
-            experimental = fn.save_gs_spin_input(experimental, _split_string)
+            experimental = rc.save_gs_spin_input(experimental, _split_string)
 
         elif _split_string[0][:3]=="jp_":
             experimental[_split_string[0]] = [float(n) for n in _split_string[1].split(',')]
@@ -166,10 +172,10 @@ def main():
             experimental[_split_string[0]] = float(_split_string[1])
             
         else:
-            inputs, experimental = fn.validate_input(inputs, experimental, _split_string)
+            inputs, experimental = rc.validate_input(inputs, experimental, _split_string)
 
         # sometimes helpful when debugging (change False to True, to check that config file is reading as expected) 
-        if False: print(_split_string[0] + ": \t" + _split_string[1])
+        # print(_split_string[0] + ": \t" + _split_string[1])
 
 
     # check that we have all the inputs we need
@@ -185,7 +191,7 @@ def main():
 
     plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
 
-    fn.setup_directory(folder_path, inputs["num_cores"], inputs["OS"])
+    ptrm.setup_directory(folder_path, inputs["num_cores"], inputs["OS"])
 
     #%%
     ''' 3. PROCESS INPUTS 
@@ -239,7 +245,7 @@ def main():
 
     # Generate a string containing the parity to calculate, the number of orbitals, 
     #   and their indices, in the correct format for input to gampn.
-    inputs["current_orbitals"] = fn.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
+    inputs["current_orbitals"] = ptrm.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
 
     # (useful for debugging) hard coded versions of the above:
     #inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
@@ -265,9 +271,9 @@ def main():
         
         if data_points["e2plus"][i] == 0:
             # if the value of e2plus has been input as 0, calculate dynamically
-            data_points["e2plus"][i] = fn.est_e2plus(data_points["eps"][i], inputs["A"])
+            data_points["e2plus"][i] = ptrm.est_e2plus(data_points["eps"][i], inputs["A"])
         
-        inputs, data_points = fn.set_current(inputs, data_points, i)
+        inputs, data_points = ptrm.set_current(inputs, data_points, i)
 
         _file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"],  inputs["current_gamma"],
                                             inputs["current_e2plus"], inputs["nucleus"])
@@ -318,7 +324,7 @@ def main():
 
 
     # configure a batch script writer, and run the batches.
-    run_program = fn.configure_script_writer(folder_path, inputs["OS"], batch_settings, data_points["file_tags"])
+    run_program = ptrm.configure_script_writer(folder_path, inputs["OS"], batch_settings, data_points["file_tags"])
     
     print("Starting gampn...")
     _sub_timer.start()
@@ -353,9 +359,9 @@ def main():
         output_file_path = os.path.join(folder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
         _lines = read_file(output_file_path)
         
-        inputs["efac"] = fn.get_efac(_lines)
-        _fermi_level_line = fn.get_sp_level(_lines, inputs["fermi_level"], '0')
-        _f_parity, _f_energy_hw, _f_index = fn.get_info(_fermi_level_line)
+        inputs["efac"] = rgam.get_efac(_lines)
+        _fermi_level_line = rgam.get_sp_level(_lines, inputs["fermi_level"], '0')
+        _f_parity, _f_energy_hw, _f_index = rgam.get_info(_fermi_level_line)
         
         output_data["fermi_parities"][i] = _f_parity                             
         output_data["fermi_energies_hw"][i] = _f_energy_hw
@@ -363,7 +369,7 @@ def main():
         output_data["fermi_indices"][i] = _f_index
         
         # dynamically finds the orbitals nearest to the fermi level in energy:
-        data_points["asyrmo_orbitals"].append(fn.find_orbitals(_f_index, inputs["nu"], 
+        data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(_f_index, inputs["nu"], 
                                     inputs["par"], _f_energy_hw, _f_parity, _lines))
 
 
@@ -382,7 +388,7 @@ def main():
 
     for i in range(len(data_points["file_tags"])):
         
-        inputs, data_points = fn.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
+        inputs, data_points = ptrm.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
         inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
     
         file_path = os.path.join(folder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
@@ -443,7 +449,7 @@ def main():
         if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
             raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
             
-        output_data["delta"].append(fn.get_delta(_lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
+        output_data["delta"].append(rasy.get_delta(_lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
             
 
     #%%
@@ -510,28 +516,28 @@ def main():
         _file_data = {}
         for _line in _lines:
             
-            _line_data = fn.read_data(_line)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
+            _line_data = rprob.read_data(_line)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
             if not(_line_data):
                 continue # to next line in file
             
             # sort line_data into file_data according to its spin
-            _file_data = fn.sort_by_spin(_line_data, _file_data)
+            _file_data = rprob.sort_by_spin(_line_data, _file_data)
             # additionally save data that corresponds to the expected experimental ground state
-            _file_data = fn.sort_by_expectation(_line_data, _file_data, inputs)
+            _file_data = rprob.sort_by_expectation(_line_data, _file_data, inputs)
         
-        _file_data = fn.missing_data(_file_data, inputs)
+        _file_data = rprob.missing_data(_file_data, inputs)
         data_points["property_data"].append(_file_data)
 
-    output_data = _output_data | fn.restructure_data(data_points["property_data"], inputs["ispin"], inputs["detailed_print"])
+    output_data = _output_data | rprob.restructure_data(data_points["property_data"], inputs["ispin"], inputs["detailed_print"])
 
     # get energy gap between third 9/2 and first 13/2 states
     for i in experimental:
         if not "engap_" in i:
             continue
         
-        _spin1, _idx1, _spin2, _idx2 = fn.parse_engap_input(i)
+        _spin1, _idx1, _spin2, _idx2 = rprob.parse_engap_input(i)
         
-        output_data[i] = fn.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental[i])
+        output_data[i] = rprob.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental[i])
 
     # output_data["engap_9.3_13.1"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
 
@@ -542,7 +548,7 @@ def main():
 
     for i in output_data:
         if isinstance(output_data[i][0], list):
-            output_data[i] = fn.fill_gaps(output_data[i])
+            output_data[i] = rprob.fill_gaps(output_data[i])
             _list_mask = np.transpose(np.tile(_mask, (np.size(output_data[i][0]),1)))
             
             output_data[i] = np.where(_list_mask == 0, np.NaN, output_data[i])
@@ -585,13 +591,13 @@ def main():
         output_data[i] = gr.calculate_format_data(output_data[i], i, experimental)
         
 
-    output_data["all_energies"] = fn.collate_energy_data(output_data, len(data_points["file_tags"]), 
+    output_data["all_energies"] = rprob.collate_energy_data(output_data, len(data_points["file_tags"]), 
                                                         experimental["gs_spin_string"], experimental)
 
     # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
-    output_data["shifted_energies"] = fn.shift_energy_levels(output_data["all_energies"]) 
+    output_data["shifted_energies"] = rprob.shift_energy_levels(output_data["all_energies"]) 
 
-    output_data["rms"] = fn.calc_rms_err(10, output_data["spin_1/2_energies"],
+    output_data["rms"] = rprob.calc_rms_err(10, output_data["spin_1/2_energies"],
                         output_data["spin_3/2_energies"], output_data["spin_5/2_energies"], 
                         output_data["spin_7/2_energies"], output_data["spin_9/2_energies"], 
                         output_data["spin_11/2_energies"], output_data["spin_13/2_energies"])
@@ -783,15 +789,15 @@ def main():
         
     print("\n******** mean and standard error in the mean ******")
 
-    fn.report_mean(output_data["spin_1/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_3/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_5/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_7/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
-    fn.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
-    fn.report_mean(output_data["gs_quad_moments"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_1/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_3/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_5/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_7/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
+    anyl.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
+    anyl.report_mean(output_data["gs_quad_moments"], inputs["detailed_print"])
 
     # note how long it took
     _sub_timer.stop()

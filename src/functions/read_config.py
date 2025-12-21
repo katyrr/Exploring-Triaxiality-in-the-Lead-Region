@@ -14,7 +14,7 @@ import numpy as np
 
 import functions.structs as st
 
-from spin_processing import spin_string_to_float
+from functions.spin_processing import spin_string_to_float
 
 
 

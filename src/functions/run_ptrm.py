@@ -5,7 +5,7 @@ Created on Sun Dec 21 11:47 2025
 
 @author: katyrr
 
-Functions for reading config file and processing contents.
+Functions for preparing to run the PTRM codes.
 
 """
 
@@ -13,7 +13,7 @@ import os
 import numpy as np
 import subprocess
 
-from read_gampn import get_sp_level, get_info
+from functions.read_gampn import get_sp_level, get_info
 
 def setup_directory(folder, num_batches, OS):
     '''
@@ -23,11 +23,11 @@ def setup_directory(folder, num_batches, OS):
     
     Prerequisite structure:
         
-        "Code/Executables/main.py"
-        "Code/Executables/functions.py"
+        "Code/src/main.py"
+        "Code/src/functions/" for module files
                           etc. for structs.py and graph_plotting.py
         
-        "Code/Executables/[OS]/MO/gampn" ([OS] can be "64bit" or "MacOS")
+        "Code/src/ptrm/[OS]/MO/gampn" ([OS] can be "64bit" or "MacOS")
                                   etc. for asyrmo and probamo
                                   
         "Code/[folder]/config"  ([folder] can be anything, as set by the "folder" 
@@ -66,7 +66,7 @@ def setup_directory(folder, num_batches, OS):
         if OS == "64bit":
             i = i.upper() + ".exe"
 
-        path_to_program = os.path.join("Executables", OS, "MO", i)
+        path_to_program = os.path.join("src", "ptrm", OS, "MO", i)
 
         permissions = oct(os.stat(path_to_program).st_mode)[-3:]
         if permissions != "775":
@@ -418,7 +418,7 @@ def configure_script_writer(folder_path, OS, batch_settings, file_tags):
         subprocesses = {}
         num_per_batch = batch_settings["num_per_batch"]
 
-        program_path = os.path.join("Executables", OS, "MO", program)
+        program_path = os.path.join("src", "ptrm", OS, "MO", program)
         abs_program_path = os.path.abspath(program_path)
         
         for b in range(batch_settings["num_batches"]):

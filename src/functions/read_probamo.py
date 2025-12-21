@@ -10,7 +10,7 @@ Functions for reading PROBAMO.OUT and processing contents.
 """
 
 import numpy as np
-from spin_processing import spin_string_to_float
+from functions.spin_processing import spin_string_to_float
 
 import functions.structs as st
 

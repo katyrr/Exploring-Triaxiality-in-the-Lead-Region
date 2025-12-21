@@ -5,7 +5,7 @@ Created on Sun Dec 21 11:54 2025
 
 @author: katyrr
 
-Functions for reading ASYRMO.OUT and processing contents.
+Functions for analysing the results of the full PTRM calculation.
 
 """
 

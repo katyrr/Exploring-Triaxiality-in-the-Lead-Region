@@ -5,7 +5,15 @@ Created on Fri Feb  7 10:53:52 2025
 
 @author: katyrr
 
-A separate module file to contain function definitions.
+---------------------------------------------- ARCHIVED ----------------------------------------------------
+
+These functions were moved and separated out into new files in a "functions" folder on 21/12/2025.
+This was done to improve the readability of the code.
+This file was kept to assist with tracking version history.
+
+------------------------------------------------------------------------------------------------------------
+
+
 
 CONTENTS:
 --------
@@ -29,6 +37,8 @@ import subprocess                               # for calling shell scripts to r
 import structs as st                            # my own module file of structs (classes, and read-only dicts)
 import os
 import shutil
+
+raise RuntimeError("This module file 'archive_functions.py' is out of date and should not be used! All functions contained here have been moved to new module files.")
 
 #%%
 
