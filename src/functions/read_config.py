@@ -16,63 +16,6 @@ import functions.structs as st
 
 from functions.spin_processing import spin_string_to_float
 
-
-
-def check_args(argv):
-    '''
-    Check command line arguments for validity.
-    Expecting 1 argument (required): the location of the desired config file.
-    (Usually just a folder with the name of the nucleus being studied, e.g. Pt177).
-
-    Checks that this argument has been provided and is a valid folder in the "./data" directory.
-
-    Parameters
-    ------
-    argv : list of strings
-        A list of the input command line arguments.
-
-    Returns
-    -------
-    folder : string
-        The name of the folder containing the config file 
-        
-    abs_dir : string
-        The absolute directory path to the folder containing the config file.
-
-    Errors
-    ------
-    ValueError if there is no command line input
-    ValueError if the input is not a valid directory
-
-    '''
-    if len(argv) <= 1:
-        raise ValueError("missing argument: name of folder containing config file")
-
-    folder = argv[1]
-
-    rel_path = os.path.join("data", folder)
-    abs_path = os.path.abspath(rel_path)
-    if not os.path.isdir(abs_path):
-        print(f"folder not found at: {abs_path}, creating new folder")
-        os.mkdir(abs_path)
-    
-    return folder, abs_path
-
-def check_config(folder_path, folder_name):
-
-    print(f"\nFetching config file from folder: {folder_name}")
-    config_path = os.path.join(folder_path, f"config_{folder_name}.txt")
-    print(f"at location: {config_path}")
-
-    if not os.path.isfile(config_path):
-        template_rel_path = os.path.join("static", "config_template.txt")
-        template_abs_path = os.path.abspath(template_rel_path)
-        print(f"config file not found, generating new from template at: {template_abs_path}")
-        shutil.copy(template_abs_path, config_path)
-
-    return config_path
-        
-
 def remove_inline_comments(split_string, line_index):
     """
     A function to remove inline comments from a line of text read from the config file.

@@ -48,21 +48,19 @@ HOW TO USE:
        code for the first time).
     
     5. Make any necessary changes to the settings in your config file in /Code/<folder>.
-       
-    6. Navigate to the /Code/src folder in you computer terminal. 
 
-    7. Run the codes with command: "python main.py <folder>" 
-                                or "Python3 main.py <folder>" 
-                                or "uv run python main.py <folder>"
+    6. Run the codes with command: "python src/main.py <folder>" 
+                                or "Python3 src/main.py <folder>" 
+                                or "uv run python src/main.py <folder>"
 
 
 - How to use after the first time:
 
     1. Make changes to your config file in /Code/<folder>.
     
-    3. Run the codes with command: "python main.py <folder>" 
-                                or "Python3 main.py <folder>" 
-                                or "uv run python main.py <folder>"
+    2. Run the codes with command: "python src/main.py <folder>" 
+                                or "Python3 src/main.py <folder>" 
+                                or "uv run python src/main.py <folder>"
      
     
 
@@ -70,22 +68,23 @@ HOW TO USE:
 
 import numpy as np                                   
 import math                                        
-import matplotlib.pyplot as plt                      
-import sys          
-import os         
-                             
-import functions.structs as st
-import functions.graph_plotting as gr
+import matplotlib.pyplot as plt   
+import os   
+import sys     
 
-import functions.read_config as rc
+import functions.file_handling as fh 
+import functions.read_config as rc     
 import functions.run_ptrm as ptrm
 import functions.read_gampn as rgam
 import functions.read_asyrmo as rasy
 import functions.read_probamo as rprob
+import functions.structs as st
+import functions.graph_plotting as gr
 import functions.analyse_results as anyl
 
 from functions.spin_processing import spin_string_to_float
-from functions.file_handling import read_file, write_file
+
+from classes.timer import Timer
 
 
 
@@ -94,27 +93,24 @@ from functions.file_handling import read_file, write_file
 def main():
 
     #%% 
-    """ 1. SET UP 
+    """ 1. SET UP ---------------------------------------------------------------------------------
 
     - Create timers (one to time the whole program, and one to time small sections).
-    - Read command line arguments (location of config file) and check validity
-    - If config doesn't exist, create it from template
+    - Read command line arguments and locate/create data subfolder.
+    - Locate/create config file in data subfolder.
     
-
     """
-    _timer = st.Timer()
-    _sub_timer = st.Timer()
 
-    _timer.start()
+    timer = Timer()
+    sub_timer = Timer()
+    timer.start()
 
-    argv = sys.argv
-    folder, folder_path = rc.check_args(argv)
-
-    config_path = rc.check_config(folder_path, folder)
-    _lines = read_file(config_path)
-
+    data_subfolder_path = fh.locate_data_subfolder(sys.argv)
+    config_path = fh.locate_config(data_subfolder_path)
+    
+    
     #%%
-    ''' 2. READ CONFIG FILE 
+    ''' 2. READ CONFIG FILE -----------------------------------------------------------------------
 
     - Ignores empty lines, and lines beginning with * (to mark a comment).
     - Checks that the format of each line is correct (var_name value),
@@ -132,7 +128,7 @@ def main():
 
     ''' 
 
-    
+    _lines = fh.read_file(config_path)
 
     inputs = {}                                                                     
     data_points = {}
@@ -190,11 +186,10 @@ def main():
         
 
     plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
-
-    ptrm.setup_directory(folder_path, inputs["num_cores"], inputs["OS"])
+    fh.setup_directory(data_subfolder_path, inputs["num_cores"], inputs["OS"])
 
     #%%
-    ''' 3. PROCESS INPUTS 
+    ''' 3. PROCESS INPUTS -------------------------------------------------------------------------
 
     - Convert gamma points to radians and save separately.
     - Convert input fractional spins to floats and save separately.
@@ -283,8 +278,8 @@ def main():
         inputs["current_f016"] = "f016_"+_file_tag+".dat"
         inputs["current_f017"] = "f017_"+_file_tag+".dat"
         
-        file_path = os.path.join(folder_path, "Inputs", f"GAM_{_file_tag}.DAT")
-        write_file(file_path, st.get_template("gampn") % inputs)
+        file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{_file_tag}.DAT")
+        fh.write_file(file_path, st.get_template("gampn") % inputs)
   
         
 
@@ -324,14 +319,14 @@ def main():
 
 
     # configure a batch script writer, and run the batches.
-    run_program = ptrm.configure_script_writer(folder_path, inputs["OS"], batch_settings, data_points["file_tags"])
+    run_program = ptrm.configure_script_writer(data_subfolder_path, inputs["OS"], batch_settings, data_points["file_tags"])
     
     print("Starting gampn...")
-    _sub_timer.start()
+    sub_timer.start()
     run_program("gampn")
-    _sub_timer.stop()
+    sub_timer.stop()
 
-    print("\n***** Finished running gampn in time = %.2f seconds. *****" % _sub_timer.get_lapsed_time())
+    print("\n***** Finished running gampn in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
 
 
@@ -356,8 +351,8 @@ def main():
 
     for i in range(inputs["num"]):
 
-        output_file_path = os.path.join(folder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
-        _lines = read_file(output_file_path)
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
+        _lines = fh.read_file(output_file_path)
         
         inputs["efac"] = rgam.get_efac(_lines)
         _fermi_level_line = rgam.get_sp_level(_lines, inputs["fermi_level"], '0')
@@ -391,13 +386,13 @@ def main():
         inputs, data_points = ptrm.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
         inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
     
-        file_path = os.path.join(folder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
-        write_file(file_path, st.get_template("gampn") % inputs)
+        file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
+        fh.write_file(file_path, st.get_template("gampn") % inputs)
     
-    _sub_timer.start()
+    sub_timer.start()
     run_program("gampn")
-    _sub_timer.stop()
-    print("***** Finished running gampn (again) in time = %.2f seconds. *****" % _sub_timer.get_lapsed_time())
+    sub_timer.stop()
+    print("***** Finished running gampn (again) in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
     _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
@@ -420,14 +415,14 @@ def main():
         inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
         
-        file_path = os.path.join(folder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
-        write_file(file_path, st.get_template("asyrmo") % inputs)
+        file_path = os.path.join(data_subfolder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
+        fh.write_file(file_path, st.get_template("asyrmo") % inputs)
 
-    _sub_timer.start()
+    sub_timer.start()
     run_program("asyrmo")
-    _sub_timer.stop()
+    sub_timer.stop()
 
-    print("***** Finished running asyrmo in time = %.2f seconds. *****" % _sub_timer.get_lapsed_time())
+    print("***** Finished running asyrmo in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
     #%%
 
@@ -443,8 +438,8 @@ def main():
 
     for i in data_points["file_tags"]:
 
-        output_file_path = os.path.join(folder_path, "Outputs", f"ASY_{i}.OUT")
-        _lines = read_file(output_file_path)
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"ASY_{i}.OUT")
+        _lines = fh.read_file(output_file_path)
         
         if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
             raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
@@ -466,14 +461,14 @@ def main():
         inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
         inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
 
-        file_path = os.path.join(folder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
-        write_file(file_path, st.get_template("probamo") % inputs)
+        file_path = os.path.join(data_subfolder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
+        fh.write_file(file_path, st.get_template("probamo") % inputs)
 
-    _sub_timer.start()
+    sub_timer.start()
     run_program("probamo")
-    _sub_timer.stop()
+    sub_timer.stop()
 
-    print("***** Finished running probamo in time = %.2f seconds. *****\n" % _sub_timer.get_lapsed_time())
+    print("***** Finished running probamo in time = %.2f seconds. *****\n" % sub_timer.get_lapsed_time())
 
 
     #%%
@@ -510,8 +505,8 @@ def main():
 
     for i in range(inputs["num"]):
         
-        output_file_path = os.path.join(folder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
-        _lines = read_file(output_file_path)
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
+        _lines = fh.read_file(output_file_path)
 
         _file_data = {}
         for _line in _lines:
@@ -681,7 +676,7 @@ def main():
     # inputs["mark_spin"] = 0
 
 
-    _sub_timer.start()
+    sub_timer.start()
 
     data_points["agreed"] = [0]*len(data_points["eps"])
     num_comparisons = 0 
@@ -800,11 +795,11 @@ def main():
     anyl.report_mean(output_data["gs_quad_moments"], inputs["detailed_print"])
 
     # note how long it took
-    _sub_timer.stop()
-    _timer.stop()
+    sub_timer.stop()
+    timer.stop()
     print("\n****************************************************************************************")
-    print("finished plotting graphs in time = %.2f seconds" % (_sub_timer.get_lapsed_time()))
-    print("total runtime = %.2f seconds" % (_timer.get_lapsed_time()))
+    print("finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
+    print("total runtime = %.2f seconds" % (timer.get_lapsed_time()))
     print("****************************************************************************************\n")
 
 
