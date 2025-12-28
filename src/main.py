@@ -97,94 +97,28 @@ def main():
 
     - Create timers (one to time the whole program, and one to time small sections).
     - Read command line arguments and locate/create data subfolder.
-    - Locate/create config file in data subfolder.
     
     """
 
-    timer = Timer()
-    sub_timer = Timer()
+    timer, sub_timer = Timer(), Timer()
     timer.start()
 
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
-    config_path = fh.locate_config(data_subfolder_path)
     
     
     #%%
     ''' 2. READ CONFIG FILE -----------------------------------------------------------------------
 
-    - Ignores empty lines, and lines beginning with * (to mark a comment).
-    - Checks that the format of each line is correct (var_name value),
-    else raises a ValueError.
-    
-    - Saves deformation input (converting any range inputs into arrays). 
-    - Raises a RuntimeError if: 
-        deformation is input more than once, 
-        or a range of E2PLUS values are input with a non-constant deformation,
-        or both eps and gamma are input as a linear range (rather than a mesh).
-    - Raises a ValueError if any eps = 0.0, because this is not allowed in asyrmo.
-
-    - Converts all other inputs to the relevant type.
-    - All inputs are saved as name-value pairs in a dictionary.
+    - Create empty dictionaries for storing input settings and data.
+    - Read the config file and save settings in dictionaries.
+    - Set figure resolution.
+    - Create any missing directory subfolders.
 
     ''' 
 
-    _lines = fh.read_file(config_path)
-
-    inputs = {}                                                                     
-    data_points = {}
-    experimental = {}
-    plot_props = {}
-
-    for i in range(len(_lines)):                       
-        
-        # remove comments and blank lines, and check formatting  
-        _line = _lines[i].strip()
-                                    
-        if _line == "" : continue                  
-        if _line[0] == "*" : continue              
-        
-        _split_string = _line.split(" ")  # split into name and value
-        _split_string = rc.remove_inline_comments(_split_string, i)
-
-        rc.check_line_format(_split_string, _line, i)         
-        
-        # check what kind of input is stored in this line, and save it accordinly
-        if _split_string[0] in ["eps", "gamma", "single","mesh"]:
-            inputs, data_points = rc.save_deformation_input(inputs, data_points, _split_string)
-
-        elif _split_string[0]=="e2plus":
-            inputs, data_points = rc.save_e2plus_input(inputs, data_points, _split_string)
-                
-        elif _split_string[0] == "gs_spin":
-            experimental = rc.save_gs_spin_input(experimental, _split_string)
-
-        elif _split_string[0][:3]=="jp_":
-            experimental[_split_string[0]] = [float(n) for n in _split_string[1].split(',')]
-            
-        elif _split_string[0][:5]=="plot_":
-            plot_props[_split_string[0][5:]] = bool(int(_split_string[1]))
-        
-        elif _split_string[0][:6]=="engap_":
-            experimental[_split_string[0]] = float(_split_string[1])
-            
-        else:
-            inputs, experimental = rc.validate_input(inputs, experimental, _split_string)
-
-        # sometimes helpful when debugging (change False to True, to check that config file is reading as expected) 
-        # print(_split_string[0] + ": \t" + _split_string[1])
-
-
-    # check that we have all the inputs we need
-    for i in st.get_required_inputs():
-        
-        if not i in inputs and not i in experimental and not i in data_points:
-            raise RuntimeError("missing input: " + i)
-
-    # check that there are no eps=0 values to test - that would cause the code to hang.
-    if 0.0 in data_points["eps"]:
-        raise ValueError("Cannot test at eps=0.0.")
-        
-
+    inputs, data_points, experimental, plot_props = {}, {}, {}, {}
+    rc.read_config(data_subfolder_path, inputs, data_points, experimental, plot_props)
+    
     plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
     fh.setup_directory(data_subfolder_path, inputs["num_cores"], inputs["OS"])
 
@@ -352,10 +286,10 @@ def main():
     for i in range(inputs["num"]):
 
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
-        _lines = fh.read_file(output_file_path)
+        lines = fh.read_file(output_file_path)
         
-        inputs["efac"] = rgam.get_efac(_lines)
-        _fermi_level_line = rgam.get_sp_level(_lines, inputs["fermi_level"], '0')
+        inputs["efac"] = rgam.get_efac(lines)
+        _fermi_level_line = rgam.get_sp_level(lines, inputs["fermi_level"], '0')
         _f_parity, _f_energy_hw, _f_index = rgam.get_info(_fermi_level_line)
         
         output_data["fermi_parities"][i] = _f_parity                             
@@ -365,7 +299,7 @@ def main():
         
         # dynamically finds the orbitals nearest to the fermi level in energy:
         data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(_f_index, inputs["nu"], 
-                                    inputs["par"], _f_energy_hw, _f_parity, _lines))
+                                    inputs["par"], _f_energy_hw, _f_parity, lines))
 
 
     #%% 
@@ -439,12 +373,12 @@ def main():
     for i in data_points["file_tags"]:
 
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"ASY_{i}.OUT")
-        _lines = fh.read_file(output_file_path)
+        lines = fh.read_file(output_file_path)
         
-        if not "PARTICLE-ROTOR  MODEL" in _lines[0]: # then something has gone wrong
-            raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + _lines[0] )
+        if not "PARTICLE-ROTOR  MODEL" in lines[0]: # then something has gone wrong
+            raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + lines[0] )
             
-        output_data["delta"].append(rasy.get_delta(_lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
+        output_data["delta"].append(rasy.get_delta(lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
             
 
     #%%
@@ -506,10 +440,10 @@ def main():
     for i in range(inputs["num"]):
         
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
-        _lines = fh.read_file(output_file_path)
+        lines = fh.read_file(output_file_path)
 
         _file_data = {}
-        for _line in _lines:
+        for _line in lines:
             
             _line_data = rprob.read_data(_line)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
             if not(_line_data):

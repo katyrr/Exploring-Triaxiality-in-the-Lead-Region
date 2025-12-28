@@ -8,13 +8,172 @@ Created on Sun Dec 21 11:43 2025
 Functions for reading config file and processing contents.
 
 """
-import os
-import shutil
+
 import numpy as np
-
 import functions.structs as st
-
+import functions.file_handling as fh
 from functions.spin_processing import spin_string_to_float
+
+
+def read_config(data_subfolder_path, inputs, data_points, experimental, plot_props):
+    '''
+    Locate and read the config file (if not found, create a new one from template).
+    Read each line, and save inputs (correctly type-cast) as name-value pairs in dictionaries.
+    Inputs are checked for validity and any missing required inputs.
+    
+    Parameters
+    ----------
+    data_subfolder_path: string
+        The directory path to the subfolder where the calculations will be done.
+
+    inputs : dictionary
+        A dictionary that contains name-value pairs for ptrm inputs in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    plot_props: dictionary
+        A dictionary containing settings for graph plotting, input via config. 
+
+    Returns
+    -------
+    None (dictionaries are mutated in place)
+    '''
+    
+
+    config_path = fh.locate_config(data_subfolder_path)
+    config_lines = fh.read_file(config_path)
+
+    process_lines(config_lines, inputs, data_points, experimental, plot_props)
+    validate_inputs(inputs, data_points, experimental)
+
+
+def process_lines(lines, inputs, data_points, experimental, plot_props):
+    '''
+    - Ignores empty lines, and lines beginning with * (to mark a comment).
+    - Checks that the format of each line is correct (var_name value),
+    else raises a ValueError.
+    
+    - Saves deformation input (converting any range inputs into arrays). 
+    - Raises a RuntimeError if: 
+        deformation is input more than once, 
+        or a range of E2PLUS values are input with a non-constant deformation,
+        or both eps and gamma are input as a linear range (rather than a mesh).
+    - Raises a ValueError if any eps = 0.0, because this is not allowed in asyrmo.
+
+    - Converts all other inputs to the relevant type.
+    - All inputs are saved as name-value pairs in a dictionary.
+
+    Parameters
+    ----------
+    lines: list of strings
+        The lines read from the config file.
+
+    inputs : dictionary
+        A dictionary that contains name-value pairs for ptrm inputs in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    plot_props: dictionary
+        A dictionary containing settings for graph plotting, input via config. 
+
+    Returns
+    -------
+    None (dictionaries are mutated in place)
+    
+    '''
+
+    for i in range(len(lines)):                       
+        
+        # remove/ignore comments and blank lines, and check formatting  
+        line = lines[i].strip()
+                                    
+        if line == "" : continue                  
+        if line[0] == "*" : continue              
+        
+        split_string = line.split(" ")  # split into name and value
+        split_string = remove_inline_comments(split_string, i)
+
+        check_line_format(split_string, line, i) 
+
+        name = split_string[0]       
+        
+        match name:
+            case "eps"|"gamma"|"single"|"mesh": 
+                save_deformation_input(inputs, data_points, split_string)
+            case "e2plus": 
+                save_e2plus_input(inputs, data_points, split_string)
+            case "gs_spin":
+                save_gs_spin_input(experimental, split_string)
+            case name if name[:3]=="jp_": 
+                experimental[name] = [float(n) for n in split_string[1].split(',')]
+            case name if name[:5]=="plot_":
+                plot_props[name[5:]] = bool(int(split_string[1]))
+            case name if name[:6]=="engap_":
+                experimental[name] = float(split_string[1]) 
+            case _:
+                save_typecast_input(inputs, experimental, split_string)
+
+        # print(f"{name}: \t {split_string[1:]}")
+
+
+def validate_inputs(inputs, data_points, experimental):
+    '''
+    Some inputs can only take certain values (e.g. OS = "MacOS" or "64bit").
+    This function checks that those inputs have a valid value.
+    It also checks that all required settings have been input.
+
+    Parameters
+    ----------
+    inputs : dictionary
+        A dictionary that contains name-value pairs for every input in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    experimental : dictionary 
+        A dictionary containing experimental data input via config.
+
+    Raises
+    ------
+    ValueError
+        Occurs if the input is not one of the valid values.
+    
+    RuntimeError
+        Occurs if a required input is missing.
+
+    Returns
+    -------
+    None
+
+    '''
+    
+    for i in st.get_required_inputs():
+        if not i in inputs and not i in experimental and not i in data_points:
+            raise RuntimeError(f"missing input: {i}")
+
+    if 0.0 in data_points["eps"]:
+        raise ValueError("Cannot test at eps=0.0.")
+    
+    restricted_inputs = st.get_restricted_inputs()
+    all_inputs = {**inputs, **experimental}
+    for name in all_inputs:
+        if name in restricted_inputs:
+            allowed_values = restricted_inputs[name]
+
+            if not all_inputs[name] in allowed_values:
+                raise ValueError(f"Invalid input: \t {name} = {all_inputs[name]}.\nPlease choose from allowed values: {str(allowed_values)}")
+            
+
+
+
 
 def remove_inline_comments(split_string, line_index):
     """
@@ -96,7 +255,8 @@ def check_line_format(split_string, line, l):
     elif len(split_string)<expected_num_words :
         raise ValueError("Line "+str(l+1)+ " is too short:" + line)
             
-    
+
+
 def range_to_list(range_string):
     """
     A function to convert a string input range-and-step to a list of explicit float values.
@@ -193,8 +353,8 @@ def arrange_data_line(split_string):
 
     """
     
-    eps_to_test, eps_step = range_to_list(split_string[1])
-    gamma_to_test, gamma_step = range_to_list(split_string[2])
+    eps_to_test, _ = range_to_list(split_string[1])
+    gamma_to_test, _ = range_to_list(split_string[2])
         
     if (len(eps_to_test) > 1) and (len(gamma_to_test) > 1): 
         raise RuntimeError("Cannot vary both eps and gamma linearly.")
@@ -415,10 +575,9 @@ def save_gs_spin_input(experimental, split_string):
     return experimental
 
 
-def validate_input(inputs, experimental, split_string):
+def save_typecast_input(inputs, experimental, split_string):
     '''
-    Some inputs can only take certain values (e.g. OS = "MacOS" or "64bit").
-    This function checks that those inputs have a valid value.
+    Converts input settings to the correct type before saving them in the relevant dictionary.
 
     Parameters
     ----------
@@ -434,54 +593,31 @@ def validate_input(inputs, experimental, split_string):
     Raises
     ------
     ValueError
-        Occurs if the input is not one of the valid values.
+        Occurs if the type of the input has not been specified.
 
     Returns
     -------
-    inputs : dictionary
-        A dictionary that contains name-value pairs for every input in the config file.
-        
-    experimental : dictionary 
-        A dictionary containing experimental data input via config.
+    None
 
     '''
-    
-    if split_string[0] in st.get_variable_list("int"):
-        
-        split_string[1] = int(split_string[1])
-        dictionary = inputs
-        
-    elif (split_string[0] in st.get_variable_list("experimental_float")
-          or split_string[0][:3] in st.get_variable_list("experimental_float")):
-        
-        split_string[1] = float(split_string[1])
-        dictionary = experimental
-        
-    elif split_string[0] in st.get_variable_list("settings_float"):
-        
-        split_string[1] = float(split_string[1])
-        dictionary = inputs
-                                  
-    elif split_string[0] in st.get_variable_list("bool"):  
-                                  
-        split_string[1] = bool(int(split_string[1]))
-        dictionary = inputs
-    
-    elif split_string[0] in st.get_variable_list("string"): 
-        
-        dictionary = inputs                                  
-        
-    else: raise ValueError("unrecognised input: " + split_string[0])
 
-    restricted_inputs = st.get_restricted_inputs()
+    name = split_string[0]
     
-    if split_string[0] in restricted_inputs:
-        allowed_values = restricted_inputs[split_string[0]]
+    match name:
+        case name if name in st.get_variable_list("int"):
+            inputs[name] = int(split_string[1])
+        case name if name in st.get_variable_list("experimental_float"):
+            experimental[name] = float(split_string[1])
+        case name if name[:3] in st.get_variable_list("experimental_float"):
+            experimental[name] = float(split_string[1])
+        case name if name in st.get_variable_list("settings_float"):
+            inputs[name] = float(split_string[1])
+        case name if name in st.get_variable_list("bool"):  
+            inputs[name] = bool(int(split_string[1]))
+        case name if name in st.get_variable_list("string"): 
+            inputs[name] = split_string[1]
+        case _ : raise ValueError(f"unrecognised input: {name}")
 
-        if not split_string[1] in allowed_values:
-            raise ValueError("Invalid input: \t" + split_string[0] + " = " + split_string[1] + ".\nPlease choose from allowed values: " + str(allowed_values))
-            
-    dictionary[split_string[0]] = split_string[1]
     
     
-    return inputs, experimental
+    
