@@ -25,7 +25,7 @@ figure_res 150 *** dpi
 
 
 *** set how much detail to print (0 for only the essentials, or 1 for more detail)
-detailed_print 0
+print_details 0
 
 
 ************** experimental results *******************************************

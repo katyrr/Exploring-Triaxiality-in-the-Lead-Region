@@ -116,11 +116,11 @@ def main():
 
     ''' 
 
-    inputs, data_points, experimental, plot_props = {}, {}, {}, {}
-    rc.read_config(data_subfolder_path, inputs, data_points, experimental, plot_props)
+    code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
+    rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     
-    plt.rcParams['figure.dpi'] = inputs["figure_res"]  # set figure resolution
-    fh.setup_directory(data_subfolder_path, inputs["num_cores"], inputs["OS"])
+    plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
+    fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
 
     #%%
     ''' 3. PROCESS INPUTS -------------------------------------------------------------------------
@@ -142,31 +142,31 @@ def main():
 
 
     #!!! obsolete:
-    if "x1_spin" in inputs:
-        experimental["x1_spin_float"] = spin_string_to_float(inputs["x1_spin"])
-    if "x2_spin" in inputs:
-        experimental["x2_spin_float"] = spin_string_to_float(inputs["x2_spin"])
-    if "x3_spin" in inputs:
-        experimental["x3_spin_float"] = spin_string_to_float(inputs["x3_spin"])
+    if "x1_spin" in ptrm_inputs:
+        experimental_data["x1_spin_float"] = spin_string_to_float(ptrm_inputs["x1_spin"])
+    if "x2_spin" in ptrm_inputs:
+        experimental_data["x2_spin_float"] = spin_string_to_float(ptrm_inputs["x2_spin"])
+    if "x3_spin" in ptrm_inputs:
+        experimental_data["x3_spin_float"] = spin_string_to_float(ptrm_inputs["x3_spin"])
 
 
     # convert the nantj, noutj, ipout inputs to the correct format
-    inputs["nantj"] = inputs["nantj"].replace(",", " ")
-    inputs["noutj"] = inputs["noutj"].replace(",", " ")
-    inputs["ipout"] = inputs["ipout"].replace(",", " ")
+    ptrm_inputs["nantj"] = ptrm_inputs["nantj"].replace(",", " ")
+    ptrm_inputs["noutj"] = ptrm_inputs["noutj"].replace(",", " ")
+    ptrm_inputs["ipout"] = ptrm_inputs["ipout"].replace(",", " ")
 
     # determine nneupr and calculate fermi level
-    inputs["N"] = inputs["A"]-inputs["Z"]
+    ptrm_inputs["N"] = ptrm_inputs["A"]-ptrm_inputs["Z"]
 
-    if inputs["A"]%2 == 0:
+    if ptrm_inputs["A"]%2 == 0:
         raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
-    elif inputs["Z"]%2 == 0: 
-        inputs["nneupr"] = "-1" 
-        inputs["fermi_level"] = math.ceil(inputs["N"]/2)
+    elif ptrm_inputs["Z"]%2 == 0: 
+        ptrm_inputs["nneupr"] = "-1" 
+        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
         print("Calculating for odd NEUTRONS...")                 
-    elif inputs["N"]%2 == 0:
-        inputs["nneupr"] = "1"
-        inputs["fermi_level"] = math.ceil(inputs["Z"]/2)
+    elif ptrm_inputs["N"]%2 == 0:
+        ptrm_inputs["nneupr"] = "1"
+        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
         print("Calculating for odd PROTONS...")
     else:
         raise RuntimeError("Check inputs of A and Z.")
@@ -174,7 +174,7 @@ def main():
 
     # Generate a string containing the parity to calculate, the number of orbitals, 
     #   and their indices, in the correct format for input to gampn.
-    inputs["current_orbitals"] = ptrm.write_orbitals(inputs["fermi_level"]//2, inputs["num_orbs"], inputs["par"])
+    ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(ptrm_inputs["fermi_level"]//2, ptrm_inputs["num_orbs"], ptrm_inputs["par"])
 
     # (useful for debugging) hard coded versions of the above:
     #inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
@@ -191,29 +191,29 @@ def main():
 
     '''
 
-    inputs["num"] = len(data_points["eps"])
-    print("Number of data points = ", inputs["num"])
+    ptrm_inputs["num"] = len(data_points["eps"])
+    print("Number of data points = ", ptrm_inputs["num"])
 
     data_points["file_tags"] = []
 
-    for i in range(inputs["num"]):
+    for i in range(ptrm_inputs["num"]):
         
         if data_points["e2plus"][i] == 0:
             # if the value of e2plus has been input as 0, calculate dynamically
-            data_points["e2plus"][i] = ptrm.est_e2plus(data_points["eps"][i], inputs["A"])
+            data_points["e2plus"][i] = ptrm.est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
         
-        inputs, data_points = ptrm.set_current(inputs, data_points, i)
+        ptrm_inputs, data_points = ptrm.set_current(ptrm_inputs, data_points, i)
 
-        _file_tag = "e%.3f_g%.1f_p%.3f_%s" % (inputs["current_eps"],  inputs["current_gamma"],
-                                            inputs["current_e2plus"], inputs["nucleus"])
+        _file_tag = "e%.3f_g%.1f_p%.3f_%s" % (ptrm_inputs["current_eps"],  ptrm_inputs["current_gamma"],
+                                            ptrm_inputs["current_e2plus"], ptrm_inputs["nucleus"])
         data_points["file_tags"].append(_file_tag)
         
-        inputs["current_f002"] = "f002_"+_file_tag+".dat"
-        inputs["current_f016"] = "f016_"+_file_tag+".dat"
-        inputs["current_f017"] = "f017_"+_file_tag+".dat"
+        ptrm_inputs["current_f002"] = "f002_"+_file_tag+".dat"
+        ptrm_inputs["current_f016"] = "f016_"+_file_tag+".dat"
+        ptrm_inputs["current_f017"] = "f017_"+_file_tag+".dat"
         
         file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{_file_tag}.DAT")
-        fh.write_file(file_path, st.get_template("gampn") % inputs)
+        fh.write_file(file_path, st.get_template("gampn") % ptrm_inputs)
   
         
 
@@ -237,7 +237,7 @@ def main():
 
     batch_settings = {}
 
-    batch_settings["num_batches"] = inputs["num_cores"] # = number of cores for maximum efficiency with large data sets
+    batch_settings["num_batches"] = code_settings["num_cores"] # = number of cores for maximum efficiency with large data sets
     batch_settings["num_per_batch"] = math.ceil(len(data_points["file_tags"]) / batch_settings["num_batches"])
 
     # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worthwhile.
@@ -253,7 +253,7 @@ def main():
 
 
     # configure a batch script writer, and run the batches.
-    run_program = ptrm.configure_script_writer(data_subfolder_path, inputs["OS"], batch_settings, data_points["file_tags"])
+    run_program = ptrm.configure_script_writer(data_subfolder_path, code_settings["OS"], batch_settings, data_points["file_tags"])
     
     print("Starting gampn...")
     sub_timer.start()
@@ -279,27 +279,27 @@ def main():
     '''
 
     # set up arrays to store data 
-    output_data = {"fermi_parities": [0]*inputs["num"], "fermi_energies_hw": [0]*inputs["num"], 
-                "fermi_energies_mev": [0]*inputs["num"], "fermi_indices": [0]*inputs["num"]}
+    output_data = {"fermi_parities": [0]*ptrm_inputs["num"], "fermi_energies_hw": [0]*ptrm_inputs["num"], 
+                "fermi_energies_mev": [0]*ptrm_inputs["num"], "fermi_indices": [0]*ptrm_inputs["num"]}
     data_points["asyrmo_orbitals"] = []
 
-    for i in range(inputs["num"]):
+    for i in range(ptrm_inputs["num"]):
 
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
         lines = fh.read_file(output_file_path)
         
-        inputs["efac"] = rgam.get_efac(lines)
-        _fermi_level_line = rgam.get_sp_level(lines, inputs["fermi_level"], '0')
+        ptrm_inputs["efac"] = rgam.get_efac(lines)
+        _fermi_level_line = rgam.get_sp_level(lines, ptrm_inputs["fermi_level"], '0')
         _f_parity, _f_energy_hw, _f_index = rgam.get_info(_fermi_level_line)
         
         output_data["fermi_parities"][i] = _f_parity                             
         output_data["fermi_energies_hw"][i] = _f_energy_hw
-        output_data["fermi_energies_mev"][i] = _f_energy_hw * inputs["efac"]
+        output_data["fermi_energies_mev"][i] = _f_energy_hw * ptrm_inputs["efac"]
         output_data["fermi_indices"][i] = _f_index
         
         # dynamically finds the orbitals nearest to the fermi level in energy:
-        data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(_f_index, inputs["nu"], 
-                                    inputs["par"], _f_energy_hw, _f_parity, lines))
+        data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(_f_index, ptrm_inputs["nu"], 
+                                    ptrm_inputs["par"], _f_energy_hw, _f_parity, lines))
 
 
     #%% 
@@ -317,11 +317,11 @@ def main():
 
     for i in range(len(data_points["file_tags"])):
         
-        inputs, data_points = ptrm.set_current(inputs, data_points, i, file_tag=data_points["file_tags"][i])
-        inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
+        ptrm_inputs, data_points = ptrm.set_current(ptrm_inputs, data_points, i, file_tag=data_points["file_tags"][i])
+        ptrm_inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
     
         file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("gampn") % inputs)
+        fh.write_file(file_path, st.get_template("gampn") % ptrm_inputs)
     
     sub_timer.start()
     run_program("gampn")
@@ -340,17 +340,17 @@ def main():
 
     '''
 
-    for i in range(inputs["num"]):
+    for i in range(ptrm_inputs["num"]):
             
-        inputs["current_e2plus"] = data_points["e2plus"][i]
-        inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
+        ptrm_inputs["current_e2plus"] = data_points["e2plus"][i]
+        ptrm_inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
         
-        inputs["current_f016"] = "f016_"+data_points["file_tags"][i]+".dat"
-        inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
-        inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
+        ptrm_inputs["current_f016"] = "f016_"+data_points["file_tags"][i]+".dat"
+        ptrm_inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
+        ptrm_inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
         
         file_path = os.path.join(data_subfolder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("asyrmo") % inputs)
+        fh.write_file(file_path, st.get_template("asyrmo") % ptrm_inputs)
 
     sub_timer.start()
     run_program("asyrmo")
@@ -389,14 +389,14 @@ def main():
 
     '''
 
-    for i in range(inputs["num"]):
+    for i in range(ptrm_inputs["num"]):
 
-        inputs["current_e2plus"] = data_points["e2plus"][i]
-        inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
-        inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
+        ptrm_inputs["current_e2plus"] = data_points["e2plus"][i]
+        ptrm_inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
+        ptrm_inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
 
         file_path = os.path.join(data_subfolder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("probamo") % inputs)
+        fh.write_file(file_path, st.get_template("probamo") % ptrm_inputs)
 
     sub_timer.start()
     run_program("probamo")
@@ -437,7 +437,7 @@ def main():
 
     data_points["property_data"] = []
 
-    for i in range(inputs["num"]):
+    for i in range(ptrm_inputs["num"]):
         
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
         lines = fh.read_file(output_file_path)
@@ -452,21 +452,21 @@ def main():
             # sort line_data into file_data according to its spin
             _file_data = rprob.sort_by_spin(_line_data, _file_data)
             # additionally save data that corresponds to the expected experimental ground state
-            _file_data = rprob.sort_by_expectation(_line_data, _file_data, inputs)
+            _file_data = rprob.sort_by_expectation(_line_data, _file_data, ptrm_inputs)
         
-        _file_data = rprob.missing_data(_file_data, inputs)
+        _file_data = rprob.missing_data(_file_data, ptrm_inputs)
         data_points["property_data"].append(_file_data)
 
-    output_data = _output_data | rprob.restructure_data(data_points["property_data"], inputs["ispin"], inputs["detailed_print"])
+    output_data = _output_data | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
 
     # get energy gap between third 9/2 and first 13/2 states
-    for i in experimental:
+    for i in experimental_data:
         if not "engap_" in i:
             continue
         
         _spin1, _idx1, _spin2, _idx2 = rprob.parse_engap_input(i)
         
-        output_data[i] = rprob.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental[i])
+        output_data[i] = rprob.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental_data[i])
 
     # output_data["engap_9.3_13.1"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
 
@@ -517,11 +517,11 @@ def main():
         # calculate contour levels, colour bar ticks and labels, 
         # and assign experimental values and error tolerance if available.
         
-        output_data[i] = gr.calculate_format_data(output_data[i], i, experimental)
+        output_data[i] = gr.calculate_format_data(output_data[i], i, experimental_data)
         
 
     output_data["all_energies"] = rprob.collate_energy_data(output_data, len(data_points["file_tags"]), 
-                                                        experimental["gs_spin_string"], experimental)
+                                                        experimental_data["gs_spin_string"], experimental_data)
 
     # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
     output_data["shifted_energies"] = rprob.shift_energy_levels(output_data["all_energies"]) 
@@ -561,16 +561,16 @@ def main():
 
 
     #!!! set graph subtitle:
-    if inputs["include_subtitle"]:
-        subtitle = r'$E(2^+)$ = ' + str(inputs["current_e2plus"]) + '; gsfac = ' + str(inputs["gsfac"])
+    if code_settings["include_subtitle"]:
+        subtitle = r'$E(2^+)$ = ' + str(ptrm_inputs["current_e2plus"]) + '; gsfac = ' + str(ptrm_inputs["gsfac"])
     else:
         subtitle = ''
         
         
     # set which graphs to plot:
-    for i in plot_props:
+    for i in graphs_to_plot:
         if i in output_data:
-            output_data[i].plot = plot_props[i]
+            output_data[i].plot = graphs_to_plot[i]
         else:
             print("property not recorded, check that it is included in experimental data inputs:\n\t", i)
 
@@ -604,10 +604,10 @@ def main():
     # output_data["gap_9_13"].plot = 0
 
     # override settings
-    # inputs["mark_exp"] = 1
-    # inputs["mark_exp_tol"] = 0
-    # inputs["mark_points"] = 1
-    # inputs["mark_spin"] = 0
+    # code_settings["mark_exp"] = 1
+    # code_settings["mark_exp_tol"] = 0
+    # code_settings["mark_points"] = 1
+    # code_settings["mark_spin"] = 0
 
 
     sub_timer.start()
@@ -623,39 +623,39 @@ def main():
         if not(prop.plot):
             continue
         
-        inputs["current_graph"] = prop.title # makes several later inputs more efficient
-        print("plotting graph: %(current_graph)s" % inputs) 
+        ptrm_inputs["current_graph"] = prop.title # makes several later inputs more efficient
+        print("plotting graph: %(current_graph)s" % ptrm_inputs) 
         
-        if inputs["deformation_input"] == "mesh":  
+        if ptrm_inputs["deformation_input"] == "mesh":  
             
             _fig, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
             cax, cbar = gr.draw_contour_plot(_ax, prop, data_points)
             
             legend_handles = []
             
-            if inputs["mark_spin"]:
+            if code_settings["mark_spin"]:
                 
-                legend_handles = gr.mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, _ax)
+                legend_handles = gr.mark_spin(ptrm_inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, _ax)
                 
             # plot the data point markers, with comparison to experiment if possible
                 
-            legend_handles = gr.plot_points(data_points, prop, legend_handles, cbar, inputs)
-            if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]: 
+            legend_handles = gr.plot_points(data_points, prop, legend_handles, cbar, code_settings)
+            if np.isfinite(prop.experimental_data).all() and ptrm_inputs["mark_exp"]: 
                 num_comparisons += 1
             
             
-            gr.format_fig('polar', _ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
+            gr.format_fig('polar', _ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
             
             plt.show()
             
             
         
-        elif (inputs["deformation_input"] ==  "gamma" 
-            or inputs["deformation_input"] == "eps"
+        elif (ptrm_inputs["deformation_input"] ==  "gamma" 
+            or ptrm_inputs["deformation_input"] == "eps"
             or len(data_points["e2plus"]) > 1):
             
             # set which paramters are varied and which are constant
-            var_sym, var, fix_sym, fix = gr.assign_parameters(inputs, data_points)
+            var_sym, var, fix_sym, fix = gr.assign_parameters(ptrm_inputs, data_points)
             
             _fig, _ax = plt.subplots() 
             
@@ -665,19 +665,19 @@ def main():
             
             # if experimental data is available, plot it in red for easy comparison
             if np.isfinite(prop.experimental_data).all() and not prop.num == "all": 
-                legend_handles = gr.plot_exp_line(prop, inputs, var, legend_handles)
+                legend_handles = gr.plot_exp_line(prop, code_settings, var, legend_handles)
 
                 
             # mark the range in which the correct ground state spin was calculated
-            if inputs["mark_spin"]==1:
+            if code_settings["mark_spin"]==1:
                 
-                correct_spin_range = gr.find_correct_spin(output_data["gs_spin_floats"].data, experimental["gs_spin_float"])
+                correct_spin_range = gr.find_correct_spin(output_data["gs_spin_floats"].data, experimental_data["gs_spin_float"])
                 if len(correct_spin_range) > 0:
-                    spin = gr.plot_correct_spin(correct_spin_range, var, inputs["step"], prop)
+                    spin = gr.plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
                     legend_handles.append(spin)
                         
             gr.format_fig('linear', _ax, list(reversed(legend_handles)), 
-                        '%(current_graph)s in %(nucleus)s' % inputs, subtitle, 
+                        '%(current_graph)s in %(nucleus)s' % ptrm_inputs, subtitle, 
                         varied=var, x_label=var_sym, y_label=prop.axis_label, 
                         legend_title=legend_title)
             
@@ -703,7 +703,7 @@ def main():
 
     '''
         
-    gr.check_agreement(inputs["detailed_print"], data_points, num_comparisons)
+    gr.check_agreement(code_settings["print_details"], data_points, num_comparisons)
 
     agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
     agreement.contour_levels = np.arange(0, num_comparisons+2, dtype=int) #fn.calc_contour_levels(agreement.data)
@@ -713,20 +713,20 @@ def main():
     agreement.error_tolerance = np.NaN
 
     agreement.plot = 0
-    if inputs["deformation_input"] == "mesh" and agreement.plot:  
-        gr.plot_agreement(inputs, agreement, data_points, output_data, subtitle)
+    if ptrm_inputs["deformation_input"] == "mesh" and agreement.plot:  
+        gr.plot_agreement(code_settings, agreement, data_points, output_data, subtitle)
         
     print("\n******** mean and standard error in the mean ******")
 
-    anyl.report_mean(output_data["spin_1/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_3/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_5/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_7/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_9/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_11/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["spin_13/2_energies"], inputs["detailed_print"])
-    anyl.report_mean(output_data["gs_mag_moments"], inputs["detailed_print"])
-    anyl.report_mean(output_data["gs_quad_moments"], inputs["detailed_print"])
+    anyl.report_mean(output_data["spin_1/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_3/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_5/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_7/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_9/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_11/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["spin_13/2_energies"], code_settings["print_details"])
+    anyl.report_mean(output_data["gs_mag_moments"], code_settings["print_details"])
+    anyl.report_mean(output_data["gs_quad_moments"], code_settings["print_details"])
 
     # note how long it took
     sub_timer.stop()

@@ -15,7 +15,7 @@ import functions.file_handling as fh
 from functions.spin_processing import spin_string_to_float
 
 
-def read_config(data_subfolder_path, inputs, data_points, experimental, plot_props):
+def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
     '''
     Locate and read the config file (if not found, create a new one from template).
     Read each line, and save inputs (correctly type-cast) as name-value pairs in dictionaries.
@@ -24,34 +24,37 @@ def read_config(data_subfolder_path, inputs, data_points, experimental, plot_pro
     Parameters
     ----------
     data_subfolder_path: string
-        The directory path to the subfolder where the calculations will be done.
+        The directory path to the subfolder where the config file is 
+        located and calculations will be done.
 
-    inputs : dictionary
+    code_settings : dictionary
+        A dictionary containing settings for automating the running of the codes.
+
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for ptrm inputs in the config file.
 
     data_points : dictionary
         A dictionary that contains lists of the variable inputs (deformations, etc)
         
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
 
-    plot_props: dictionary
+    graphs_to_plot: dictionary
         A dictionary containing settings for graph plotting, input via config. 
 
     Returns
     -------
-    None (dictionaries are mutated in place)
+    None (dictionaries are edited in-place)
     '''
-    
 
     config_path = fh.locate_config(data_subfolder_path)
     config_lines = fh.read_file(config_path)
 
-    process_lines(config_lines, inputs, data_points, experimental, plot_props)
-    validate_inputs(inputs, data_points, experimental)
+    process_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
+    validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
 
 
-def process_lines(lines, inputs, data_points, experimental, plot_props):
+def process_lines(lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
     '''
     - Ignores empty lines, and lines beginning with * (to mark a comment).
     - Checks that the format of each line is correct (var_name value),
@@ -71,17 +74,20 @@ def process_lines(lines, inputs, data_points, experimental, plot_props):
     ----------
     lines: list of strings
         The lines read from the config file.
+    
+    code_settings : dictionary
+        A dictionary containing settings for automating the running of the codes.
 
-    inputs : dictionary
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for ptrm inputs in the config file.
 
     data_points : dictionary
         A dictionary that contains lists of the variable inputs (deformations, etc)
         
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
 
-    plot_props: dictionary
+    graphs_to_plot: dictionary
         A dictionary containing settings for graph plotting, input via config. 
 
     Returns
@@ -107,24 +113,24 @@ def process_lines(lines, inputs, data_points, experimental, plot_props):
         
         match name:
             case "eps"|"gamma"|"single"|"mesh": 
-                save_deformation_input(inputs, data_points, split_string)
+                save_deformation_input(ptrm_inputs, data_points, split_string)
             case "e2plus": 
-                save_e2plus_input(inputs, data_points, split_string)
+                save_e2plus_input(ptrm_inputs, data_points, split_string)
             case "gs_spin":
-                save_gs_spin_input(experimental, split_string)
+                save_gs_spin_input(experimental_data, split_string)
             case name if name[:3]=="jp_": 
-                experimental[name] = [float(n) for n in split_string[1].split(',')]
+                experimental_data[name] = [float(n) for n in split_string[1].split(',')]
             case name if name[:5]=="plot_":
-                plot_props[name[5:]] = bool(int(split_string[1]))
+                graphs_to_plot[name[5:]] = bool(int(split_string[1]))
             case name if name[:6]=="engap_":
-                experimental[name] = float(split_string[1]) 
+                experimental_data[name] = float(split_string[1]) 
             case _:
-                save_typecast_input(inputs, experimental, split_string)
+                save_typecast_input(code_settings, ptrm_inputs, experimental_data, graphs_to_plot, split_string)
 
         # print(f"{name}: \t {split_string[1:]}")
 
 
-def validate_inputs(inputs, data_points, experimental):
+def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
     '''
     Some inputs can only take certain values (e.g. OS = "MacOS" or "64bit").
     This function checks that those inputs have a valid value.
@@ -132,13 +138,13 @@ def validate_inputs(inputs, data_points, experimental):
 
     Parameters
     ----------
-    inputs : dictionary
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
 
     data_points : dictionary
         A dictionary that contains lists of the variable inputs (deformations, etc)
         
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
 
     Raises
@@ -154,16 +160,17 @@ def validate_inputs(inputs, data_points, experimental):
     None
 
     '''
-    
+    all_inputs = {**ptrm_inputs, **experimental_data, **code_settings, **graphs_to_plot, **data_points}
+
     for i in st.get_required_inputs():
-        if not i in inputs and not i in experimental and not i in data_points:
+        if not i in all_inputs:
             raise RuntimeError(f"missing input: {i}")
 
     if 0.0 in data_points["eps"]:
         raise ValueError("Cannot test at eps=0.0.")
     
     restricted_inputs = st.get_restricted_inputs()
-    all_inputs = {**inputs, **experimental}
+    
     for name in all_inputs:
         if name in restricted_inputs:
             allowed_values = restricted_inputs[name]
@@ -429,7 +436,7 @@ def arrange_mesh(split_string):
 
 
 
-def save_deformation_input(inputs, data_points, split_string):
+def save_deformation_input(ptrm_inputs, data_points, split_string):
     '''
     A function that reads the deformation input line of the config file, to determine
     what kind of deformation input has been made, and to arrange lists of eps and gamma
@@ -438,7 +445,7 @@ def save_deformation_input(inputs, data_points, split_string):
 
     Parameters
     ----------
-    inputs : dictionary
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
 
     data_points : dictionary
@@ -454,7 +461,7 @@ def save_deformation_input(inputs, data_points, split_string):
 
     Returns
     -------
-    inputs : dictionary
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
         Now contains a new entry.
         
@@ -463,10 +470,10 @@ def save_deformation_input(inputs, data_points, split_string):
         Now contains a new entry.
 
     '''
-    if ("deformation_input" in inputs):
-        raise RuntimeError("Deformation has already been input: " + inputs["deformation_input"])
+    if ("deformation_input" in ptrm_inputs):
+        raise RuntimeError("Deformation has already been input: " + ptrm_inputs["deformation_input"])
     
-    inputs["deformation_input"] = split_string[0]
+    ptrm_inputs["deformation_input"] = split_string[0]
     
     if split_string[0]=="mesh":
         data_points["eps"], data_points["gamma_degrees"] = arrange_mesh(split_string[1].split(","))
@@ -475,19 +482,19 @@ def save_deformation_input(inputs, data_points, split_string):
         data_points["eps"], data_points["gamma_degrees"] = arrange_data_line(split_string)
         
     if split_string[0]=="eps":
-        inputs["step"] = get_range_step(split_string[1])
+        ptrm_inputs["step"] = get_range_step(split_string[1])
     elif split_string[0] == "gamma":
-        inputs["step"] = get_range_step(split_string[2])
+        ptrm_inputs["step"] = get_range_step(split_string[2])
         
-    return inputs, data_points
+    return ptrm_inputs, data_points
 
-def save_e2plus_input(inputs, data_points, split_string):
+def save_e2plus_input(ptrm_inputs, data_points, split_string):
     '''
     
 
     Parameters
     ----------
-    inputs : dictionary
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
 
     data_points : dictionary
@@ -504,13 +511,7 @@ def save_e2plus_input(inputs, data_points, split_string):
 
     Returns
     -------
-    inputs : dictionary
-        A dictionary that contains name-value pairs for every input in the config file.
-        Now contains a new entry.
-        
-    data_points : dictionary
-        A dictionary that contains lists of the variable inputs (deformations, etc).
-        Now contains a new entry.
+    None (dictionaries are modified in-place)
 
     '''
     
@@ -521,33 +522,31 @@ def save_e2plus_input(inputs, data_points, split_string):
         # if e2plus has been input with value = "0", then it will later be 
         # calculated dynamically based on the deformation of each data point.
         data_points["e2plus"] = np.zeros((len(data_points["eps"]),), dtype=int)
+        return
     
-    else:
-        data_points["e2plus"], i = range_to_list(split_string[1])
-        
-        if (len(data_points["e2plus"])>1 
-            and not(inputs["deformation_input"] == "single")):
+    data_points["e2plus"], i = range_to_list(split_string[1])
+    
+    if (len(data_points["e2plus"])>1 
+        and not(ptrm_inputs["deformation_input"] == "single")):
+        raise RuntimeError("Testing a range of e2plus is only supported for a single deformation input.")
+    
+    elif (len(data_points["e2plus"])==1
+            and len(data_points["eps"])>1):
+        data_points["e2plus"] = [data_points["e2plus"][0]]*len(data_points["eps"])
             
-            raise RuntimeError("Testing a range of e2plus is only " +
-                           "supported for a single deformation input.")
-        elif (len(data_points["e2plus"])==1
-              and len(data_points["eps"])>1):
-            data_points["e2plus"] = [data_points["e2plus"][0]]*len(data_points["eps"])
-              
-        else: 
-            data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
-            data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
+    else: 
+        data_points["eps"] = data_points["eps"] * len(data_points["e2plus"])
+        data_points["gamma_degrees"] = data_points["gamma_degrees"] * len(data_points["e2plus"])
 
-    return inputs, data_points
 
-def save_gs_spin_input(experimental, split_string):
+def save_gs_spin_input(experimental_data, split_string):
     '''
     A function that reads the config line which states the experimental ground state spin.
     The formatting is checked, converted to float, and both string and float versions are recorded.
 
     Parameters
     ----------
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
         
     split_string : list of strings
@@ -560,32 +559,38 @@ def save_gs_spin_input(experimental, split_string):
 
     Returns
     -------
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
 
     '''
     
     try:
-        experimental["gs_spin_float"] = spin_string_to_float(split_string[1])
+        experimental_data["gs_spin_float"] = spin_string_to_float(split_string[1])
     except ValueError:
         raise ValueError("wrong format for input of gs_spin, please input in the format '1/2' or '13/2', etc.")
 
-    experimental["gs_spin_string"] = split_string[1]
+    experimental_data["gs_spin_string"] = split_string[1]
         
-    return experimental
+    return experimental_data
 
 
-def save_typecast_input(inputs, experimental, split_string):
+def save_typecast_input(code_settings, ptrm_inputs, experimental_data, graphs_to_plot, split_string):
     '''
     Converts input settings to the correct type before saving them in the relevant dictionary.
 
     Parameters
     ----------
-    inputs : dictionary
+    code_settings : dictionary
+        A dictionary containing settings for automating the running of the codes.
+
+    ptrm_inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
         
-    experimental : dictionary 
+    experimental_data : dictionary 
         A dictionary containing experimental data input via config.
+    
+    graphs_to_plot: dictionary
+        A dictionary containing settings for graph plotting, input via config. 
 
     split_string : list of strings
         A single line of text, split into words by delimeter " ".
@@ -604,18 +609,22 @@ def save_typecast_input(inputs, experimental, split_string):
     name = split_string[0]
     
     match name:
-        case name if name in st.get_variable_list("int"):
-            inputs[name] = int(split_string[1])
-        case name if name in st.get_variable_list("experimental_float"):
-            experimental[name] = float(split_string[1])
-        case name if name[:3] in st.get_variable_list("experimental_float"):
-            experimental[name] = float(split_string[1])
-        case name if name in st.get_variable_list("settings_float"):
-            inputs[name] = float(split_string[1])
+        case "OS":
+            code_settings[name] = split_string[1]
+        case "figure_res" | "num_cores" : 
+            code_settings[name] = int(split_string[1])
         case name if name in st.get_variable_list("bool"):  
-            inputs[name] = bool(int(split_string[1]))
+            code_settings[name] = bool(int(split_string[1]))
+        case name if name in st.get_variable_list("int"):
+            ptrm_inputs[name] = int(split_string[1])
+        case name if name in st.get_variable_list("experimental_float"):
+            experimental_data[name] = float(split_string[1])
+        case name if name[:3] in st.get_variable_list("experimental_float"):
+            experimental_data[name] = float(split_string[1])
+        case name if name in st.get_variable_list("settings_float"):
+            ptrm_inputs[name] = float(split_string[1])
         case name if name in st.get_variable_list("string"): 
-            inputs[name] = split_string[1]
+            ptrm_inputs[name] = split_string[1]
         case _ : raise ValueError(f"unrecognised input: {name}")
 
     

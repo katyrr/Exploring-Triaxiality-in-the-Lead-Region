@@ -10,6 +10,7 @@ A separate module file to contain structs such as classes and read-only data.
 
 """
 
+'''
 import time                                                                    
 
 class Timer():
@@ -72,7 +73,7 @@ class Timer():
         #    raise RuntimeError("The timer is still running.")
         total_time= self.end_time - self.start_time
         return total_time
-    
+'''
 
 
 def get_restricted_inputs():
@@ -104,7 +105,7 @@ def get_required_inputs():
                        'ipout', 'nu', 'imin', 'ispin', 'kmax', 'istrch', 'num_orbs', 
                        'nuu', 'nprot', 'nneutr', 'e2plur', 'ispec', 'iq', 'gr', 
                        'vmi', 'nmin', 'nmax', 'OS', 'num_cores', 'figure_res', 
-                       'detailed_print', 'mu_tol', 'abs_en_tol', 'gap_en_tol', 
+                       'print_details', 'mu_tol', 'abs_en_tol', 'gap_en_tol', 
                        'mark_spin', 'mark_exp', 'mark_exp_tol', 'mark_points',
                        'e2plus', 'include_subtitle']
     
@@ -133,25 +134,25 @@ def get_variable_list(var_type):
 
     """
     
-    if var_type == "bool":
-        var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points", 
-                    "detailed_print", "include_subtitle"]
+    match var_type:
+        case "bool":
+            var_list = ["mark_spin", "mark_exp", "mark_exp_tol", "mark_points", "include_subtitle", "print_details"]
 
-    elif var_type == "int":
-        var_list = ["A", "Z", "num_to_record", "num_orbs", "nu", "num_cores", "figure_res",
-                    "irec", "icorr", "imin", "ispin", "kmax", "istrch", "nuu", "nprot", 
-                    "nneutr", "ispec", "iq", "gr", "vmi", "nmin", "nmax"]
+        case "int":
+            var_list = ["A", "Z", "num_to_record", "num_orbs", "nu",
+                        "irec", "icorr", "imin", "ispin", "kmax", "istrch", "nuu", "nprot", 
+                        "nneutr", "ispec", "iq", "gr", "vmi", "nmin", "nmax"]
 
-    elif var_type == "experimental_float":
-        var_list = ["gs_energy", "gs_mu", "jp_", "engap", "mu_tol", "abs_en_tol", "gap_en_tol"]
-        
-    elif var_type == "settings_float":
-        var_list = ["cutoff", "gsfac", "emin", "emax", "chsi", "eta", "e2plur"]
-        
-    elif var_type == "string":
-        var_list = ["nucleus", "nantj", "noutj", "ipout", "OS", "par"]
-        
-    else: raise ValueError("unrecognised type: " + var_type)
+        case "experimental_float":
+            var_list = ["gs_energy", "gs_mu", "jp_", "engap", "mu_tol", "abs_en_tol", "gap_en_tol"]
+            
+        case "settings_float":
+            var_list = ["cutoff", "gsfac", "emin", "emax", "chsi", "eta", "e2plur"]
+            
+        case "string":
+            var_list = ["nucleus", "nantj", "noutj", "ipout", "par"]
+            
+        case _ : raise ValueError(f"unrecognised type: {var_type}")
     
     return var_list
 

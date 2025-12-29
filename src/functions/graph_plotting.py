@@ -139,7 +139,7 @@ def try_experimental(inputs, key, tolerance):
     return exp, tol
 
 
-def calculate_format_data(output_item, name, experimental):
+def calculate_format_data(output_item, name, experimental_data):
     '''
     Take a PropertyData object which has been initialised with data, and categorised
     with "num", "prop", and "sort" properties. Uses this info to determine/calculate
@@ -158,7 +158,7 @@ def calculate_format_data(output_item, name, experimental):
     name : string
         The name of the property.
         
-    experimental : dictionary
+    experimental_data : dictionary
         A dictionary of experimental data about the nucleus, input in the config file.
 
     Raises
@@ -182,15 +182,15 @@ def calculate_format_data(output_item, name, experimental):
         
         if output_item.sort == "gap":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, name, experimental["gap_en_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, name, experimental_data["gap_en_tol"])
         
         elif output_item.sort == "Excited State ":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_energy", experimental["abs_en_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "x" + output_item.num + "_energy", experimental_data["abs_en_tol"])
         
         elif output_item.sort == "Spin ":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "jp_"+ output_item.num, experimental["abs_en_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "jp_"+ output_item.num, experimental_data["abs_en_tol"])
             
         else: raise ValueError("property not recognised: " + name)
         
@@ -201,7 +201,7 @@ def calculate_format_data(output_item, name, experimental):
             
         if output_item.sort == "Excited State ":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_mu", experimental["mu_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "x" + output_item.num + "_mu", experimental_data["mu_tol"])
     
         elif output_item.sort == "Spin ":
             
@@ -210,7 +210,7 @@ def calculate_format_data(output_item, name, experimental):
             
         elif output_item.sort == "Ground":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_mu", experimental["mu_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "gs_mu", experimental_data["mu_tol"])
             
         else: raise ValueError("property not recognised: " + name)
         
@@ -221,7 +221,7 @@ def calculate_format_data(output_item, name, experimental):
             
         if output_item.sort == "Excited State ":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "x" + output_item.num + "_mu", experimental["mu_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "x" + output_item.num + "_mu", experimental_data["mu_tol"])
     
         elif output_item.sort == "Spin ":
             
@@ -230,7 +230,7 @@ def calculate_format_data(output_item, name, experimental):
             
         elif output_item.sort == "Ground":
             
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_mu", experimental["mu_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "gs_mu", experimental_data["mu_tol"])
             
         else: raise ValueError("property not recognised: " + name)
         
@@ -240,7 +240,7 @@ def calculate_format_data(output_item, name, experimental):
         if output_item.prop == "spin_floats": 
         
             output_item.contour_levels = calc_contour_levels(output_item.data)
-            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental, "gs_spin_float", experimental["mu_tol"])
+            output_item.experimental_data, output_item.error_tolerance = try_experimental(experimental_data, "gs_spin_float", experimental_data["mu_tol"])
             output_item.cbar_tick_labels = calc_cbar_tick_labels(output_item.data, "half")
             output_item.cbar_ticks = calc_cbar_ticks(output_item.contour_levels)
             
@@ -710,7 +710,7 @@ def plot_points_with_experiment(data_points, prop, legend_handles, cbar):
     return legend_handles
     
 
-def plot_points(data_points, prop, legend_handles, cbar, inputs):
+def plot_points(data_points, prop, legend_handles, cbar, code_settings):
     """
     A function to plot data points on a graph in polar coordinates. 
     Additionally compares the value of each data point to an experimental value,
@@ -737,6 +737,8 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
         
     cbar : Colorbar object
         The color bar of the filled contour plot.
+
+    code_settings : dictionary
         
     Returns
     -------
@@ -747,7 +749,7 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
     
     """
     
-    if np.isfinite(prop.experimental_data).all() and inputs["mark_exp"]==1:
+    if np.isfinite(prop.experimental_data).all() and code_settings["mark_exp"]==1:
     
         legend_hit = False
         legend_miss = False
@@ -769,7 +771,7 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
                 # update the record of how many of the tested properties agree
                 data_points["agreed"][r] += 1      
 
-                if inputs["mark_points"]==1:
+                if code_settings["mark_points"]==1:
                     
                     hit = plt.scatter(data_points["gamma_radians"][r], 
                           data_points["eps"][r], s=marker_size, #edgecolor='red', 
@@ -779,7 +781,7 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
                 
             # for data points that don't match experimental data, only plot them 
             # when the data set is quite small, to avoid cluttering the graph.
-            elif len(data_points["file_tags"]) < 100 and inputs["mark_points"]==1: 
+            elif len(data_points["file_tags"]) < 100 and code_settings["mark_points"]==1: 
                 miss, = plt.polar(data_points["gamma_radians"][r], 
                           data_points["eps"][r], 'wx', label="does not match experiment")
                 legend_miss = True
@@ -789,7 +791,7 @@ def plot_points(data_points, prop, legend_handles, cbar, inputs):
         if legend_miss:
             legend_handles.append(miss)
         
-        if inputs["mark_exp"]==1:
+        if code_settings["mark_exp"]==1:
             if prop.sort == "Spin ":
                 for e in range(len(prop.experimental_data)):
                     exp = cbar.ax.plot([0, 1], 
@@ -858,7 +860,7 @@ def plot_points_without_experiment(data_points, legend_handles):
     return legend_handles
 
 
-def assign_parameters(inputs, data_points):
+def assign_parameters(ptrm_inputs, data_points):
     """
     For a linear plot, determine which is the independent variable, and which 
     are held constant.
@@ -905,14 +907,14 @@ def assign_parameters(inputs, data_points):
 
     """
 
-    if inputs["deformation_input"] == "eps" :
+    if ptrm_inputs["deformation_input"] == "eps" :
         
         var_sym = "ε"
         var = data_points["eps"]
         fix_sym = "γ"
         fix = data_points["gamma_degrees"]
         
-    elif inputs["deformation_input"] == "gamma" :
+    elif ptrm_inputs["deformation_input"] == "gamma" :
         
         var_sym = "γ / º"
         var = data_points["gamma_degrees"]
@@ -1084,14 +1086,14 @@ def plot_all_energies(prop, var, legend_handles, marker_size, fix_sym, fix_val):
     return legend_handles, legend_title
 
 
-def mark_spin(inputs, data_points, spin_data, legend_handles, ax):
+def mark_spin(ptrm_inputs, data_points, spin_data, legend_handles, ax):
     """
     A function to plot the region(s) of correct ground state spin onto a polar plot,
     as a black contour line.
 
     Parameters
     ----------
-    inputs : dictionary
+    ptrm_inputs : dictionary
         Input settings from a config file. 
         May contain some experimental data.
         
@@ -1117,8 +1119,8 @@ def mark_spin(inputs, data_points, spin_data, legend_handles, ax):
     
     """
 
-    correct_range = [inputs["gs_spin_float"]-0.5, 
-                     inputs["gs_spin_float"]+0.5]
+    correct_range = [ptrm_inputs["gs_spin_float"]-0.5, 
+                     ptrm_inputs["gs_spin_float"]+0.5]
     spin_colour = (0,0,0) #(213/255,1,0)
     
     ax.tricontour(data_points["gamma_radians"], data_points["eps"], 
@@ -1259,7 +1261,7 @@ def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
         
     return legend_handles, legend_title
 
-def plot_exp_line(prop, inputs, var, legend_handles):
+def plot_exp_line(prop, code_settings, var, legend_handles):
     '''
     A function for plotting a red line on a line graph to indicate the experimental value.
     Can include a shaded region to indicate tolerance if requested.
@@ -1269,7 +1271,7 @@ def plot_exp_line(prop, inputs, var, legend_handles):
     prop : PropertyData object
         The property being plotted.
         
-    inputs : dictionary
+    code_settings : dictionary
         Dictionary of inputs from config file.
         
     var : list of floats
@@ -1286,25 +1288,25 @@ def plot_exp_line(prop, inputs, var, legend_handles):
     '''
     if prop.sort == "Spin ":
         for _ in range(len(prop.experimental_data)):
-            if inputs["mark_exp"]:
+            if code_settings["mark_exp"]:
                 exp, = plt.plot(var, np.full(len(var), prop.experimental_data[_]), 'r-', label="experimental value")
-            if inputs["mark_exp_tol"]:
+            if code_settings["mark_exp_tol"]:
                 exp_tol = plt.axhspan(prop.experimental_data[_]-prop.error_tolerance, prop.experimental_data[_]+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental value")
     else:
-        if inputs["mark_exp"]:
+        if code_settings["mark_exp"]:
             exp, = plt.plot(var, np.full(len(var), prop.experimental_data), 'r-', label="experimental value")
-        if inputs["mark_exp_tol"]:
+        if code_settings["mark_exp_tol"]:
             exp_tol = plt.axhspan(prop.experimental_data-prop.error_tolerance, prop.experimental_data+prop.error_tolerance, facecolor='r', alpha=0.2, label="experimental value")
     
-    if inputs["mark_exp"]:
+    if code_settings["mark_exp"]:
         legend_handles.append(exp)
-    if inputs["mark_exp_tol"]:
+    if code_settings["mark_exp_tol"]:
         legend_handles.append(exp_tol)
         
     return legend_handles
 
 
-def plot_agreement(inputs, agreement, data_points, output_data, subtitle):
+def plot_agreement(code_settings, agreement, data_points, output_data, subtitle):
     '''
     For plotting a polar filled contour plot of "agreement" (the number of properties
     which agreed with experiment). 
@@ -1313,22 +1315,22 @@ def plot_agreement(inputs, agreement, data_points, output_data, subtitle):
 
     '''
     
-    inputs["current_graph"] = agreement.title
-    print("plotting graph: %(current_graph)s" % inputs) 
+    code_settings["current_graph"] = agreement.title
+    print("plotting graph: %(current_graph)s" % code_settings) 
     
     fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
     cax, cbar = draw_contour_plot(ax, agreement, data_points)
     
     legend_handles = []
     
-    if inputs["mark_spin"]:
-        legend_handles = mark_spin(inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
+    if code_settings["mark_spin"]:
+        legend_handles = mark_spin(code_settings, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
     
-    if inputs["mark_points"]:
+    if code_settings["mark_points"]:
         legend_handles =  plot_points_without_experiment(data_points, legend_handles)
            
     
-    format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % inputs, subtitle)
+    format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % code_settings, subtitle)
     
     plt.show()
     
