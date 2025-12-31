@@ -100,8 +100,8 @@ def main():
     
     """
 
-    timer, sub_timer = Timer(), Timer()
-    timer.start()
+    main_timer, sub_timer = Timer(), Timer()
+    main_timer.start()
 
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
     
@@ -111,6 +111,7 @@ def main():
 
     - Create empty dictionaries for storing input settings and data.
     - Read the config file and save settings in dictionaries.
+    - Generate the orbitals input for gampn (e.g. "+4 19 20 21 22").
     - Set figure resolution.
     - Create any missing directory subfolders.
 
@@ -119,70 +120,20 @@ def main():
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
     rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     
-    plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
-    fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
-
-    #%%
-    ''' 3. PROCESS INPUTS -------------------------------------------------------------------------
-
-    - Convert gamma points to radians and save separately.
-    - Convert input fractional spins to floats and save separately.
-    - convert the nantj, noutj, ipout inputs to the correct format
-
-    - Using input A and Z, work out which particle is odd, to determine the nneupr input.
-    - Halve and ceiling for the overall index of the fermi level orbital.
-    - Generate the orbitals input for gampn (e.g. "+4 19 20 21 22").
-
-    - Raises ValueError if an even-mass nucleus is input.
-
-    '''
-
-    # additionally save gamma in radians
-    data_points["gamma_radians"] = [n*np.pi/180 for n in data_points["gamma_degrees"]]
-
-
-    #!!! obsolete:
-    if "x1_spin" in ptrm_inputs:
-        experimental_data["x1_spin_float"] = spin_string_to_float(ptrm_inputs["x1_spin"])
-    if "x2_spin" in ptrm_inputs:
-        experimental_data["x2_spin_float"] = spin_string_to_float(ptrm_inputs["x2_spin"])
-    if "x3_spin" in ptrm_inputs:
-        experimental_data["x3_spin_float"] = spin_string_to_float(ptrm_inputs["x3_spin"])
-
-
-    # convert the nantj, noutj, ipout inputs to the correct format
-    ptrm_inputs["nantj"] = ptrm_inputs["nantj"].replace(",", " ")
-    ptrm_inputs["noutj"] = ptrm_inputs["noutj"].replace(",", " ")
-    ptrm_inputs["ipout"] = ptrm_inputs["ipout"].replace(",", " ")
-
-    # determine nneupr and calculate fermi level
-    ptrm_inputs["N"] = ptrm_inputs["A"]-ptrm_inputs["Z"]
-
-    if ptrm_inputs["A"]%2 == 0:
-        raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
-    elif ptrm_inputs["Z"]%2 == 0: 
-        ptrm_inputs["nneupr"] = "-1" 
-        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
-        print("Calculating for odd NEUTRONS...")                 
-    elif ptrm_inputs["N"]%2 == 0:
-        ptrm_inputs["nneupr"] = "1"
-        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
-        print("Calculating for odd PROTONS...")
-    else:
-        raise RuntimeError("Check inputs of A and Z.")
-
-
     # Generate a string containing the parity to calculate, the number of orbitals, 
-    #   and their indices, in the correct format for input to gampn.
+    # and their indices, in the correct format for input to gampn.
     ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(ptrm_inputs["fermi_level"]//2, ptrm_inputs["num_orbs"], ptrm_inputs["par"])
 
     # (useful for debugging) hard coded versions of the above:
-    #inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
+    # inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
     # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
 
+    plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
+    fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
+    
 
     #%%   
-    ''' 4. WRITE GAMPN.DAT FILES 
+    ''' 3. WRITE GAMPN.DAT FILES ------------------------------------------------------------------
 
     - Loops through the data points to be tested:
         - Creates a tag referencing the nucleus, and the values of eps, gamma, and e2plus.
@@ -223,7 +174,7 @@ def main():
 
 
     #%%
-    ''' 5. WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN 
+    ''' 4. WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN 
 
     - Calculate batch settings:
         - How to divide up the data points into batches.
@@ -730,10 +681,10 @@ def main():
 
     # note how long it took
     sub_timer.stop()
-    timer.stop()
+    main_timer.stop()
     print("\n****************************************************************************************")
     print("finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
-    print("total runtime = %.2f seconds" % (timer.get_lapsed_time()))
+    print("total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
     print("****************************************************************************************\n")
 
 

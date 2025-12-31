@@ -10,6 +10,7 @@ Functions for reading config file and processing contents.
 """
 
 import numpy as np
+import math
 import functions.structs as st
 import functions.file_handling as fh
 from functions.spin_processing import spin_string_to_float
@@ -20,6 +21,8 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     Locate and read the config file (if not found, create a new one from template).
     Read each line, and save inputs (correctly type-cast) as name-value pairs in dictionaries.
     Inputs are checked for validity and any missing required inputs.
+    Format and (re)calculate any additional required parameters from the config inputs.
+    
     
     Parameters
     ----------
@@ -50,11 +53,13 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     config_path = fh.locate_config(data_subfolder_path)
     config_lines = fh.read_file(config_path)
 
-    process_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
+    read_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
+    process_inputs(data_points, ptrm_inputs)
+    
 
 
-def process_lines(lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
+def read_lines(lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
     '''
     - Ignores empty lines, and lines beginning with * (to mark a comment).
     - Checks that the format of each line is correct (var_name value),
@@ -179,6 +184,54 @@ def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, 
                 raise ValueError(f"Invalid input: \t {name} = {all_inputs[name]}.\nPlease choose from allowed values: {str(allowed_values)}")
             
 
+def process_inputs(data_points, ptrm_inputs):
+    '''
+    - Calculate and store gamma values in radians as well as degrees.
+    - Convert the nantj, noutj, ipout inputs to the correct format.
+
+    - Using input A and Z, work out which particle is odd, to determine the nneupr input.
+    - Halve and ceiling for the overall index of the fermi level orbital.
+
+
+    - Raises ValueError if an even-mass nucleus is input.
+
+    Parameters
+    ----------
+    ptrm_inputs : dictionary
+        A dictionary that contains name-value pairs for ptrm inputs in the config file.
+
+    data_points : dictionary
+        A dictionary that contains lists of the variable inputs (deformations, etc)
+        
+    
+    Returns
+    -------
+    None (dictionaries are edited in-place)
+
+    '''
+
+    data_points["gamma_radians"] = [n*np.pi/180 for n in data_points["gamma_degrees"]]
+
+    ptrm_inputs["nantj"] = ptrm_inputs["nantj"].replace(",", " ")
+    ptrm_inputs["noutj"] = ptrm_inputs["noutj"].replace(",", " ")
+    ptrm_inputs["ipout"] = ptrm_inputs["ipout"].replace(",", " ")
+
+    ptrm_inputs["N"] = ptrm_inputs["A"]-ptrm_inputs["Z"]
+
+    if ptrm_inputs["A"]%2 == 0:
+        raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
+    elif ptrm_inputs["Z"]%2 == 0: 
+        ptrm_inputs["nneupr"] = "-1" 
+        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
+        print("Calculating for odd NEUTRONS...")                 
+    elif ptrm_inputs["N"]%2 == 0:
+        ptrm_inputs["nneupr"] = "1"
+        ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
+        print("Calculating for odd PROTONS...")
+    else:
+        raise RuntimeError("Check inputs of A and Z.")
+    
+    
 
 
 
