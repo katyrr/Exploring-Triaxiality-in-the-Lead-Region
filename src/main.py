@@ -211,7 +211,7 @@ def main():
     run_program("gampn")
     sub_timer.stop()
 
-    print("\n***** Finished running gampn in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
+    print("\n***** Started running gampn, exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
 
 
@@ -277,7 +277,7 @@ def main():
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
-    print("***** Finished running gampn (again) in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
+    print("***** Started running gampn (again), exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
     _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
@@ -307,7 +307,7 @@ def main():
     run_program("asyrmo")
     sub_timer.stop()
 
-    print("***** Finished running asyrmo in time = %.2f seconds. *****" % sub_timer.get_lapsed_time())
+    print("***** Started running asyrmo, exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
 
     #%%
 
@@ -353,7 +353,7 @@ def main():
     run_program("probamo")
     sub_timer.stop()
 
-    print("***** Finished running probamo in time = %.2f seconds. *****\n" % sub_timer.get_lapsed_time())
+    print("***** Started running probamo, exited after %.2f seconds. *****\n" % sub_timer.get_lapsed_time())
 
 
     #%%
@@ -591,7 +591,7 @@ def main():
             # plot the data point markers, with comparison to experiment if possible
                 
             legend_handles = gr.plot_points(data_points, prop, legend_handles, cbar, code_settings)
-            if np.isfinite(prop.experimental_data).all() and ptrm_inputs["mark_exp"]: 
+            if np.isfinite(prop.experimental_data).all() and code_settings["mark_exp"]: 
                 num_comparisons += 1
             
             
@@ -683,7 +683,7 @@ def main():
     sub_timer.stop()
     main_timer.stop()
     print("\n****************************************************************************************")
-    print("finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
+    print("Finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
     print("total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
     print("****************************************************************************************\n")
 
