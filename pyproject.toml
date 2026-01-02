@@ -8,3 +8,11 @@ dependencies = [
     "matplotlib==3.9.2",
     "numpy==1.26.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

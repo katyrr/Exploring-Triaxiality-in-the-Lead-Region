@@ -354,7 +354,7 @@ def configure_script_writer(folder_path, OS, batch_settings, file_tags):
             file_path = os.path.join(folder_path, "Scripts", f"Run{program.upper()}_{b+1}.sh")
             run_folder_path = os.path.join(folder_path, "Run", f"Batch{b+1}")
 
-            script_text = "pwd" # print the working directory for debugging
+            script_text = "" # "pwd" to print the working directory for debugging
 
             for file in batch_file_tags:
                 
@@ -367,7 +367,7 @@ def configure_script_writer(folder_path, OS, batch_settings, file_tags):
                 # copy the default output file to a new .OUT file with a more descriptive name in the Outputs folder.
                 script_text += f"\n(cd {run_folder_path};{abs_program_path} < {input_file_path}; cp {program.upper()}.out {output_file_path})"
 
-            script_text += f"\n\necho message from terminal: finished running {program} batch {b+1}"
+            #script_text += f"\n\necho message from terminal: finished running {program} batch {b+1}"
             
             script_file = open(file_path, 'w')
             script_file.write(script_text)
