@@ -460,11 +460,7 @@ def restructure_data(old_data, ispin, verbose):
     
     max_val = int(ispin)+1
 
-    print(f"DEBEUG 44: {old_data[44]}")
-    print(f"DEBEUG 45: {old_data[45]}")
-
     for i in range(1, max_val, 2): 
-        print(f"i = {i}")
     
         spin = "spin_"+str(i)+"/2"
         
@@ -473,8 +469,6 @@ def restructure_data(old_data, ispin, verbose):
         new_data[spin+"_quad_moments"] = []
         
         for d in range(len(old_data)):
-            #45
-            print(f"\td = {d}")
             
             new_data[spin+"_energies"].append(old_data[d][spin+"_energies"])
             new_data[spin+"_mag_moments"].append(old_data[d][spin+"_mag_moments"])

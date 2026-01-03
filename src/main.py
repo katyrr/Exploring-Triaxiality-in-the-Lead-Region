@@ -103,6 +103,7 @@ def main():
     main_timer, sub_timer = Timer(), Timer()
     main_timer.start()
 
+    print("**********************************************************") # helps find the start of the calculation in the console output
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
     
     
@@ -114,16 +115,14 @@ def main():
     - Generate the orbitals input for gampn (e.g. "+4 19 20 21 22").
     - Set figure resolution.
     - Create any missing directory subfolders.
+    - Count the number of data points being calculated.
 
     ''' 
 
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
     rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
-    
-    # Generate a string containing the parity to calculate, the number of orbitals, 
-    # and their indices, in the correct format for input to gampn.
-    ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(ptrm_inputs["fermi_level"]//2, ptrm_inputs["num_orbs"], ptrm_inputs["par"])
 
+    ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(ptrm_inputs["fermi_level"]//2, ptrm_inputs["num_orbs"], ptrm_inputs["par"])
     # (useful for debugging) hard coded versions of the above:
     # inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
     # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
@@ -131,6 +130,8 @@ def main():
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
     fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
     
+    code_settings["num_points"] = len(data_points["eps"])
+    print("Number of data points = ", code_settings["num_points"])
 
     #%%   
     ''' 3. WRITE GAMPN.DAT FILES ------------------------------------------------------------------
@@ -142,34 +143,13 @@ def main():
 
     '''
 
-    ptrm_inputs["num"] = len(data_points["eps"])
-    print("Number of data points = ", ptrm_inputs["num"])
-
     data_points["file_tags"] = []
 
-    for i in range(ptrm_inputs["num"]):
+    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points, first_run=True)
         
-        if data_points["e2plus"][i] == 0:
-            # if the value of e2plus has been input as 0, calculate dynamically
-            data_points["e2plus"][i] = ptrm.est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
-        
-        ptrm_inputs, data_points = ptrm.set_current(ptrm_inputs, data_points, i)
-
-        _file_tag = "e%.3f_g%.1f_p%.3f_%s" % (ptrm_inputs["current_eps"],  ptrm_inputs["current_gamma"],
-                                            ptrm_inputs["current_e2plus"], ptrm_inputs["nucleus"])
-        data_points["file_tags"].append(_file_tag)
-        
-        ptrm_inputs["current_f002"] = "f002_"+_file_tag+".dat"
-        ptrm_inputs["current_f016"] = "f016_"+_file_tag+".dat"
-        ptrm_inputs["current_f017"] = "f017_"+_file_tag+".dat"
-        
-        file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{_file_tag}.DAT")
-        fh.write_file(file_path, st.get_template("gampn") % ptrm_inputs)
-  
-        
-
-    print("\nDeformation range being tested: \n\teps = [%.3f, %.3f], \n\tgamma = [%.1f, %.1f]."
-        % (data_points["eps"][0], data_points["eps"][-1], data_points["gamma_degrees"][0], data_points["gamma_degrees"][-1]))
+    print("Deformation range:")
+    print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
+    print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
 
 
 
@@ -211,8 +191,7 @@ def main():
     run_program("gampn")
     sub_timer.stop()
 
-    print("\n***** Started running gampn, exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
-
+    print(f"***** Started running gampn, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%
@@ -230,11 +209,11 @@ def main():
     '''
 
     # set up arrays to store data 
-    output_data = {"fermi_parities": [0]*ptrm_inputs["num"], "fermi_energies_hw": [0]*ptrm_inputs["num"], 
-                "fermi_energies_mev": [0]*ptrm_inputs["num"], "fermi_indices": [0]*ptrm_inputs["num"]}
+    output_data = {"fermi_parities": [0]*code_settings["num_points"], "fermi_energies_hw": [0]*code_settings["num_points"], 
+                "fermi_energies_mev": [0]*code_settings["num_points"], "fermi_indices": [0]*code_settings["num_points"]}
     data_points["asyrmo_orbitals"] = []
 
-    for i in range(ptrm_inputs["num"]):
+    for i in range(code_settings["num_points"]):
 
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
         lines = fh.read_file(output_file_path)
@@ -265,19 +244,12 @@ def main():
 
     '''
 
+    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points)
 
-    for i in range(len(data_points["file_tags"])):
-        
-        ptrm_inputs, data_points = ptrm.set_current(ptrm_inputs, data_points, i, file_tag=data_points["file_tags"][i])
-        ptrm_inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
-    
-        file_path = os.path.join(data_subfolder_path, "Inputs", f"GAM_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("gampn") % ptrm_inputs)
-    
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
-    print("***** Started running gampn (again), exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
+    print(f"***** Started running gampn (again), exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
@@ -291,23 +263,13 @@ def main():
 
     '''
 
-    for i in range(ptrm_inputs["num"]):
-            
-        ptrm_inputs["current_e2plus"] = data_points["e2plus"][i]
-        ptrm_inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
-        
-        ptrm_inputs["current_f016"] = "f016_"+data_points["file_tags"][i]+".dat"
-        ptrm_inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
-        ptrm_inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
-        
-        file_path = os.path.join(data_subfolder_path, "Inputs", f"ASY_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("asyrmo") % ptrm_inputs)
-
+    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "asyrmo", ptrm_inputs, data_points)
+    
     sub_timer.start()
     run_program("asyrmo")
     sub_timer.stop()
 
-    print("***** Started running asyrmo, exited after %.2f seconds. *****" % sub_timer.get_lapsed_time())
+    print(f"***** Started running asyrmo, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     #%%
 
@@ -340,20 +302,13 @@ def main():
 
     '''
 
-    for i in range(ptrm_inputs["num"]):
-
-        ptrm_inputs["current_e2plus"] = data_points["e2plus"][i]
-        ptrm_inputs["current_f017"] = "f017_"+data_points["file_tags"][i]+".dat"
-        ptrm_inputs["current_f018"] = "f018_"+data_points["file_tags"][i]+".dat"
-
-        file_path = os.path.join(data_subfolder_path, "Inputs", f"PROB_{data_points["file_tags"][i]}.DAT")
-        fh.write_file(file_path, st.get_template("probamo") % ptrm_inputs)
+    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "probamo", ptrm_inputs, data_points)
 
     sub_timer.start()
     run_program("probamo")
     sub_timer.stop()
 
-    print("***** Started running probamo, exited after %.2f seconds. *****\n" % sub_timer.get_lapsed_time())
+    print(f"***** Started running probamo, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%
@@ -388,7 +343,7 @@ def main():
 
     data_points["property_data"] = []
 
-    for i in range(ptrm_inputs["num"]):
+    for i in range(code_settings["num_points"]):
         
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
         lines = fh.read_file(output_file_path)

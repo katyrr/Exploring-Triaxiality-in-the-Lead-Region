@@ -13,59 +13,124 @@ import os
 import numpy as np
 import subprocess
 
-from functions.read_gampn import get_sp_level, get_info  
-    
-    
-def set_current(inputs, data_points, i, **kwargs):
+import functions.file_handling as fh
+import functions.structs as st
+
+from functions.read_gampn import get_sp_level, get_info
+
+
+def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, data_points, first_run=False):
+
+    if first_run:
+
+        for i in range(num_points):
+
+            if data_points["e2plus"][i] == 0:
+                # if the value of e2plus has been input as 0, calculate dynamically
+                data_points["e2plus"][i] = est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
+
+            file_tag = set_current(i, ptrm_inputs, data_points, set_deformations=True, set_e2plus=True, create_file_tag=True)
+            
+            data_points["file_tags"].append(file_tag)
+
+
+    for i in range(num_points):
+
+        abr = get_program_abr(program)
+        
+        match program:
+            case "gampn": 
+                file_tag = set_current(i, ptrm_inputs, data_points, "002", "016", "017", 
+                               set_deformations=True, set_orbitals= not first_run)
+            case "asyrmo":
+                file_tag = set_current(i, ptrm_inputs, data_points, "016", "017", "018", 
+                               set_e2plus=True, set_orbitals=True)
+            case "probamo":
+                file_tag = set_current(i, ptrm_inputs, data_points, "017", "018")
+            case _:
+                raise ValueError(f"unrecognised program: {program}")
+
+        
+        file_path = os.path.join(data_subfolder_path, "Inputs", f"{abr}_{file_tag}.DAT")
+        fh.write_file(file_path, st.get_template(program) % ptrm_inputs)
+
+
+def set_current(i, ptrm_inputs, data_points, *args, 
+                set_deformations=False, set_e2plus=False, create_file_tag=False, set_orbitals=False):
     '''
     A function which sets the current values of the deformation parameters, E2PLUS input, 
     and binary file names. For use in the "run gampn" loops.
 
     Parameters
     ----------
+    i : int
+        The index for the iteration of the loop.
+
     inputs : dictionary
         A dictionary that contains name-value pairs for every input in the config file.
         
     data_points : dictionary
         A dictionary that contains lists of the variable inputs (deformations, etc)
         
-    i : int
-        The index for the iteration of the loop.
+    *args : strings
+        Optionally input any number of ptrm in/out binary file codes, which will be 
+        named using the current file tag.
+        Select from [002, 016, 017, 018]
+
+    set_deformations : bool 
+        (default False)
+        Whether or not to set the current deformation parameters (current_eps and current_gamma_degrees) 
+        Only necessary for gampn
         
-    **kwargs : 
-        "file_tag" : string
-            Optionally input the file tag. If input, use to set current file names
-            for binary files. Otherwise those will have to be set outside this function.
+    set_e2plus : bool
+        (default False)
+        Whether or not to set the current e2plus value
+        Only necessary for asyrmos
+    
+    create_file_tag : bool
+        (default False)
+        Whether or not to generate the file tag from scratch 
+        Only necessary on the first run (otherwise the existing tag is fetched)
+    
+    set_orbitals : bool
+        (default False)
+        Whether or not to set the current orbital input string 
+        Only necessary for gampn and asyrmo
 
     Returns
     -------
-    inputs : dictionary
-        A dictionary that contains name-value pairs for every input in the config file.
-        
-    data_points : dictionary
-        A dictionary that contains lists of the variable inputs (deformations, etc)
+    file_tag : string
+        format "e[eps]_g[gamma]_p[e2plus]_[nucleus]",
+        e.g. "e0.001_g10.0_p0.730_Pb207"
+        for use in naming files.
 
     '''
     
-    
-    file_tag = kwargs.get("file_tag", False)
-    
-    
-    inputs["current_e2plus"] = data_points["e2plus"][i]
-    
-    if data_points["gamma_degrees"][i] > 30:
-        inputs["current_eps"] = data_points["eps"][i] * -1
-        inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
+    if set_deformations:
+        if data_points["gamma_degrees"][i] > 30:
+            ptrm_inputs["current_eps"] = data_points["eps"][i] * -1
+            ptrm_inputs["current_gamma"] = 60 - data_points["gamma_degrees"][i]
+        else:
+            ptrm_inputs["current_eps"] = data_points["eps"][i]
+            ptrm_inputs["current_gamma"] = data_points["gamma_degrees"][i]
+
+    if set_e2plus:
+        ptrm_inputs["current_e2plus"] = data_points["e2plus"][i]
+
+    if set_orbitals:
+        ptrm_inputs["current_orbitals"] = data_points["asyrmo_orbitals"][i]
+
+    if create_file_tag:
+        file_tag = f"e{ptrm_inputs['current_eps']:.3f}_g{ptrm_inputs['current_gamma']:.1f}_p{ptrm_inputs['current_e2plus']:.3f}_{ptrm_inputs["nucleus"]}"
     else:
-        inputs["current_eps"] = data_points["eps"][i]
-        inputs["current_gamma"] = data_points["gamma_degrees"][i]
+        file_tag = data_points["file_tags"][i]
+
+    for a in args:
+        ptrm_inputs[f"current_f{a}"] = f"f{a}_{file_tag}.dat"
+
+    return file_tag
+
     
-    if file_tag:
-        inputs["current_f002"] = "f002_"+file_tag+".dat"
-        inputs["current_f016"] = "f016_"+file_tag+".dat"
-        inputs["current_f017"] = "f017_"+file_tag+".dat"
-    
-    return inputs, data_points
 
 def write_orbitals(fermi_level, number, parity):
     """
@@ -385,3 +450,11 @@ def configure_script_writer(folder_path, OS, batch_settings, file_tags):
 
     return run_script_batches
 
+
+def get_program_abr(program):
+
+    match program:
+            case "gampn": return "GAM"
+            case "asyrmo": return "ASY"
+            case "probamo": return "PROB"
+            case _: raise ValueError(f"unrecognised program: {program}")

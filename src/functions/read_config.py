@@ -222,11 +222,11 @@ def process_inputs(data_points, ptrm_inputs):
     elif ptrm_inputs["Z"]%2 == 0: 
         ptrm_inputs["nneupr"] = "-1" 
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
-        print("Calculating for odd NEUTRONS...")                 
+        print("\nOdd NEUTRONS")                 
     elif ptrm_inputs["N"]%2 == 0:
         ptrm_inputs["nneupr"] = "1"
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
-        print("Calculating for odd PROTONS...")
+        print("\nOdd PROTONS")
     else:
         raise RuntimeError("Check inputs of A and Z.")
     
