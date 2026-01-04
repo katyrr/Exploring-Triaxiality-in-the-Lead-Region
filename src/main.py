@@ -116,6 +116,7 @@ def main():
     - Set figure resolution.
     - Create any missing directory subfolders.
     - Count the number of data points being calculated.
+    - Print some reports to the console.
 
     ''' 
 
@@ -132,70 +133,36 @@ def main():
     
     code_settings["num_points"] = len(data_points["eps"])
     print("Number of data points = ", code_settings["num_points"])
-
-    #%%   
-    ''' 3. WRITE GAMPN.DAT FILES ------------------------------------------------------------------
-
-    - Loops through the data points to be tested:
-        - Creates a tag referencing the nucleus, and the values of eps, gamma, and e2plus.
-        - Uses string formatting with the inputs dictionary to write the .DAT file.
-        - Creates/overwrites a .DAT file in the Inputs directory folder, named using the file tag. 
-
-    '''
-
-    data_points["file_tags"] = []
-
-    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points, first_run=True)
-        
     print("Deformation range:")
     print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
     print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
 
 
+    #%%   
+    ''' 3. RUN GAMPN ------------------------------------------------------------------
 
-    #%%
-    ''' 4. WRITE AND RUN BASH SCRIPT TO EXECUTE GAMPN 
-
-    - Calculate batch settings:
-        - How to divide up the data points into batches.
-        - The maximum allowed time for the batch to run before assuming that it is hanging.
+    - Write the input .DAT files for the gampn code.
+    - Calculate batch settings
     - Configure a script writer.
-    - Run the batches. The .OUT files are generated in the Outputs directory folder.
+    - Run the batches. The .OUT files are generated in the 'outputs' directory folder.
 
     '''
 
-    # calculate batch settings
-
-    batch_settings = {}
-
-    batch_settings["num_batches"] = code_settings["num_cores"] # = number of cores for maximum efficiency with large data sets
-    batch_settings["num_per_batch"] = math.ceil(len(data_points["file_tags"]) / batch_settings["num_batches"])
-
-    # if the data set is small then use fewer cores for a minimum batch size of 20 to make the overhead worthwhile.
-    if batch_settings["num_per_batch"] < 20:
-        batch_settings["num_per_batch"] = 20
-        batch_settings["num_batches"] = math.ceil(len(data_points["eps"])/batch_settings["num_per_batch"])  
-
-    # Each file takes ~ 0.1 seconds to run;
-    #   Allow double time plus an overhead/extra of 10 seconds to ensure that the batch 
-    #   will finish even if the computer is running a bit slow today! If it takes longer 
-    #   than this, it is probably hanging, but you could increase 10 -> 60 seconds just to be sure.
-    batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+10        
-
-
-    # configure a batch script writer, and run the batches.
+    data_points["file_tags"] = []
+    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points, first_run=True)
+    
+    batch_settings = ptrm.get_batch_settings(code_settings["num_cores"], code_settings["num_points"])
     run_program = ptrm.configure_script_writer(data_subfolder_path, code_settings["OS"], batch_settings, data_points["file_tags"])
     
-    print("Starting gampn...")
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
 
-    print(f"***** Started running gampn, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Started running gampn, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%
-    ''' 5. READ GAMPN.OUT FILE 
+    ''' 4. READ GAMPN.OUT FILE 
 
     - For each data point (i.e. each GAMPN.OUT file):
         - Read the value of EFAC (the conversion factor from hw to eV).
@@ -233,7 +200,7 @@ def main():
 
 
     #%% 
-    '''6. RE-RUN GAMPN
+    '''5. RE-RUN GAMPN
 
     - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
     can be maximised (to 15 orbitals) when calculating matrix elements.
@@ -249,14 +216,14 @@ def main():
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
-    print(f"***** Started running gampn (again), exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Started running gampn (again), returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
 
 
     #%%
-    ''' 7. WRITE AND RUN ASYRMO 
+    ''' 6. RUN ASYRMO 
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
@@ -269,7 +236,7 @@ def main():
     run_program("asyrmo")
     sub_timer.stop()
 
-    print(f"***** Started running asyrmo, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Started running asyrmo, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     #%%
 
@@ -308,7 +275,7 @@ def main():
     run_program("probamo")
     sub_timer.stop()
 
-    print(f"***** Started running probamo, exited after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Started running probamo, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%

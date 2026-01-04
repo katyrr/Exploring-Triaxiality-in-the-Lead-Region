@@ -12,6 +12,7 @@ Functions for preparing to run the PTRM codes.
 import os
 import numpy as np
 import subprocess
+import math
 
 import functions.file_handling as fh
 import functions.structs as st
@@ -20,6 +21,44 @@ from functions.read_gampn import get_sp_level, get_info
 
 
 def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, data_points, first_run=False):
+    '''
+    Create .DAT input files for each data point, specialised to the requested program.
+
+    If this is the first program to be run (gampn for the first time) then some extra
+    calculations must be done first:
+        - Dynamically calculate e2plus for each data point (unless a fixed value has been specified)
+        - Generate a file tag for each data point, referencing the nucleus, deformation, and e2plus 
+          of that calculation
+    
+    Then loops through the data points:
+        - Determine which properties are required for the requested program.
+        - Select the correct value of those properties for the current data point.
+        - Uses string formatting with the ptrm_inputs dictionary to write the .DAT file.
+        - Creates/overwrites a .DAT file in the Inputs directory folder, named using the file tag.
+
+    inputs
+    ------
+    num_points : int
+        The number of data points being calculated 
+    
+    data_subfolder_path : string
+        The directory path to the data subfolder where these calculations are to be done.
+    
+    program : string
+        Either "gampn", "asyrmo", or "probamo"
+    
+    ptrm_inputs : dict
+        A dictionary of values to be input to the ptrm programs.
+    
+    data_points : dict
+        A dictionary of lists of eps, gamma, and e2plus values.
+        (The length of each list equals num_points)
+    
+    first_run : bool
+        Whether or not this is the first program to be run (gampn for the first time).
+        Default = False. 
+        If True then some additional setup calculations are performed.
+    ''' 
 
     if first_run:
 
@@ -30,14 +69,11 @@ def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, dat
                 data_points["e2plus"][i] = est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
 
             file_tag = set_current(i, ptrm_inputs, data_points, set_deformations=True, set_e2plus=True, create_file_tag=True)
-            
             data_points["file_tags"].append(file_tag)
 
 
     for i in range(num_points):
 
-        abr = get_program_abr(program)
-        
         match program:
             case "gampn": 
                 file_tag = set_current(i, ptrm_inputs, data_points, "002", "016", "017", 
@@ -51,6 +87,7 @@ def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, dat
                 raise ValueError(f"unrecognised program: {program}")
 
         
+        abr = get_program_abr(program)
         file_path = os.path.join(data_subfolder_path, "Inputs", f"{abr}_{file_tag}.DAT")
         fh.write_file(file_path, st.get_template(program) % ptrm_inputs)
 
@@ -338,6 +375,33 @@ def est_e2plus(eps, A):
     
     return e2plus
 
+
+def get_batch_settings(num_cores, num_points):
+    '''
+    Calculate batch settings (how to divide up the data points into batches).
+        - If the data set is small then use fewer cores for a minimum batch size of 20, 
+          to make the overhead worthwhile.
+        - The maximum allowed time for the batch to run before assuming that it is hanging.
+            - Each file takes ~ 0.1 seconds to run;
+            - Allow double time plus an overhead/extra of 10 seconds to ensure that the batch 
+              will finish even if the computer is running a bit slow today! If it takes longer 
+              than this, it is probably hanging, but it does occasionallyl take longer... 
+              You could increase the overhead allowance from 10 to 30 seconds, or more, depending
+              on the machine.
+    '''
+
+    batch_settings = {}
+
+    batch_settings["num_batches"] = num_cores # = number of cores for maximum efficiency with large data sets
+    batch_settings["num_per_batch"] = math.ceil(num_points/batch_settings["num_batches"])
+
+    if batch_settings["num_per_batch"] < 20:
+        batch_settings["num_per_batch"] = 20
+        batch_settings["num_batches"] = math.ceil(num_points/batch_settings["num_per_batch"])  
+
+    batch_settings["allowed_time"] = 0.2*batch_settings["num_per_batch"]+10   
+
+    return batch_settings
 
 def configure_script_writer(folder_path, OS, batch_settings, file_tags):
     """
