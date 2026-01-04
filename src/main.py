@@ -66,8 +66,7 @@ HOW TO USE:
 
 """
 
-import numpy as np                                   
-import math                                        
+import numpy as np                                  
 import matplotlib.pyplot as plt   
 import os   
 import sys     
@@ -81,8 +80,6 @@ import functions.read_probamo as rprob
 import functions.structs as st
 import functions.graph_plotting as gr
 import functions.analyse_results as anyl
-
-from functions.spin_processing import spin_string_to_float
 
 from classes.timer import Timer
 
@@ -103,7 +100,8 @@ def main():
     main_timer, sub_timer = Timer(), Timer()
     main_timer.start()
 
-    print("**********************************************************") # helps find the start of the calculation in the console output
+    # helps find the start of the calculation in the console output:
+    print("****************************************************************************************") 
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
     
     
@@ -139,7 +137,7 @@ def main():
 
 
     #%%   
-    ''' 3. RUN GAMPN ------------------------------------------------------------------
+    ''' 3. RUN GAMPN ------------------------------------------------------------------------------
 
     - Write the input .DAT files for the gampn code.
     - Calculate batch settings
@@ -158,11 +156,11 @@ def main():
     run_program("gampn")
     sub_timer.stop()
 
-    print(f"***** Started running gampn, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"\n***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%
-    ''' 4. READ GAMPN.OUT FILE 
+    ''' 4. READ GAMPN.OUT FILE --------------------------------------------------------------------
 
     - For each data point (i.e. each GAMPN.OUT file):
         - Read the value of EFAC (the conversion factor from hw to eV).
@@ -216,7 +214,7 @@ def main():
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
-    print(f"***** Started running gampn (again), returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
 
@@ -236,7 +234,7 @@ def main():
     run_program("asyrmo")
     sub_timer.stop()
 
-    print(f"***** Started running asyrmo, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Returned from asyrmo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     #%%
 
@@ -275,7 +273,7 @@ def main():
     run_program("probamo")
     sub_timer.stop()
 
-    print(f"***** Started running probamo, returned after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
     #%%
@@ -337,7 +335,8 @@ def main():
         if not "engap_" in i:
             continue
         
-        _spin1, _idx1, _spin2, _idx2 = rprob.parse_engap_input(i)
+        _spin1, _idx1, _spin2, _idx2 = anyl.parse_engap_input(i)
+        
         
         output_data[i] = rprob.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental_data[i])
 
