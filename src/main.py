@@ -84,24 +84,26 @@ import functions.analyse_results as anyl
 from classes.timer import Timer
 
 
+def print_div():
+    # Use to help organise console output into easy-to-read sections
+    print("****************************************************************************************") 
 
 
 
 def main():
 
     #%% 
-    """ 1. SET UP ---------------------------------------------------------------------------------
+    ''' 1. SET UP ---------------------------------------------------------------------------------
 
     - Create timers (one to time the whole program, and one to time small sections).
     - Read command line arguments and locate/create data subfolder.
     
-    """
+    '''
 
     main_timer, sub_timer = Timer(), Timer()
     main_timer.start()
 
-    # helps find the start of the calculation in the console output:
-    print("****************************************************************************************") 
+    print_div()
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
     
     
@@ -174,10 +176,12 @@ def main():
     '''
 
     # set up arrays to store data 
-    output_data = {"fermi_parities": [0]*code_settings["num_points"], "fermi_energies_hw": [0]*code_settings["num_points"], 
-                "fermi_energies_mev": [0]*code_settings["num_points"], "fermi_indices": [0]*code_settings["num_points"]}
     data_points["asyrmo_orbitals"] = []
-
+    output_data = {"fermi_parities": [0]*code_settings["num_points"], 
+                   "fermi_energies_hw": [0]*code_settings["num_points"], 
+                   "fermi_energies_mev": [0]*code_settings["num_points"], 
+                   "fermi_indices": [0]*code_settings["num_points"]}
+    
     for i in range(code_settings["num_points"]):
 
         output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
@@ -198,14 +202,13 @@ def main():
 
 
     #%% 
-    '''5. RE-RUN GAMPN
+    '''5. RE-RUN GAMPN ----------------------------------------------------------------------------
 
     - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
     can be maximised (to 15 orbitals) when calculating matrix elements.
     - No need to re-read the outputs, because the properties we read earlier are 
     not affected, and the recalculated matrix elements will be passed to the next
     program automatically.
-
 
     '''
 
@@ -216,12 +219,12 @@ def main():
     sub_timer.stop()
     print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    _output_data = output_data # save a copy of the original before it's overwritten (useful when running cell by cell)
+    #output_data_copy = output_data.copy() # save a copy of the original before it's overwritten (useful when running cell by cell)
 
 
 
     #%%
-    ''' 6. RUN ASYRMO 
+    ''' 6. RUN ASYRMO -----------------------------------------
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
@@ -328,7 +331,8 @@ def main():
         _file_data = rprob.missing_data(_file_data, ptrm_inputs)
         data_points["property_data"].append(_file_data)
 
-    output_data = _output_data | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
+    #output_data = output_data_copy | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
+    restructured_output_data = {**output_data, **rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])}
 
     # get energy gap between third 9/2 and first 13/2 states
     for i in experimental_data:
@@ -338,26 +342,26 @@ def main():
         _spin1, _idx1, _spin2, _idx2 = anyl.parse_engap_input(i)
         
         
-        output_data[i] = rprob.find_gaps(output_data["spin_"+_spin1+"/2_energies"], _idx1, output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental_data[i])
+        restructured_output_data[i] = rprob.find_gaps(restructured_output_data["spin_"+_spin1+"/2_energies"], _idx1, restructured_output_data["spin_"+_spin2+"/2_energies"], _idx2, experimental_data[i])
 
-    # output_data["engap_9.3_13.1"] = fn.find_gaps(output_data["spin_9/2_energies"], 3, output_data["spin_13/2_energies"], 1, 20) #!!!
+    # restructured_output_data["engap_9.3_13.1"] = fn.find_gaps(restructured_output_data["spin_9/2_energies"], 3, restructured_output_data["spin_13/2_energies"], 1, 20) #!!!
 
 
     # ensure all data sets have the same size and shape, and mask bad points
 
-    _mask = np.array([0 if np.isnan(x) else 1 for x in output_data["delta"]])
+    _mask = np.array([0 if np.isnan(x) else 1 for x in restructured_output_data["delta"]])
 
-    for i in output_data:
-        if isinstance(output_data[i][0], list):
-            output_data[i] = rprob.fill_gaps(output_data[i])
-            _list_mask = np.transpose(np.tile(_mask, (np.size(output_data[i][0]),1)))
+    for i in restructured_output_data:
+        if isinstance(restructured_output_data[i][0], list):
+            restructured_output_data[i] = rprob.fill_gaps(restructured_output_data[i])
+            _list_mask = np.transpose(np.tile(_mask, (np.size(restructured_output_data[i][0]),1)))
             
-            output_data[i] = np.where(_list_mask == 0, np.NaN, output_data[i])
+            restructured_output_data[i] = np.where(_list_mask == 0, np.NaN, restructured_output_data[i])
         
         else: 
-            output_data[i] = np.where(_mask == 0, np.NaN, output_data[i])
+            restructured_output_data[i] = np.where(_mask == 0, np.NaN, restructured_output_data[i])
 
-    _output_data_dict = output_data # save a copy of the original before it's overwritten, so that the code can be run cell-by-cell without errors.
+    restructured_output_data_copy = restructured_output_data.copy() # save a copy of the original before it's overwritten, so that the code can be run cell-by-cell without errors.
 
 
     #%%
@@ -380,28 +384,28 @@ def main():
 
     '''
 
-    # convert output_data from a dictionary of lists to a dictionary of PropertyData objects 
-    output_data = {}
-    for i in _output_data_dict:
+    # convert restructured_output_data from a dictionary of lists to a dictionary of PropertyData objects 
+    restructured_output_data = {}
+    for i in restructured_output_data_copy:
         # print(i)
-        output_data[i] = st.PropertyData(_output_data_dict[i], i)
+        restructured_output_data[i] = st.PropertyData(restructured_output_data_copy[i], i)
         
         # calculate contour levels, colour bar ticks and labels, 
         # and assign experimental values and error tolerance if available.
         
-        output_data[i] = gr.calculate_format_data(output_data[i], i, experimental_data)
+        restructured_output_data[i] = gr.calculate_format_data(restructured_output_data[i], i, experimental_data)
         
 
-    output_data["all_energies"] = rprob.collate_energy_data(output_data, len(data_points["file_tags"]), 
+    restructured_output_data["all_energies"] = rprob.collate_energy_data(restructured_output_data, len(data_points["file_tags"]), 
                                                         experimental_data["gs_spin_string"], experimental_data)
 
     # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
-    output_data["shifted_energies"] = rprob.shift_energy_levels(output_data["all_energies"]) 
+    restructured_output_data["shifted_energies"] = rprob.shift_energy_levels(restructured_output_data["all_energies"]) 
 
-    output_data["rms"] = rprob.calc_rms_err(10, output_data["spin_1/2_energies"],
-                        output_data["spin_3/2_energies"], output_data["spin_5/2_energies"], 
-                        output_data["spin_7/2_energies"], output_data["spin_9/2_energies"], 
-                        output_data["spin_11/2_energies"], output_data["spin_13/2_energies"])
+    restructured_output_data["rms"] = rprob.calc_rms_err(10, restructured_output_data["spin_1/2_energies"],
+                        restructured_output_data["spin_3/2_energies"], restructured_output_data["spin_5/2_energies"], 
+                        restructured_output_data["spin_7/2_energies"], restructured_output_data["spin_9/2_energies"], 
+                        restructured_output_data["spin_11/2_energies"], restructured_output_data["spin_13/2_energies"])
 
 
 
@@ -441,39 +445,39 @@ def main():
         
     # set which graphs to plot:
     for i in graphs_to_plot:
-        if i in output_data:
-            output_data[i].plot = graphs_to_plot[i]
+        if i in restructured_output_data:
+            restructured_output_data[i].plot = graphs_to_plot[i]
         else:
             print("property not recorded, check that it is included in experimental data inputs:\n\t", i)
 
     # override graph plotting options (useful when running cell by cell): #!!!
         
-    # output_data["fermi_indices"].plot = 0
-    # output_data["delta"].plot = 0
-    # output_data["fermi_energies_mev"].plot = 0
-    # output_data["fermi_energies_hw"].plot = 0
+    # restructured_output_data["fermi_indices"].plot = 0
+    # restructured_output_data["delta"].plot = 0
+    # restructured_output_data["fermi_energies_mev"].plot = 0
+    # restructured_output_data["fermi_energies_hw"].plot = 0
 
-    # output_data["gs_mag_moments"].plot = 0
-    # output_data["gs_quad_moments"].plot = 0
-    # output_data["gs_spin_floats"].plot = 1
+    # restructured_output_data["gs_mag_moments"].plot = 0
+    # restructured_output_data["gs_quad_moments"].plot = 0
+    # restructured_output_data["gs_spin_floats"].plot = 1
 
-    # output_data["spin_1/2_energies"].plot = 0
-    # output_data["spin_3/2_energies"].plot = 0
-    # output_data["spin_5/2_energies"].plot = 0
-    # output_data["spin_7/2_energies"].plot = 0
-    # output_data["spin_9/2_energies"].plot = 0
-    # output_data["spin_11/2_energies"].plot = 0
-    # output_data["spin_13/2_energies"].plot = 0
+    # restructured_output_data["spin_1/2_energies"].plot = 0
+    # restructured_output_data["spin_3/2_energies"].plot = 0
+    # restructured_output_data["spin_5/2_energies"].plot = 0
+    # restructured_output_data["spin_7/2_energies"].plot = 0
+    # restructured_output_data["spin_9/2_energies"].plot = 0
+    # restructured_output_data["spin_11/2_energies"].plot = 0
+    # restructured_output_data["spin_13/2_energies"].plot = 0
 
-    # output_data["spin_1/2_mag_moments"].plot = 0
-    # output_data["spin_3/2_mag_moments"].plot = 0
+    # restructured_output_data["spin_1/2_mag_moments"].plot = 0
+    # restructured_output_data["spin_3/2_mag_moments"].plot = 0
 
-    # output_data["rms"].plot = 0
+    # restructured_output_data["rms"].plot = 0
 
-    # output_data["all_energies"].plot = 0
-    # output_data["shifted_energies"].plot = 0
+    # restructured_output_data["all_energies"].plot = 0
+    # restructured_output_data["shifted_energies"].plot = 0
 
-    # output_data["gap_9_13"].plot = 0
+    # restructured_output_data["gap_9_13"].plot = 0
 
     # override settings
     # code_settings["mark_exp"] = 1
@@ -488,9 +492,9 @@ def main():
     num_comparisons = 0 
 
     # start plotting graphs:
-    for i in output_data:
+    for i in restructured_output_data:
         
-        prop = output_data[i]
+        prop = restructured_output_data[i]
         
         if not(prop.plot):
             continue
@@ -507,7 +511,7 @@ def main():
             
             if code_settings["mark_spin"]:
                 
-                legend_handles = gr.mark_spin(ptrm_inputs, data_points, output_data["gs_spin_floats"].data, legend_handles, _ax)
+                legend_handles = gr.mark_spin(ptrm_inputs, data_points, restructured_output_data["gs_spin_floats"].data, legend_handles, _ax)
                 
             # plot the data point markers, with comparison to experiment if possible
                 
@@ -543,7 +547,7 @@ def main():
             # mark the range in which the correct ground state spin was calculated
             if code_settings["mark_spin"]==1:
                 
-                correct_spin_range = gr.find_correct_spin(output_data["gs_spin_floats"].data, experimental_data["gs_spin_float"])
+                correct_spin_range = gr.find_correct_spin(restructured_output_data["gs_spin_floats"].data, experimental_data["gs_spin_float"])
                 if len(correct_spin_range) > 0:
                     spin = gr.plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
                     legend_handles.append(spin)
@@ -586,19 +590,19 @@ def main():
 
     agreement.plot = 0
     if ptrm_inputs["deformation_input"] == "mesh" and agreement.plot:  
-        gr.plot_agreement(code_settings, agreement, data_points, output_data, subtitle)
+        gr.plot_agreement(code_settings, agreement, data_points, restructured_output_data, subtitle)
         
     print("\n******** mean and standard error in the mean ******")
 
-    anyl.report_mean(output_data["spin_1/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_3/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_5/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_7/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_9/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_11/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["spin_13/2_energies"], code_settings["print_details"])
-    anyl.report_mean(output_data["gs_mag_moments"], code_settings["print_details"])
-    anyl.report_mean(output_data["gs_quad_moments"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_1/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_3/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_5/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_7/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_9/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_11/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["spin_13/2_energies"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["gs_mag_moments"], code_settings["print_details"])
+    anyl.report_mean(restructured_output_data["gs_quad_moments"], code_settings["print_details"])
 
     # note how long it took
     sub_timer.stop()

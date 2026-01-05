@@ -17,9 +17,9 @@ def test_point():
     assert "gamma = [24.0, 24.0]" in point_out
 
     # check that all steps were started (suggesting no errors in prior stages)
-    assert "Started running gampn" in point_out
-    assert "Started running asyrmo" in point_out
-    assert "Started running probamo" in point_out
+    assert "Returned from gampn" in point_out
+    assert "Returned from asyrmo" in point_out
+    assert "Returned from probamo" in point_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "total runtime" in point_out
@@ -40,9 +40,9 @@ def test_gamma_range():
     assert "gamma = [16.0, 34.0]" in gamma_out
 
     # check that all steps were started (suggesting no errors in prior stages)
-    assert "Started running gampn" in gamma_out
-    assert "Started running asyrmo" in gamma_out
-    assert "Started running probamo" in gamma_out
+    assert "Returned from gampn" in gamma_out
+    assert "Returned from asyrmo" in gamma_out
+    assert "Returned from probamo" in gamma_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "total runtime" in gamma_out
@@ -63,9 +63,9 @@ def test_eps_range():
     assert "gamma = [22.0, 22.0]" in eps_out
 
     # check that all steps were started (suggesting no errors in prior stages)
-    assert "Started running gampn" in eps_out
-    assert "Started running asyrmo" in eps_out
-    assert "Started running probamo" in eps_out
+    assert "Returned from gampn" in eps_out
+    assert "Returned from asyrmo" in eps_out
+    assert "Returned from probamo" in eps_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "total runtime" in eps_out
@@ -86,9 +86,9 @@ def test_mesh():
     assert "gamma = [0.0, 60.0]" in mesh_out
 
     # check that all steps were started (suggesting no errors in prior stages)
-    assert "Started running gampn" in mesh_out
-    assert "Started running asyrmo" in mesh_out
-    assert "Started running probamo" in mesh_out
+    assert "Returned from gampn" in mesh_out
+    assert "Returned from asyrmo" in mesh_out
+    assert "Returned from probamo" in mesh_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "total runtime" in mesh_out
