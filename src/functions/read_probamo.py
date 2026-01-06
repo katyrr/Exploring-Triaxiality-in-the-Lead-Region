@@ -125,17 +125,21 @@ def read_data(line):
     
     # determine whether this line is a data row of the table 
     # (if ' - ' is present then it is).
+
     try:                                                                        
         dash_index = line.index(" - ")
     except ValueError:
         return False # continue to next line
     
+    if not len(line)<100:
+        return False # continue to next line
+    
     # get the spins of the inital and final states of the transition.
     spin_string = line[dash_index-4:dash_index].strip()
-    final_spin_string = line[dash_index+11:dash_index+16].strip()               
-    
+
+    '''final_spin_string = line[dash_index+11:dash_index+16].strip()               
     if not(spin_string == final_spin_string):
-        return False
+        return False'''
 
     spin_float = spin_string_to_float(spin_string)
     
@@ -145,11 +149,12 @@ def read_data(line):
     except ValueError: # could not convert string to float: '0.0  1'
         this_energy = float(line[:5].strip())
     
-    final_energy = float(line[dash_index+3:dash_index+10].strip())
-                         
+    '''final_energy = float(line[dash_index+3:dash_index+10].strip())    
     # determine whether the initial and final states are the same.
     if not(this_energy == final_energy):
-        return False
+        return False # continue to next line
+    else:
+        print(line)'''
     
     # read data.
     mag_moment = float(line[-8:].strip())
@@ -159,6 +164,7 @@ def read_data(line):
                  'energy':this_energy, 'mag_moment':mag_moment, 'quad_moment':quad_moment}
     
     return line_data
+
 
 
 def sort_by_spin(line_data, file_data):

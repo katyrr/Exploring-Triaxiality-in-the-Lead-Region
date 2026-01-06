@@ -59,8 +59,8 @@ def test_eps_range():
 
     # check the correct config file was used for the tets:
     assert not "not found" in eps_out
-    assert "eps = [0.250, 0.350]" in eps_out
-    assert "gamma = [22.0, 22.0]" in eps_out
+    assert "eps = [0.001, 0.301]" in eps_out
+    assert "gamma = [35.0, 35.0]" in eps_out
 
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in eps_out
@@ -69,6 +69,10 @@ def test_eps_range():
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "total runtime" in eps_out
+
+    # check some numerical outputs for consistency with previous runs
+    assert "Energies of Spin 3/2 States / keV:\n	 19.4 ± 1.2" in eps_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$:\n	 2.0 ± 0.3" in eps_out
 
 def test_mesh():
 

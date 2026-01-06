@@ -205,10 +205,10 @@ def main():
     '''5. RE-RUN GAMPN ----------------------------------------------------------------------------
 
     - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
-    can be maximised (to 15 orbitals) when calculating matrix elements.
+      can be maximised (to 15 orbitals) when calculating matrix elements.
     - No need to re-read the outputs, because the properties we read earlier are 
-    not affected, and the recalculated matrix elements will be passed to the next
-    program automatically.
+      not affected, and the recalculated matrix elements will be passed to the next
+      program automatically.
 
     '''
 
@@ -228,6 +228,9 @@ def main():
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
+    - Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
+    - Record the value of the DELTA parameter.
+    - Check for the "SORRY I FOUND NO SOLUTIONS" error, and exclude those files from future analysis.
 
     '''
 
@@ -238,16 +241,6 @@ def main():
     sub_timer.stop()
 
     print(f"***** Returned from asyrmo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
-
-    #%%
-
-    ''' 8. READ ASYRMO 
-
-    - Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
-    - Record the value of the DELTA parameter.
-    - Check for the "SORRY I FOUND NO SOLUTIONS" error, and exclude those files from future analysis.
-
-    '''
 
     output_data["delta"] = []
 
