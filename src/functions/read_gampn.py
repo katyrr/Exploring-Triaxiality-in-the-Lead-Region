@@ -9,6 +9,38 @@ Functions for reading GAMPN.OUT and processing contents.
 
 """
 
+import os
+import functions.file_handling as fh
+import functions.run_ptrm as ptrm
+
+def read_gampn(num_points, data_subfolder_path, data_points, output_data, ptrm_inputs):
+    '''
+    - For each data point (i.e. each GAMPN.OUT file):
+        - Read the value of EFAC (the conversion factor from hw to eV).
+        - Determine the line number of the fermi level orbital in the GAMPN.OUT file.
+        - Read that line from GAMPN.OUT and get the energy, parity, and level index.
+        - Dynamically locate the orbitals nearest to the fermi level in energy, for 
+        future input.
+    '''
+    
+    for i in range(num_points):
+
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
+        lines = fh.read_file(output_file_path)
+        
+        efac = get_efac(lines)
+        fermi_level_line = get_sp_level(lines, ptrm_inputs["fermi_level"], '0')
+        f_parity, f_energy_hw, f_index = get_info(fermi_level_line)
+        
+        output_data["fermi_parities"][i] = f_parity                             
+        output_data["fermi_energies_hw"][i] = f_energy_hw
+        output_data["fermi_energies_mev"][i] = f_energy_hw * efac
+        output_data["fermi_indices"][i] = f_index
+        
+        # dynamically finds the orbitals nearest to the fermi level in energy:
+        data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(f_index, ptrm_inputs["nu"], 
+                                    ptrm_inputs["par"], f_energy_hw, f_parity, lines))
+
 def get_efac(lines):
      """ 
      A function which reads the full contents of the GAMPN.OUT file, 

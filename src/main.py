@@ -145,6 +145,13 @@ def main():
     - Calculate batch settings
     - Configure a script writer.
     - Run the batches. The .OUT files are generated in the 'outputs' directory folder.
+    - Read the output files for the fermi level index, energy, and parity, so that new sets 
+      of orbitals can be calculated dynamically.
+    - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
+      can be maximised (to 15 orbitals) when calculating matrix elements.
+    - No need to re-read the outputs, because the properties we read earlier are 
+      not affected, and the recalculated matrix elements will be passed to the next
+      program automatically.
 
     '''
 
@@ -160,21 +167,6 @@ def main():
 
     print(f"\n***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-
-    #%%
-    ''' 4. READ GAMPN.OUT FILE --------------------------------------------------------------------
-
-    - For each data point (i.e. each GAMPN.OUT file):
-        - Read the value of EFAC (the conversion factor from hw to eV).
-        - Determine the line number of the fermi level orbital in the GAMPN.OUT file.
-        - Read that line from GAMPN.OUT and get the energy, parity, and level index.
-        - Dynamically locate the orbitals nearest to the fermi level in energy, for 
-        future input.
-        
-    - Re-run gampn for all data points, using the orbitals located in the step above. 
-        
-    '''
-
     # set up arrays to store data 
     data_points["asyrmo_orbitals"] = []
     output_data = {"fermi_parities": [0]*code_settings["num_points"], 
@@ -182,35 +174,7 @@ def main():
                    "fermi_energies_mev": [0]*code_settings["num_points"], 
                    "fermi_indices": [0]*code_settings["num_points"]}
     
-    for i in range(code_settings["num_points"]):
-
-        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"GAM_{data_points["file_tags"][i]}.OUT")
-        lines = fh.read_file(output_file_path)
-        
-        ptrm_inputs["efac"] = rgam.get_efac(lines)
-        _fermi_level_line = rgam.get_sp_level(lines, ptrm_inputs["fermi_level"], '0')
-        _f_parity, _f_energy_hw, _f_index = rgam.get_info(_fermi_level_line)
-        
-        output_data["fermi_parities"][i] = _f_parity                             
-        output_data["fermi_energies_hw"][i] = _f_energy_hw
-        output_data["fermi_energies_mev"][i] = _f_energy_hw * ptrm_inputs["efac"]
-        output_data["fermi_indices"][i] = _f_index
-        
-        # dynamically finds the orbitals nearest to the fermi level in energy:
-        data_points["asyrmo_orbitals"].append(ptrm.find_orbitals(_f_index, ptrm_inputs["nu"], 
-                                    ptrm_inputs["par"], _f_energy_hw, _f_parity, lines))
-
-
-    #%% 
-    '''5. RE-RUN GAMPN ----------------------------------------------------------------------------
-
-    - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
-      can be maximised (to 15 orbitals) when calculating matrix elements.
-    - No need to re-read the outputs, because the properties we read earlier are 
-      not affected, and the recalculated matrix elements will be passed to the next
-      program automatically.
-
-    '''
+    rgam.read_gampn(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
 
     ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points)
 
@@ -224,7 +188,7 @@ def main():
 
 
     #%%
-    ''' 6. RUN ASYRMO -----------------------------------------
+    ''' 4. RUN ASYRMO -----------------------------------------
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
@@ -256,7 +220,7 @@ def main():
             
 
     #%%
-    ''' 9. WRITE AND RUN PROBAMO 
+    ''' 5. WRITE AND RUN PROBAMO 
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
@@ -274,7 +238,7 @@ def main():
 
     #%%
 
-    ''' 10. READ PROBAMO.OUT FILE
+    ''' READ PROBAMO.OUT FILE
 
     For each file:
         
@@ -358,7 +322,7 @@ def main():
 
 
     #%%
-    ''' 11. PREPARE TO PLOT GRAPHS 
+    ''' 6. PREPARE TO PLOT GRAPHS 
 
     - Record each data set in an instance of class PropertyData.
     - Calculate graph plotting attributes and store within the class.
@@ -406,7 +370,7 @@ def main():
     #%%
 
 
-    ''' 12. PLOT GRAPHS
+    ''' 7. PLOT GRAPHS
 
     - Set a subtitle containing the values of E2PLUS and GSFAC input, if requested.
     - Set which graphs should be plotted (from config, or overwritten below). 
@@ -563,7 +527,7 @@ def main():
         
 
     #%%
-    ''' 13. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
+    ''' 8. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
 
     - Print information about the best agreement and its location.
     - Plot a graph to show data point agreement across all data points.
