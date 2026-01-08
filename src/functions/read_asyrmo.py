@@ -10,6 +10,22 @@ Functions for reading ASYRMO.OUT and processing contents.
 """
 
 import numpy as np
+import os
+
+import functions.file_handling as fh
+
+def read_asyrmo(file_tags, data_subfolder_path, output_data):
+
+    for i in file_tags:
+
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"ASY_{i}.OUT")
+        lines = fh.read_file(output_file_path)
+        
+        if not "PARTICLE-ROTOR  MODEL" in lines[0]: # then something has gone wrong
+            raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + lines[0] )
+            
+        output_data["delta"].append(get_delta(lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
+            
 
 def get_delta(lines):
      """ 

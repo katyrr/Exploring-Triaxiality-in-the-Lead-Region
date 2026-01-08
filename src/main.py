@@ -183,12 +183,8 @@ def main():
     sub_timer.stop()
     print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    #output_data_copy = output_data.copy() # save a copy of the original before it's overwritten (useful when running cell by cell)
-
-
-
     #%%
-    ''' 4. RUN ASYRMO -----------------------------------------
+    ''' 4. RUN ASYRMO -----------------------------------------------------------------------------
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
@@ -208,19 +204,10 @@ def main():
 
     output_data["delta"] = []
 
-    for i in data_points["file_tags"]:
-
-        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"ASY_{i}.OUT")
-        lines = fh.read_file(output_file_path)
-        
-        if not "PARTICLE-ROTOR  MODEL" in lines[0]: # then something has gone wrong
-            raise RuntimeError("File " + i + " raised error in ASYRMO output: \n" + lines[0] )
-            
-        output_data["delta"].append(rasy.get_delta(lines)) # this also checks for the "SORRY I FOUND NO SOLUTIONS" error.
-            
+    rasy.read_asyrmo(data_points["file_tags"], data_subfolder_path, output_data)
 
     #%%
-    ''' 5. WRITE AND RUN PROBAMO 
+    ''' 5. RUN PROBAMO ----------------------------------------------------------------------------
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
