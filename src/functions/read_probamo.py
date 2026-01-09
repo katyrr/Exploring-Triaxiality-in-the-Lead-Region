@@ -11,8 +11,91 @@ Functions for reading PROBAMO.OUT and processing contents.
 
 import numpy as np
 from functions.spin_processing import spin_string_to_float
+import os
 
 import functions.structs as st
+import functions.file_handling as fh
+
+
+def read_probamo(num_points, data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, print_details):
+    '''
+    For each file:
+        
+    - Read each line:
+        - If it is a static transition, read the spin, energy, and magnetic moment.
+        - Else ignore this line and move to the next.
+        
+    - Sort the file data into categories:
+        - Group lines by spin (e.g. spin 1/2 energies, spin 1/2 magnetic dipole moments, etc).
+        - Additionally (separately) record the expected ground state (the lowest state with the 
+        same spin as the experimental gs) properties as a group.
+        - Fill missing gaps with NaN values, such that the same set of properties has 
+        been recorded for every data point (and if e.g. one data point found three 
+        spin 1/2 states, then all data points should have a list of three spin 1/2 states, 
+        even if some of them are NaN).
+        - Restructure the data set and save separately (now each property is recorded
+        as a list of values for all data points, rather than each data point having
+        a list of properties associated with it). 
+
+    - Calculate energy gaps between levels specified in the experimental section of the config input.
+
+    - Ensure all data sets have the same size and shape.
+    - Mask bad data points with reference to the DELTA data 
+    (any DELTA==NaN values are bad, caused by some kind of convergence issue with BCS pairing).
+    
+    '''
+
+    data_points["property_data"] = []
+    
+    for i in range(num_points):
+        
+        output_file_path = os.path.join(data_subfolder_path, "Outputs", f"PROB_{data_points["file_tags"][i]}.OUT")
+        lines = fh.read_file(output_file_path)
+
+        file_data = {}
+        for l in lines:
+            
+            line_data = read_data(l)  # get the spin, energy, and magnetic moment from this line if it is a static moment, else return False
+            if not(line_data):
+                continue # to next line in file
+            
+            # sort line_data into file_data according to its spin
+            file_data = sort_by_spin(line_data, file_data)
+            # additionally save data that corresponds to the expected experimental ground state
+            file_data = sort_by_expectation(line_data, file_data, ptrm_inputs)
+        
+        file_data = missing_data(file_data, ptrm_inputs)
+        data_points["property_data"].append(file_data)
+    
+    #output_data = output_data_copy | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
+    restructured_output_data = {**output_data, **restructure_data(data_points["property_data"], ptrm_inputs["ispin"], print_details)}
+
+    # get energy gap between third 9/2 and first 13/2 states
+    for i in experimental_data:
+        if not "engap_" in i:
+            continue
+        
+        spin1, idx1, spin2, idx2 = parse_engap_input(i)
+        
+        restructured_output_data[i] = find_gaps(restructured_output_data[f"spin_{spin1}/2_energies"], idx1, restructured_output_data[f"spin_{spin2}/2_energies"], idx2, experimental_data[i])
+
+    # ensure all data sets have the same size and shape, and mask bad points
+
+    mask = np.array([0 if np.isnan(x) else 1 for x in restructured_output_data["delta"]])
+
+    for i in restructured_output_data:
+        if isinstance(restructured_output_data[i][0], list):
+            restructured_output_data[i] = fill_gaps(restructured_output_data[i])
+            list_mask = np.transpose(np.tile(mask, (np.size(restructured_output_data[i][0]),1)))
+            
+            restructured_output_data[i] = np.where(list_mask == 0, np.NaN, restructured_output_data[i])
+        
+        else: 
+            restructured_output_data[i] = np.where(mask == 0, np.NaN, restructured_output_data[i])
+    
+    return restructured_output_data
+
+
 
 def find_gaps(spin_b_energies, index_b , spin_t_energies, index_t, exp):
     '''
@@ -714,3 +797,45 @@ def calc_rms_err(range_min, *props):
     rms.error_tolerance = np.NaN
     
     return rms
+
+
+def parse_engap_input(engap_input):
+    '''
+    Get the spins and indices being requested in energy gap inputs.
+    e.g. the config input "engap_9.3_13.1" is asking for the third 9/2 state
+    and the first 13/2 state.
+
+    Parameters
+    ----------
+    engap_input : string
+        The input variable name for energy gap experimental data.
+
+    Returns
+    -------
+    first_spin : string
+        The numerator of the fractional spin, e.g. for 9/2 this is "9".
+        
+    first_index : int
+        The index of the state, e.g. for the third state this is 3.
+        
+    second_spin : string
+        The numerator of the fractional spin, e.g. for 13/2 this is "13".
+        
+    second_index : int
+        The index of the state, e.g. for the first state this is 1.
+
+    '''
+    first_dot = engap_input.index(".")
+    first_spin = engap_input[first_dot-2:first_dot]
+    if first_spin[0] == "_":
+        first_spin = first_spin[1]
+    first_index = int(engap_input[first_dot+1:first_dot+2])
+    
+    second_dot = engap_input.index(".", first_dot+1)
+    second_spin = engap_input[second_dot-2:second_dot]
+    if second_spin[0] == "_":
+        second_spin = second_spin[1]
+    second_index = int(engap_input[second_dot+1:second_dot+2])
+    
+    return first_spin, first_index, second_spin, second_index
+            
