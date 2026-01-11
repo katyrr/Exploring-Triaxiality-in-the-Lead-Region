@@ -211,6 +211,7 @@ def main():
 
     - Use the existing list of file tags to write a .DAT file for each data point.
     - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
+    - Read the probamo output files and store energy level data (with magnetic dipole and electric quadrupole moments)
 
     '''
 
@@ -223,60 +224,12 @@ def main():
     print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
     
     restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, code_settings["print_details"])
-
-    restructured_output_data_copy = restructured_output_data.copy() # save a copy of the original before it's overwritten, so that the code can be run cell-by-cell without errors.
-
-
-    #%%
-    ''' 6. PREPARE TO PLOT GRAPHS 
-
-    - Record each data set in an instance of class PropertyData.
-    - Calculate graph plotting attributes and store within the class.
-
-    - Raise a ValueError if the property isn't recognised 
-    (i.e. if more data sets are recorded in the future, they cannot be plotted without
-    first hard-coding the calculation of things like axis labels, contour levels,
-    colour bar ticks, etc).
     
-    - Create a new data set containing all energies (of all spins) to plot together.
-    - Create a new data set with all energies shifted to be relative to the expected 
-    ground state (not necessarily the same as the calculated ground state at all points).
-    This makes the output lines look smoother (no sharp bends when the ground state changes).
-    - Create a new data set containing root mean squared error (i.e. discrepancy) between 
-    the calculated lowest energy states of each spin and the exeperimental values (where available).
 
-    '''
+    ''' 7. PLOT GRAPHS ----------------------------------------------------------------------------
 
-    # convert restructured_output_data from a dictionary of lists to a dictionary of PropertyData objects 
-    restructured_output_data = {}
-    for i in restructured_output_data_copy:
-        # print(i)
-        restructured_output_data[i] = st.PropertyData(restructured_output_data_copy[i], i)
-        
-        # calculate contour levels, colour bar ticks and labels, 
-        # and assign experimental values and error tolerance if available.
-        
-        restructured_output_data[i] = gr.calculate_format_data(restructured_output_data[i], i, experimental_data)
-        
+    - Convert data into PropertyData class instances, for easy plotting later
 
-    restructured_output_data["all_energies"] = rprob.collate_energy_data(restructured_output_data, len(data_points["file_tags"]), 
-                                                        experimental_data["gs_spin_string"], experimental_data)
-
-    # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
-    restructured_output_data["shifted_energies"] = rprob.shift_energy_levels(restructured_output_data["all_energies"]) 
-
-    restructured_output_data["rms"] = rprob.calc_rms_err(10, restructured_output_data["spin_1/2_energies"],
-                        restructured_output_data["spin_3/2_energies"], restructured_output_data["spin_5/2_energies"], 
-                        restructured_output_data["spin_7/2_energies"], restructured_output_data["spin_9/2_energies"], 
-                        restructured_output_data["spin_11/2_energies"], restructured_output_data["spin_13/2_energies"])
-
-
-
-
-    #%%
-
-
-    ''' 7. PLOT GRAPHS
 
     - Set a subtitle containing the values of E2PLUS and GSFAC input, if requested.
     - Set which graphs should be plotted (from config, or overwritten below). 
@@ -298,6 +251,7 @@ def main():
         
     '''
 
+    data_to_plot = gr.prepare_data_to_plot(experimental_data, data_points["file_tags"], restructured_output_data)
 
     #!!! set graph subtitle:
     if code_settings["include_subtitle"]:
@@ -308,39 +262,39 @@ def main():
         
     # set which graphs to plot:
     for i in graphs_to_plot:
-        if i in restructured_output_data:
-            restructured_output_data[i].plot = graphs_to_plot[i]
+        if i in data_to_plot:
+            data_to_plot[i].plot = graphs_to_plot[i]
         else:
             print("property not recorded, check that it is included in experimental data inputs:\n\t", i)
 
-    # override graph plotting options (useful when running cell by cell): #!!!
+    #!!! override graph plotting options (useful when running cell by cell):
         
-    # restructured_output_data["fermi_indices"].plot = 0
-    # restructured_output_data["delta"].plot = 0
-    # restructured_output_data["fermi_energies_mev"].plot = 0
-    # restructured_output_data["fermi_energies_hw"].plot = 0
+    # data_to_plot["fermi_indices"].plot = 0
+    # data_to_plot["delta"].plot = 0
+    # data_to_plot["fermi_energies_mev"].plot = 0
+    # data_to_plot["fermi_energies_hw"].plot = 0
 
-    # restructured_output_data["gs_mag_moments"].plot = 0
-    # restructured_output_data["gs_quad_moments"].plot = 0
-    # restructured_output_data["gs_spin_floats"].plot = 1
+    # data_to_plot["gs_mag_moments"].plot = 0
+    # data_to_plot["gs_quad_moments"].plot = 0
+    # data_to_plot["gs_spin_floats"].plot = 1
 
-    # restructured_output_data["spin_1/2_energies"].plot = 0
-    # restructured_output_data["spin_3/2_energies"].plot = 0
-    # restructured_output_data["spin_5/2_energies"].plot = 0
-    # restructured_output_data["spin_7/2_energies"].plot = 0
-    # restructured_output_data["spin_9/2_energies"].plot = 0
-    # restructured_output_data["spin_11/2_energies"].plot = 0
-    # restructured_output_data["spin_13/2_energies"].plot = 0
+    # data_to_plot["spin_1/2_energies"].plot = 0
+    # data_to_plot["spin_3/2_energies"].plot = 0
+    # data_to_plot["spin_5/2_energies"].plot = 0
+    # data_to_plot["spin_7/2_energies"].plot = 0
+    # data_to_plot["spin_9/2_energies"].plot = 0
+    # data_to_plot["spin_11/2_energies"].plot = 0
+    # data_to_plot["spin_13/2_energies"].plot = 0
 
-    # restructured_output_data["spin_1/2_mag_moments"].plot = 0
-    # restructured_output_data["spin_3/2_mag_moments"].plot = 0
+    # data_to_plot["spin_1/2_mag_moments"].plot = 0
+    # data_to_plot["spin_3/2_mag_moments"].plot = 0
 
-    # restructured_output_data["rms"].plot = 0
+    # data_to_plot["rms"].plot = 0
 
-    # restructured_output_data["all_energies"].plot = 0
-    # restructured_output_data["shifted_energies"].plot = 0
+    # data_to_plot["all_energies"].plot = 0
+    # data_to_plot["shifted_energies"].plot = 0
 
-    # restructured_output_data["gap_9_13"].plot = 0
+    # data_to_plot["gap_9_13"].plot = 0
 
     # override settings
     # code_settings["mark_exp"] = 1
@@ -355,9 +309,9 @@ def main():
     num_comparisons = 0 
 
     # start plotting graphs:
-    for i in restructured_output_data:
+    for i in data_to_plot:
         
-        prop = restructured_output_data[i]
+        prop = data_to_plot[i]
         
         if not(prop.plot):
             continue
@@ -374,7 +328,7 @@ def main():
             
             if code_settings["mark_spin"]:
                 
-                legend_handles = gr.mark_spin(ptrm_inputs, data_points, restructured_output_data["gs_spin_floats"].data, legend_handles, _ax)
+                legend_handles = gr.mark_spin(ptrm_inputs, data_points, data_to_plot["gs_spin_floats"].data, legend_handles, _ax)
                 
             # plot the data point markers, with comparison to experiment if possible
                 
@@ -410,7 +364,7 @@ def main():
             # mark the range in which the correct ground state spin was calculated
             if code_settings["mark_spin"]==1:
                 
-                correct_spin_range = gr.find_correct_spin(restructured_output_data["gs_spin_floats"].data, experimental_data["gs_spin_float"])
+                correct_spin_range = gr.find_correct_spin(data_to_plot["gs_spin_floats"].data, experimental_data["gs_spin_float"])
                 if len(correct_spin_range) > 0:
                     spin = gr.plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
                     legend_handles.append(spin)
@@ -453,19 +407,19 @@ def main():
 
     agreement.plot = 0
     if ptrm_inputs["deformation_input"] == "mesh" and agreement.plot:  
-        gr.plot_agreement(code_settings, agreement, data_points, restructured_output_data, subtitle)
+        gr.plot_agreement(code_settings, agreement, data_points, data_to_plot, subtitle)
         
     print("\n******** mean and standard error in the mean ******")
 
-    anyl.report_mean(restructured_output_data["spin_1/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_3/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_5/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_7/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_9/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_11/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["spin_13/2_energies"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["gs_mag_moments"], code_settings["print_details"])
-    anyl.report_mean(restructured_output_data["gs_quad_moments"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_1/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_3/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_5/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_7/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_9/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_11/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["spin_13/2_energies"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["gs_mag_moments"], code_settings["print_details"])
+    anyl.report_mean(data_to_plot["gs_quad_moments"], code_settings["print_details"])
 
     # note how long it took
     sub_timer.stop()

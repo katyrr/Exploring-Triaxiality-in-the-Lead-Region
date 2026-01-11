@@ -15,6 +15,251 @@ import matplotlib.colors as colors
 import numpy as np                              # for np.arrays
 
 from functions.spin_processing import spin_string_to_float, spin_float_to_string
+import functions.structs as st 
+
+def prepare_data_to_plot(experimental_data, file_tags, restructured_output_data):
+    ''' 6. PREPARE TO PLOT GRAPHS 
+
+    - Record each data set in an instance of class PropertyData.
+    - Calculate graph plotting attributes and store within the class.
+
+    - Raise a ValueError if the property isn't recognised 
+    (i.e. if more data sets are recorded in the future, they cannot be plotted without
+    first hard-coding the calculation of things like axis labels, contour levels,
+    colour bar ticks, etc).
+    
+    - Create a new data set containing all energies (of all spins) to plot together.
+    - Create a new data set with all energies shifted to be relative to the expected 
+    ground state (not necessarily the same as the calculated ground state at all points).
+    This makes the output lines look smoother (no sharp bends when the ground state changes).
+    - Create a new data set containing root mean squared error (i.e. discrepancy) between 
+    the calculated lowest energy states of each spin and the exeperimental values (where available).
+
+    '''
+
+    # convert restructured_output_data from a dictionary of lists to a dictionary of PropertyData objects 
+    data_to_plot = {}
+    for i in restructured_output_data:
+        # print(i)
+        data_to_plot[i] = st.PropertyData(restructured_output_data[i], i)
+        
+        # calculate contour levels, colour bar ticks and labels, 
+        # and assign experimental values and error tolerance if available.
+        
+        data_to_plot[i] = calculate_format_data(data_to_plot[i], i, experimental_data)
+        
+
+    data_to_plot["all_energies"] = collate_energy_data(data_to_plot, len(file_tags), 
+                                                        experimental_data["gs_spin_string"], experimental_data)
+
+    # recalculate all energies relative to the spin entered into fn.collate_energy_data() above
+    data_to_plot["shifted_energies"] = shift_energy_levels(data_to_plot["all_energies"]) 
+
+    data_to_plot["rms"] = calc_rms_err(10, data_to_plot["spin_1/2_energies"],
+                        data_to_plot["spin_3/2_energies"], data_to_plot["spin_5/2_energies"], 
+                        data_to_plot["spin_7/2_energies"], data_to_plot["spin_9/2_energies"], 
+                        data_to_plot["spin_11/2_energies"], data_to_plot["spin_13/2_energies"])
+    
+    return data_to_plot
+
+
+def collate_energy_data(output_data, num_points, expected_gs_spin_string, experimental):
+    """
+    A function that takes all of the separate spin_n/2_energies data sets
+    and combines them into a single collection. 
+    
+    Additionally makes a note of the energies of the lowest state of the expected 
+    ground state spin, for future use. Saved as a list in the "shifts" property.
+    
+
+    Parameters
+    ----------
+    output_data : list of PropertyData objects
+        Contains all the data read from the output files, packaged with graph
+        plotting information.
+        
+    num_points : int
+        The number of data points in the set (i.e. the number of files or 
+        the number of deformations).
+
+    Returns
+    -------
+    all_energy_levels : PropertyData object
+        A collection of energy level data for all spins, packaged with
+        graph plotting information.
+
+    """
+    all_level_data = np.zeros((num_points,1))
+    spins = []
+    
+    for d in output_data:
+        if output_data[d].prop == "energies" and output_data[d].sort == "Spin ":
+            this_level_data = output_data[d].data
+            all_level_data = np.hstack((all_level_data, this_level_data))
+            spins += [output_data[d].num]*np.size(this_level_data,1)
+            
+            if output_data[d].num == expected_gs_spin_string:
+                gs_spin_energies = this_level_data[:,0]  
+                # the energies of the lowest state of the expected gs spin
+            
+            
+    all_level_data = np.delete(all_level_data, [0], axis=1)
+    
+    indices = np.argsort(all_level_data[0,:])
+    all_level_data = all_level_data[:, indices]
+    spins = np.array(spins)
+    spins = spins[indices]
+    
+    experimental_data = []
+    expspins = []
+    
+    for e in experimental:
+        if e[0:3] == "jp_":
+            for i in experimental[e]:
+                experimental_data.append(i)
+                expspins.append(e[3:-1])
+            
+    
+    all_energy_levels = st.PropertyData(all_level_data, "All Energy Levels")
+    all_energy_levels.contour_levels = 10
+    all_energy_levels.cbar_ticks = 0
+    all_energy_levels.cbar_tick_labels = 0
+    all_energy_levels.experimental_data = experimental_data
+    all_energy_levels.explabels = expspins
+    all_energy_levels.error_tolerance = np.NaN
+    all_energy_levels.spins = [spin_string_to_float(n) for n in spins]
+    all_energy_levels.shifts = gs_spin_energies
+            
+    return all_energy_levels
+
+def shift_energy_levels(default_energy_levels):
+    '''
+    A function which takes a collated list of all energy levels, and recalculates
+    them relative to the lowest state with the expected ground state spin.
+
+    Parameters
+    ----------
+    default_energy_levels : PropertyData object
+        All of the calculated energy levels, wrapped up in a PropertyData object.
+        Contains a "shifts" property, which is a list of the energies of the lowest
+        state with the expected ground state spin. These are used to perform the shift.
+
+    Returns
+    -------
+    shifted_energies :  PropertyData object
+        All energies, calculated relative to the expected ground state, and wrapped
+        in a PropertyData object.
+
+    '''
+    
+    shifted_energy_levels = []
+    
+    # for each deformation:
+    for d in range(np.size(default_energy_levels.data, 0)):
+        
+        this_deformation_data = default_energy_levels.data[d,:]
+        this_deformation_gs_energy = default_energy_levels.shifts[d]
+        
+        # shift energies to be relative to this
+        shifted_energy_levels.append([(e - this_deformation_gs_energy) for e in this_deformation_data])
+    
+    shifted_energies = st.PropertyData(np.array(shifted_energy_levels), "All Energy Levels (Relative)")
+    shifted_energies.contour_levels = 10
+    shifted_energies.cbar_ticks = 0
+    shifted_energies.cbar_tick_labels = 0
+    shifted_energies.experimental_data = default_energy_levels.experimental_data
+    shifted_energies.explabels = default_energy_levels.explabels
+    shifted_energies.error_tolerance = np.NaN
+    shifted_energies.spins = default_energy_levels.spins
+            
+    return shifted_energies
+
+def calc_rms_err(range_min, *props):
+    '''
+    Calculate the root mean square error in the input properties. Any number of
+    properties can be input. Technically they should all have the same units though.
+    This function works on the assumption that they are energy levels in keV.
+    
+    For energy level data with more than one state, the "correct" energy level 
+    is assumed to be the lowest - this is the one that is compared with the 
+    experimental value.
+    
+    If any of the input properties are missing experimental data, they are 
+    ignored.
+    
+    
+    Assumes
+
+    Parameters
+    ----------
+    range_min : int
+        The lowest rms error in keV to put on the colour bar. It will use a log
+        scale, so to highlight the best values you should put approx the minimum
+        calculated RMS as the lowest value. Usually 10 keV is good, but for very 
+        good calculations you could go down to 2 keV.
+    
+    *props : PropertyData objects
+        Any number of properties, for which the rms error will be calculated.
+
+    Returns
+    -------
+    rms : PropertyData object
+        An object containing an array of the calculated rms errors at each deformation,
+        as well as graph plotting settings.
+
+    '''
+    
+    rms_data = np.zeros(np.size(props[0].data, axis=0)) # start a record of the rms error (for each data point) at zero
+    num_nan = np.zeros(np.size(props[0].data, axis=0), dtype=int) # start a counter for the number of NaN values (for each data point) at zero
+    
+    
+    for a in props:
+        
+        data = a.data
+        exp = a.experimental_data
+        
+        if np.isnan(exp):
+            continue   # ignore any properties with no experimental data
+        
+        if np.size(data, axis=1)>1:
+            data = np.transpose(data)[0]
+        
+        if isinstance(exp, list):
+            exp = exp[0] # use the first experimental value if more than one was input
+        
+        
+        for d in range(len(data)):
+            
+            # count NaN values
+            if np.isnan(data[d]):
+                num_nan[d] += 1
+                continue
+        
+            rms_data[d] += ((data[d]-exp)/1000)**2 # calculate in MeV to avoid overflow (the numbers get big quickly!)
+    
+    for d in range(len(rms_data)):
+        rms_data[d] = np.sqrt( rms_data[d] / (np.size(props[0].data, axis=1)-num_nan[d])) * 1000 # convert back to keV at the end
+    
+    if range_min == 10:
+        contour_levels = [10, 20, 30, 40, 50, 100, 200, 300, 400, 500,1000]
+        cbar_ticks = [10, 20, 50, 100, 200, 500, 1000]
+        cbar_tick_labels = [str(x) for x in cbar_ticks] 
+    else:
+        contour_levels = [2,5, 10, 20, 30, 40, 50, 100, 200, 300, 400, 500,1000]
+        cbar_ticks = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
+        cbar_tick_labels = [str(x) for x in cbar_ticks] 
+        
+        
+    rms = st.PropertyData(np.array(rms_data), "RMS energies")
+    rms.range_min = range_min
+    rms.contour_levels = contour_levels
+    rms.cbar_ticks = cbar_ticks
+    rms.cbar_tick_labels = cbar_tick_labels
+    rms.experimental_data = np.NaN
+    rms.error_tolerance = np.NaN
+    
+    return rms
+
 
 
 def calc_contour_levels(data):
