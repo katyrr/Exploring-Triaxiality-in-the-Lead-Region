@@ -13,9 +13,77 @@ from matplotlib.ticker import FuncFormatter     # for formatting axis ticks
 import matplotlib.tri as tri                    # for manual triangulation before drawing a contour plot
 import matplotlib.colors as colors
 import numpy as np                              # for np.arrays
+import os
 
 from functions.spin_processing import spin_string_to_float, spin_float_to_string
 import functions.structs as st 
+
+def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, gs_spin_floats, data_subfolder_path):
+    # set which paramters are varied and which are constant
+            var_sym, var, fix_sym, fix = assign_parameters(ptrm_inputs, data_points)
+            
+            _, ax = plt.subplots() 
+            
+            legend_handles = []
+            legend_handles, legend_title = plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles)
+
+            
+            # if experimental data is available, plot it in red for easy comparison
+            if np.isfinite(prop.experimental_data).all() and not prop.num == "all": 
+                legend_handles = plot_exp_line(prop, code_settings, var, legend_handles)
+
+                
+            # mark the range in which the correct ground state spin was calculated
+            if code_settings["mark_spin"]==1:
+                
+                correct_spin_range = find_correct_spin(gs_spin_floats.data, experimental_data["gs_spin_float"])
+                if len(correct_spin_range) > 0:
+                    spin = plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
+                    legend_handles.append(spin)
+                        
+            format_fig('linear', ax, list(reversed(legend_handles)), 
+                        '%(current_graph)s in %(nucleus)s' % ptrm_inputs, subtitle, 
+                        varied=var, x_label=var_sym, y_label=prop.axis_label, 
+                        legend_title=legend_title)
+            
+            if prop.prop == "delta":
+                ax.set_ylim([0.2,1]) 
+                
+            if prop.cbar_tick_labels:        # then format for discrete values
+                ax.set_yticks(prop.cbar_ticks)
+                ax.set_yticklabels(prop.cbar_tick_labels)
+            
+
+            file_path = os.path.join(data_subfolder_path, "figures")
+            plt.savefig(file_path)
+
+            if code_settings["display_figures"]:
+                plt.show()
+
+
+def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_floats, subtitle, data_subfolder_path):
+
+    _, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
+    _, cbar = draw_contour_plot(_ax, prop, data_points)
+    
+    legend_handles = []
+    
+    if code_settings["mark_spin"]:
+        
+        legend_handles = mark_spin(ptrm_inputs, data_points, gs_spin_floats.data, legend_handles, _ax)
+        
+    # plot the data point markers, with comparison to experiment if possible
+        
+    legend_handles = plot_points(data_points, prop, legend_handles, cbar, code_settings)
+    
+    format_fig('polar', _ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
+
+    file_path = os.path.join(data_subfolder_path, "figures")
+    plt.savefig(file_path)
+
+    if code_settings["display_figures"]:
+        plt.show()
+
 
 def prepare_data_to_plot(experimental_data, file_tags, restructured_output_data):
     ''' 6. PREPARE TO PLOT GRAPHS 

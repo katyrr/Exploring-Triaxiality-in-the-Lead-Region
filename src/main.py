@@ -67,8 +67,7 @@ HOW TO USE:
 """
 
 import numpy as np                                  
-import matplotlib.pyplot as plt   
-import os   
+import matplotlib.pyplot as plt    
 import sys     
 
 import functions.file_handling as fh 
@@ -129,6 +128,12 @@ def main():
     # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
 
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
+    if "-d" in sys.argv or "--display-figures" in sys.argv:
+        print("DEBUG: display figs")
+        code_settings["display_figures"] = True
+    else:
+        code_settings["display_figures"] = False
+
     fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
     
     code_settings["num_points"] = len(data_points["eps"])
@@ -321,67 +326,16 @@ def main():
         
         if ptrm_inputs["deformation_input"] == "mesh":  
             
-            _fig, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
-            cax, cbar = gr.draw_contour_plot(_ax, prop, data_points)
-            
-            legend_handles = []
-            
-            if code_settings["mark_spin"]:
-                
-                legend_handles = gr.mark_spin(ptrm_inputs, data_points, data_to_plot["gs_spin_floats"].data, legend_handles, _ax)
-                
-            # plot the data point markers, with comparison to experiment if possible
-                
-            legend_handles = gr.plot_points(data_points, prop, legend_handles, cbar, code_settings)
+            gr.plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
             if np.isfinite(prop.experimental_data).all() and code_settings["mark_exp"]: 
                 num_comparisons += 1
-            
-            
-            gr.format_fig('polar', _ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
-            
-            plt.show()
-            
-            
-        
+    
+
         elif (ptrm_inputs["deformation_input"] ==  "gamma" 
             or ptrm_inputs["deformation_input"] == "eps"
             or len(data_points["e2plus"]) > 1):
             
-            # set which paramters are varied and which are constant
-            var_sym, var, fix_sym, fix = gr.assign_parameters(ptrm_inputs, data_points)
-            
-            _fig, _ax = plt.subplots() 
-            
-            legend_handles = []
-            legend_handles, legend_title = gr.plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles)
-
-            
-            # if experimental data is available, plot it in red for easy comparison
-            if np.isfinite(prop.experimental_data).all() and not prop.num == "all": 
-                legend_handles = gr.plot_exp_line(prop, code_settings, var, legend_handles)
-
-                
-            # mark the range in which the correct ground state spin was calculated
-            if code_settings["mark_spin"]==1:
-                
-                correct_spin_range = gr.find_correct_spin(data_to_plot["gs_spin_floats"].data, experimental_data["gs_spin_float"])
-                if len(correct_spin_range) > 0:
-                    spin = gr.plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
-                    legend_handles.append(spin)
-                        
-            gr.format_fig('linear', _ax, list(reversed(legend_handles)), 
-                        '%(current_graph)s in %(nucleus)s' % ptrm_inputs, subtitle, 
-                        varied=var, x_label=var_sym, y_label=prop.axis_label, 
-                        legend_title=legend_title)
-            
-            if prop.prop == "delta":
-                _ax.set_ylim([0.2,1]) 
-                
-            if prop.cbar_tick_labels:        # then format for discrete values
-                _ax.set_yticks(prop.cbar_ticks)
-                _ax.set_yticklabels(prop.cbar_tick_labels)
-            
-            plt.show()
+            gr.plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, data_to_plot["gs_spin_floats"], data_subfolder_path)
             
             
         
