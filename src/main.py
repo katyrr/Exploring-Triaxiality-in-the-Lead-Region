@@ -52,6 +52,11 @@ HOW TO USE:
     6. Run the codes with command: "python src/main.py <folder>" 
                                 or "Python3 src/main.py <folder>" 
                                 or "uv run python src/main.py <folder>"
+       
+       Optional command line argument:
+
+       "--display-figures" or "-d" to display figs on the screen as they are plotted
+       (whether or not this option is used, the figures will be saved in the "figures" folder)
 
 
 - How to use after the first time:
@@ -61,6 +66,11 @@ HOW TO USE:
     2. Run the codes with command: "python src/main.py <folder>" 
                                 or "Python3 src/main.py <folder>" 
                                 or "uv run python src/main.py <folder>"
+       
+       Optional command line argument:
+
+       "--display-figures" or "-d" to display figs on the screen as they are plotted
+       (whether or not this option is used, the figures will be saved in the "figures" folder)
      
     
 
@@ -85,7 +95,7 @@ from classes.timer import Timer
 
 def print_div():
     # Use to help organise console output into easy-to-read sections
-    print("****************************************************************************************") 
+    print("========================================================================================") 
 
 
 
@@ -231,28 +241,18 @@ def main():
     restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, code_settings["print_details"])
     
 
-    ''' 7. PLOT GRAPHS ----------------------------------------------------------------------------
+    ''' 6. PLOT GRAPHS ----------------------------------------------------------------------------
 
     - Convert data into PropertyData class instances, for easy plotting later
 
 
     - Set a subtitle containing the values of E2PLUS and GSFAC input, if requested.
     - Set which graphs should be plotted (from config, or overwritten below). 
-    Any not listed are False by default.
+      Any not listed are False by default.
 
-    - If deformation was input as a mesh:
-        - Plot filled contours in polar coordinates.
-        - Draw a contour line to indicate the perimeter of the region where 
-        the ground state spin was correctly reproduced, if requested.
-        - Plot data point markers.
-            - If experimental data is available, points that agree with experiment 
-            (within tolerance) are marked in red.
-            - Non-matching points are not plotted (unless there are fewer than 100 data points.)
+    - If deformation was input as a mesh, plot filled contours in polar coordinates.
+    - If only one of eps/gamma/e2plus is varied, plot line graphs.
         
-    - If only one of eps/gamma/e2plus is varied:
-        - Plot line graphs.
-        - Draw a green box around regions that have the correct ground state spin, if requested.
-        - Plot a red line to indicate the experimental value, if available.
         
     '''
 
@@ -341,7 +341,7 @@ def main():
         
 
     #%%
-    ''' 8. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT
+    ''' 7. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT ---------------------------------------
 
     - Print information about the best agreement and its location.
     - Plot a graph to show data point agreement across all data points.
@@ -350,41 +350,23 @@ def main():
 
     '''
         
-    gr.check_agreement(code_settings["print_details"], data_points, num_comparisons)
+    anyl.check_agreement(code_settings["print_details"], data_points, num_comparisons)
+    anyl.plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
+    
+    print_div()
+    print("\n******** mean and standard error in the mean *********")
+    report_means=["spin_1/2_energies", "spin_3/2_energies", "spin_5/2_energies", "spin_7/2_energies", "spin_9/2_energies", "spin_11/2_energies", "spin_13/2_energies",
+                  "gs_mag_moments", "spin_1/2_mag_moments", "spin_3/2_mag_moments", "spin_5/2_mag_moments", "spin_7/2_mag_moments", "spin_9/2_mag_moments", "spin_11/2_mag_moments", "spin_13/2_mag_moments",
+                  "gs_quad_moments", "spin_1/2_quad_moments", "spin_3/2_quad_moments", "spin_5/2_quad_moments", "spin_7/2_quad_moments", "spin_9/2_quad_moments", "spin_11/2_quad_moments", "spin_13/2_quad_moments"]
+    for i in report_means:
+        anyl.report_mean(data_to_plot[i], code_settings["print_details"])
 
-    agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
-    agreement.contour_levels = np.arange(0, num_comparisons+2, dtype=int) #fn.calc_contour_levels(agreement.data)
-    agreement.cbar_ticks = gr.calc_cbar_ticks(agreement.contour_levels)
-    agreement.cbar_tick_labels = list(np.arange(0, num_comparisons+1, dtype=int)) #fn.calc_cbar_tick_labels(agreement.data, "int")
-    agreement.experimental_data = np.NaN
-    agreement.error_tolerance = np.NaN
-
-    agreement.plot = 0
-    if ptrm_inputs["deformation_input"] == "mesh" and agreement.plot:  
-        gr.plot_agreement(code_settings, agreement, data_points, data_to_plot, subtitle)
-        
-    print("\n******** mean and standard error in the mean ******")
-
-    anyl.report_mean(data_to_plot["spin_1/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_3/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_5/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_7/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_9/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_11/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["spin_13/2_energies"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["gs_mag_moments"], code_settings["print_details"])
-    anyl.report_mean(data_to_plot["gs_quad_moments"], code_settings["print_details"])
-
-    # note how long it took
     sub_timer.stop()
     main_timer.stop()
     print("\n****************************************************************************************")
     print("Finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
     print("total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
     print("****************************************************************************************\n")
-
-
-
 
 
 if __name__ == "__main__":

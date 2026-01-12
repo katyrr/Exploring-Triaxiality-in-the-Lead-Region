@@ -19,64 +19,77 @@ from functions.spin_processing import spin_string_to_float, spin_float_to_string
 import functions.structs as st 
 
 def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, gs_spin_floats, data_subfolder_path):
+    '''
+    - Draw a green box around regions that have the correct ground state spin, if requested.
+    - Plot a red line to indicate the experimental value, if available.
+    '''
+
     # set which paramters are varied and which are constant
-            var_sym, var, fix_sym, fix = assign_parameters(ptrm_inputs, data_points)
-            
-            _, ax = plt.subplots() 
-            
-            legend_handles = []
-            legend_handles, legend_title = plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles)
+    var_sym, var, fix_sym, fix = assign_parameters(ptrm_inputs, data_points)
+    
+    _, ax = plt.subplots() 
+    
+    legend_handles = []
+    legend_handles, legend_title = plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles)
 
-            
-            # if experimental data is available, plot it in red for easy comparison
-            if np.isfinite(prop.experimental_data).all() and not prop.num == "all": 
-                legend_handles = plot_exp_line(prop, code_settings, var, legend_handles)
+    
+    # if experimental data is available, plot it in red for easy comparison
+    if np.isfinite(prop.experimental_data).all() and not prop.num == "all": 
+        legend_handles = plot_exp_line(prop, code_settings, var, legend_handles)
 
+        
+    # mark the range in which the correct ground state spin was calculated
+    if code_settings["mark_spin"]==1:
+        
+        correct_spin_range = find_correct_spin(gs_spin_floats.data, experimental_data["gs_spin_float"])
+        if len(correct_spin_range) > 0:
+            spin = plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
+            legend_handles.append(spin)
                 
-            # mark the range in which the correct ground state spin was calculated
-            if code_settings["mark_spin"]==1:
-                
-                correct_spin_range = find_correct_spin(gs_spin_floats.data, experimental_data["gs_spin_float"])
-                if len(correct_spin_range) > 0:
-                    spin = plot_correct_spin(correct_spin_range, var, ptrm_inputs["step"], prop)
-                    legend_handles.append(spin)
-                        
-            format_fig('linear', ax, list(reversed(legend_handles)), 
-                        '%(current_graph)s in %(nucleus)s' % ptrm_inputs, subtitle, 
-                        varied=var, x_label=var_sym, y_label=prop.axis_label, 
-                        legend_title=legend_title)
-            
-            if prop.prop == "delta":
-                ax.set_ylim([0.2,1]) 
-                
-            if prop.cbar_tick_labels:        # then format for discrete values
-                ax.set_yticks(prop.cbar_ticks)
-                ax.set_yticklabels(prop.cbar_tick_labels)
-            
+    format_fig('linear', ax, list(reversed(legend_handles)), 
+                '%(current_graph)s in %(nucleus)s' % ptrm_inputs, subtitle, 
+                varied=var, x_label=var_sym, y_label=prop.axis_label, 
+                legend_title=legend_title)
+    
+    if prop.prop == "delta":
+        ax.set_ylim([0.2,1]) 
+        
+    if prop.cbar_tick_labels:        # then format for discrete values
+        ax.set_yticks(prop.cbar_ticks)
+        ax.set_yticklabels(prop.cbar_tick_labels)
+    
 
-            file_path = os.path.join(data_subfolder_path, "figures")
-            plt.savefig(file_path)
+    file_path = os.path.join(data_subfolder_path, "figures")
+    plt.savefig(file_path)
 
-            if code_settings["display_figures"]:
-                plt.show()
+    if code_settings["display_figures"]:
+        plt.show()
 
 
 def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_floats, subtitle, data_subfolder_path):
+    """
+    - Draw a contour line to indicate the perimeter of the region where 
+        the ground state spin was correctly reproduced, if requested.
+        - Plot data point markers.
+            - If experimental data is available, points that agree with experiment 
+            (within tolerance) are marked in red.
+            - Non-matching points are not plotted (unless there are fewer than 100 data points.)
+    """
 
-    _, _ax = plt.subplots(subplot_kw=dict(projection='polar'))
-    _, cbar = draw_contour_plot(_ax, prop, data_points)
+    _, ax = plt.subplots(subplot_kw=dict(projection='polar'))
+    _, cbar = draw_contour_plot(ax, prop, data_points)
     
     legend_handles = []
     
     if code_settings["mark_spin"]:
         
-        legend_handles = mark_spin(ptrm_inputs, data_points, gs_spin_floats.data, legend_handles, _ax)
+        legend_handles = mark_spin(ptrm_inputs, data_points, gs_spin_floats.data, legend_handles, ax)
         
     # plot the data point markers, with comparison to experiment if possible
         
     legend_handles = plot_points(data_points, prop, legend_handles, cbar, code_settings)
     
-    format_fig('polar', _ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
+    format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
 
     file_path = os.path.join(data_subfolder_path, "figures")
     plt.savefig(file_path)
@@ -1443,81 +1456,7 @@ def mark_spin(ptrm_inputs, data_points, spin_data, legend_handles, ax):
     legend_handles.append(spin_legend_proxy)
 
     return legend_handles
-
-
-def check_agreement(verbose, data_points, num_comparisons):
-    """
-    A function to check how well data points agreed with experimental values,
-    and which data point(s) had the highest agreement.
-    
-
-    """
-    
-    sorted_indices = np.argsort(data_points["agreed"])
-    sorted_eps = [data_points["eps"][i] for i in sorted_indices]
-    sorted_gamma = [data_points["gamma_degrees"][i] for i in sorted_indices]
-    
-    max_agreement = data_points["agreed"][sorted_indices[-1]]
-    
-    unique_values, counts = np.unique(data_points["agreed"], return_counts=True)
-    
-    print("\n\n***** Agreement of each data point with experimental data: *****")
-    if verbose:
-        print(data_points["agreed"])
-        
-        print(dict(zip(unique_values, counts)))
-        
-        print("Number of data points with each level of agreement:")
-        for i in range(len(unique_values)): # 0, 1
-        
-            print("\n\tAgreement = " + str(unique_values[i]) + ":")
-            
-            # when i = 0
-            # we want the first 2 values of deformation, (2 = counts[0] = counts[i])
-            # because they all have agreement = 0, (0 = unique_values[0] = unique_values[i])
-            # so we need slice range [0:2], (0 = i, 2 = counts[i]) 
-            
-            # when i = 1
-            # we want the next 8 values of deformation, (8 = counts[1] = counts[i])
-            # because they all have agreement = 3, (3 = unique_values[1] = unique_values[i])
-            # and account for existing values (2), (2 = counts[0] = counts[i-1] = sum(counts[0:1]) = sum(counts[0:i]))
-            # so we need slice range [2, 10], (2 = sum(counts[0:i]), 10 = sum(counts[0:i+1])
-        
-            lower = sum(counts[0:i])
-            upper = sum(counts[0:i+1])
-            
-            these_eps = sorted_eps[lower:upper]
-            these_gamma = sorted_gamma[lower:upper]
-            
-            for j in range(len(these_eps)):
-                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
-        
-       
-    
-    else:
-        
-        print("Highest agreement = " + str(max_agreement) + " / " + str(num_comparisons))
-        
-        if max_agreement > 0:
-            print("\nPoints with agreement = " + str(max_agreement) + ":")
-            
-            i = len(unique_values)-1
-            
-            print("\n\tAgreement = " + str(unique_values[i]) + ":")
-        
-            lower = sum(counts[0:i])
-            upper = sum(counts[0:i+1])
-            
-            these_eps = sorted_eps[lower:upper]
-            these_gamma = sorted_gamma[lower:upper]
-            
-            r = min(len(these_eps), 5)
-            for j in range(r):
-                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
-            
-            if r==5 and len(these_eps) != 5:
-                print("... etc, " + str(len(these_eps)))
-        
+  
        
 def plot_line_data(data_points, prop, var, fix_sym, fix, legend_handles):
     '''
@@ -1617,34 +1556,3 @@ def plot_exp_line(prop, code_settings, var, legend_handles):
         legend_handles.append(exp_tol)
         
     return legend_handles
-
-
-def plot_agreement(code_settings, agreement, data_points, output_data, subtitle):
-    '''
-    For plotting a polar filled contour plot of "agreement" (the number of properties
-    which agreed with experiment). 
-    
-    Obsolete - better to use rms error data. 
-
-    '''
-    
-    code_settings["current_graph"] = agreement.title
-    print("plotting graph: %(current_graph)s" % code_settings) 
-    
-    fig, ax = plt.subplots(subplot_kw=dict(projection='polar'))
-    cax, cbar = draw_contour_plot(ax, agreement, data_points)
-    
-    legend_handles = []
-    
-    if code_settings["mark_spin"]:
-        legend_handles = mark_spin(code_settings, data_points, output_data["gs_spin_floats"].data, legend_handles, ax)
-    
-    if code_settings["mark_points"]:
-        legend_handles =  plot_points_without_experiment(data_points, legend_handles)
-           
-    
-    format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % code_settings, subtitle)
-    
-    plt.show()
-    
-    

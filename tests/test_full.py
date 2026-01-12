@@ -71,8 +71,8 @@ def test_eps_range():
     assert "total runtime" in eps_out
 
     # check some numerical outputs for consistency with previous runs
-    assert "Energies of Spin 3/2 States / keV:\n	 19.4 ± 1.2" in eps_out
-    assert "Ground State Magnetic Dipole Moment / $μ_{N}$:\n	 2.0 ± 0.3" in eps_out
+    assert "Energies of Spin 3/2 States / keV                           19.4  ± 1.2" in eps_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               2.0   ± 0.3" in eps_out
 
 def test_mesh():
 
