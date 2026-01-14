@@ -114,6 +114,11 @@ def main():
 
     print_div()
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
+
+    if "-v" in sys.argv or "--verbose" in sys.argv: 
+        verbose = True
+    else: 
+        verbose = False
     
     
     #%%
@@ -152,6 +157,7 @@ def main():
     print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
     print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
 
+    print_div()
 
     #%%   
     ''' 3. RUN GAMPN ------------------------------------------------------------------------------
@@ -237,8 +243,9 @@ def main():
     sub_timer.stop()
 
     print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print_div()
     
-    restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, code_settings["print_details"])
+    restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, verbose)
     
 
     ''' 6. PLOT GRAPHS ----------------------------------------------------------------------------
@@ -301,7 +308,7 @@ def main():
 
     # data_to_plot["gap_9_13"].plot = 0
 
-    # override settings
+    #!!! override settings
     # code_settings["mark_exp"] = 1
     # code_settings["mark_exp_tol"] = 0
     # code_settings["mark_points"] = 1
@@ -313,6 +320,7 @@ def main():
     data_points["agreed"] = [0]*len(data_points["eps"])
     num_comparisons = 0 
 
+    print_div()
     # start plotting graphs:
     for i in data_to_plot:
         
@@ -349,24 +357,27 @@ def main():
     - Print the total runtime.
 
     '''
-        
-    anyl.check_agreement(code_settings["print_details"], data_points, num_comparisons)
+    
+    print_div()
+    anyl.check_agreement(verbose, data_points, num_comparisons)
     anyl.plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
     
     print_div()
-    print("\n******** mean and standard error in the mean *********")
+    print("\nMean and standard error in the mean:")
+    if not verbose:
+        print("[only printing lowest energy state of each spin; for all states use -v or --verbose]\n")
     report_means=["spin_1/2_energies", "spin_3/2_energies", "spin_5/2_energies", "spin_7/2_energies", "spin_9/2_energies", "spin_11/2_energies", "spin_13/2_energies",
                   "gs_mag_moments", "spin_1/2_mag_moments", "spin_3/2_mag_moments", "spin_5/2_mag_moments", "spin_7/2_mag_moments", "spin_9/2_mag_moments", "spin_11/2_mag_moments", "spin_13/2_mag_moments",
                   "gs_quad_moments", "spin_1/2_quad_moments", "spin_3/2_quad_moments", "spin_5/2_quad_moments", "spin_7/2_quad_moments", "spin_9/2_quad_moments", "spin_11/2_quad_moments", "spin_13/2_quad_moments"]
     for i in report_means:
-        anyl.report_mean(data_to_plot[i], code_settings["print_details"])
+        anyl.report_mean(data_to_plot[i], verbose)
 
+    print_div()
     sub_timer.stop()
     main_timer.stop()
-    print("\n****************************************************************************************")
     print("Finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
-    print("total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
-    print("****************************************************************************************\n")
+    print("Total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
+    print_div()
 
 
 if __name__ == "__main__":

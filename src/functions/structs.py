@@ -87,7 +87,6 @@ def get_restricted_inputs():
         'iq': [0,1],
         'vmi': 	[0,1],
         'OS': ['MacOS', '64bit'],
-        'detailed_print': [0,1],
         'mark_spin': [0,1],
         'mark_exp': [0,1],
         'mark_exp_tol': [0,1],
@@ -105,7 +104,7 @@ def get_required_inputs():
                        'ipout', 'nu', 'imin', 'ispin', 'kmax', 'istrch', 'num_orbs', 
                        'nuu', 'nprot', 'nneutr', 'e2plur', 'ispec', 'iq', 'gr', 
                        'vmi', 'nmin', 'nmax', 'OS', 'num_cores', 'figure_res', 
-                       'print_details', 'mu_tol', 'abs_en_tol', 'gap_en_tol', 
+                       'mu_tol', 'abs_en_tol', 'gap_en_tol', 
                        'mark_spin', 'mark_exp', 'mark_exp_tol', 'mark_points',
                        'e2plus', 'include_subtitle']
     

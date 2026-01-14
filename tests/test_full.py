@@ -22,7 +22,7 @@ def test_point():
     assert "Returned from probamo" in point_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
-    assert "total runtime" in point_out
+    assert "Total runtime" in point_out
 
 def test_gamma_range():
 
@@ -45,7 +45,7 @@ def test_gamma_range():
     assert "Returned from probamo" in gamma_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
-    assert "total runtime" in gamma_out
+    assert "Total runtime" in gamma_out
 
 def test_eps_range():
 
@@ -68,7 +68,7 @@ def test_eps_range():
     assert "Returned from probamo" in eps_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
-    assert "total runtime" in eps_out
+    assert "Total runtime" in eps_out
 
     # check some numerical outputs for consistency with previous runs
     assert "Energies of Spin 3/2 States / keV                           19.4  ± 1.2" in eps_out
@@ -95,4 +95,4 @@ def test_mesh():
     assert "Returned from probamo" in mesh_out
 
     # check that the end of the script was reached (suggesting no runtime errors)
-    assert "total runtime" in mesh_out
+    assert "Total runtime" in mesh_out

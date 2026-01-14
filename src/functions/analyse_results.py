@@ -48,37 +48,28 @@ def report_mean(prop, verbose):
     stdv = np.std(data, axis=0, where=mask)
     
     
-    if verbose:
-        print("\t # \t  mean ± sterr (stdv)")
-    
     if isinstance(stdv, np.ndarray):
         sterr = [stdv[s]/np.sqrt(not_nan[s]) for s in range(len(stdv))]
-        
-        if verbose:
-            itr = len(mean)
-            print(f"\n{prop.axis_label}:")
-            
-        else:
-            itr = 1
-        
-        for i in range(itr): 
-            if verbose:
-                #print("\t", i+1, "\t %.1f ± %.1f \t (%.1f) " % (mean[i], sterr[i], stdv[i]))
-                print(f"\t{i+1}\t{mean[i]:<5.1f} ± {sterr[i]:<5.1f}\t({stdv[i]:<5.1f})")
-            else:
-                #print("\t %.1f ± %.1f " % (mean[i], sterr[i]))
-                print(f"{prop.axis_label:<60}{mean[i]:<5.1f} ± {sterr[i]:<5.1f}")
-        
     else:
-        sterr = stdv/np.sqrt(not_nan)
+        sterr = [stdv/np.sqrt(not_nan)]
+        mean = [mean]
+        stdv = [stdv]
         
-        if verbose:
-            #print("\t %.1f ± %.1f \t (%.1f) " % (mean, sterr, stdv))
-            print(f"{prop.axis_label:<60}{mean:<5.1f} ± {sterr:<5.1f}\t({stdv:<5.1f})")
-        else:
-            #print("\t %.1f ± %.1f " % (mean, sterr))
-            print(f"{prop.axis_label:<60}{mean:<5.1f} ± {sterr:<5.1f}")
+    if verbose:
+        itr = len(mean)
+        print(f"\n{prop.axis_label}:")
+        print("\t# \tmean \t± \tsterr \t(stdv)")
+    else:
+        itr = 1
     
+    for i in range(itr): 
+        if verbose:
+            #print("\t", i+1, "\t %.1f ± %.1f \t (%.1f) " % (mean[i], sterr[i], stdv[i]))
+            print(f"\t{i+1}\t{mean[i]:<5.1f}\t± \t{sterr[i]:<5.1f}\t({stdv[i]:^5.1f})")
+        else:
+            #print("\t %.1f ± %.1f " % (mean[i], sterr[i]))
+            print(f"{prop.axis_label:<60}{mean[i]:<5.1f} ± {sterr[i]:<5.1f}")
+
 
 def check_agreement(verbose, data_points, num_comparisons):
     """
@@ -93,6 +84,9 @@ def check_agreement(verbose, data_points, num_comparisons):
     sorted_gamma = [data_points["gamma_degrees"][i] for i in sorted_indices]
     
     max_agreement = data_points["agreed"][sorted_indices[-1]]
+    print(f"Highest agreement = {max_agreement} / {num_comparisons}")
+    if max_agreement == 0:
+        return
     
     unique_values, counts = np.unique(data_points["agreed"], return_counts=True)
     
@@ -103,14 +97,16 @@ def check_agreement(verbose, data_points, num_comparisons):
         print(dict(zip(unique_values, counts)))
         
         print("Number of data points with each level of agreement:")
-        for i in range(len(unique_values)): # 0, 1
+        for i in range(len(unique_values)): # e.g. 0, 1
         
-            print("\n\tAgreement = " + str(unique_values[i]) + ":")
+            print(f"\n\tAgreement = {unique_values[i]}:")
             
+            # e.g. logic: 
+
             # when i = 0
-            # we want the first 2 values of deformation, (2 = counts[0] = counts[i])
-            # because they all have agreement = 0, (0 = unique_values[0] = unique_values[i])
-            # so we need slice range [0:2], (0 = i, 2 = counts[i]) 
+            # we want the first 2 values of deformation, (because counts[i] = counts[0] = 2)
+            # because they all have agreement = 0, (because unique_values[i] = unique_values[0] = 0)
+            # so we need slice range [0:2], (because i=0, and counts[i]=2) 
             
             # when i = 1
             # we want the next 8 values of deformation, (8 = counts[1] = counts[i])
@@ -125,33 +121,28 @@ def check_agreement(verbose, data_points, num_comparisons):
             these_gamma = sorted_gamma[lower:upper]
             
             for j in range(len(these_eps)):
-                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
+                print(f"\t\t(ε, γ) = ({sorted_eps[j]:.3f}, \t{sorted_gamma[j]:.1f}º)")
         
-       
     
     else:
+        print("\nPoints with agreement = {max_agreement}:")
         
-        print("Highest agreement = " + str(max_agreement) + " / " + str(num_comparisons))
+        i = len(unique_values)-1
         
-        if max_agreement > 0:
-            print("\nPoints with agreement = " + str(max_agreement) + ":")
-            
-            i = len(unique_values)-1
-            
-            print("\n\tAgreement = " + str(unique_values[i]) + ":")
+        print("\n\tAgreement = {unique_values[i]}:")
+    
+        lower = sum(counts[0:i])
+        upper = sum(counts[0:i+1])
         
-            lower = sum(counts[0:i])
-            upper = sum(counts[0:i+1])
-            
-            these_eps = sorted_eps[lower:upper]
-            these_gamma = sorted_gamma[lower:upper]
-            
-            r = min(len(these_eps), 5)
-            for j in range(r):
-                print("\t\t(ε, γ) = (" + str(these_eps[j]) + ",\t" + str(these_gamma[j])+"º)")
-            
-            if r==5 and len(these_eps) != 5:
-                print("... etc, " + str(len(these_eps)))
+        these_eps = sorted_eps[lower:upper]
+        these_gamma = sorted_gamma[lower:upper]
+        
+        r = min(len(these_eps), 5)
+        for j in range(r):
+            print(f"\t\t(ε, γ) = ({these_eps[j]:.3f},\t{these_gamma[j]:.1f}º)")
+        
+        if r==5 and len(these_eps) > 5:
+            print(f"... etc, {len(these_eps)}")
       
 def plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, gs_spin_floats, subtitle, data_subfolder_path):
     agreement = st.PropertyData(data_points["agreed"], "Agreement of Data Points With Experimental Data")
