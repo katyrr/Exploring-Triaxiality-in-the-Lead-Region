@@ -5,7 +5,7 @@ import sys
 def test_point():
 
     point_res = subprocess.run(
-        [sys.executable, "src/main.py", "test_point"],
+        [sys.executable, "main.py", "test_point"],
         capture_output=True,
         text=True,
         check=True,
@@ -27,7 +27,7 @@ def test_point():
 def test_gamma_range():
 
     gamma_res = subprocess.run(
-        [sys.executable, "src/main.py", "test_gamma_range"],
+        [sys.executable, "main.py", "test_gamma_range"],
         capture_output=True,
         text=True,
         check=True,
@@ -50,7 +50,7 @@ def test_gamma_range():
 def test_eps_range():
 
     eps_res = subprocess.run(
-        [sys.executable, "src/main.py", "test_eps_range"],
+        [sys.executable, "main.py", "test_eps_range"],
         capture_output=True,
         text=True,
         check=True,
@@ -77,7 +77,7 @@ def test_eps_range():
 def test_mesh():
 
     mesh_res = subprocess.run(
-        [sys.executable, "src/main.py", "test_mesh"],
+        [sys.executable, "main.py", "test_mesh"],
         capture_output=True,
         text=True,
         check=True,

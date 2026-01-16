@@ -11,9 +11,9 @@ Functions for reading config file and processing contents.
 
 import numpy as np
 import math
-import functions.structs as st
-import functions.file_handling as fh
-from functions.spin_processing import spin_string_to_float
+import src.functions.structs as st
+import src.functions.file_handling as fh
+from src.functions.spin_processing import spin_string_to_float
 
 #--------------------------------------------------------------------------------------------------
 

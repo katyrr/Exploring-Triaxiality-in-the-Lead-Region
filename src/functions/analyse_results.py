@@ -11,8 +11,8 @@ Functions for analysing the results of the full PTRM calculation.
 
 import numpy as np
 
-import functions.structs as st
-import functions.graph_plotting as gr
+import src.functions.structs as st
+import src.functions.graph_plotting as gr
 
 
 def report_mean(prop, verbose):

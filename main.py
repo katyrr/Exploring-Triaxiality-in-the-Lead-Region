@@ -6,12 +6,18 @@ Created on Fri Feb  7 10:54:23 2025
 @author: Katy Robson
 
 
+To-do:
+- clean up docs
+- test numerically vs pre-cleanup results
+- write unit tests for individual funcs
+- make a constants file for magic numbers
+- move main to root
+
 
 
 HOW TO USE:
 
-- This code file is stored in /Code/src
-- Modules "functions.py", "structs.py", and "graph_plotting.py" are also stored in this directory.
+- This code file is stored in /Code
 
 - How to use for the first time:
 
@@ -23,7 +29,7 @@ HOW TO USE:
             uv venv
             uv sync
        
-       There is no need to activate the venv before running. Using uv is optional, but
+       There is no need to "activate" the venv before running. Using uv is optional, but
        might reduce the risk of errors caused by a mismatch in python or framework versions.
     
     2. Check that the pre-compiled original PTRM codes in the /Code/src/ptrm/MacOS/MO/ 
@@ -40,11 +46,11 @@ HOW TO USE:
        folder in PowerShell, and then using the commands "Unblock-File -Path GAMPN.exe", 
        "Unblock-File -Path ASYRMO.exe", "Unblock-File -Path PROBAMO.exe".
        
-    3. Make a new folder in /Code, typically named as the nuclide you're calculating,
-       e.g. /Code/Pt177.
+    3. Make a new folder in /Code/data, typically named as the nuclide you're calculating,
+       e.g. /Code/data/Pt177.
     
-    4. Copy the config file from /Code/Examples to your new folder. (All the other
-       necessary folders and files will be created automatically when you run the
+    4. Copy the config file from /Code/static/config_template.py to your new folder. 
+       (All the other necessary folders and files will be created automatically when you run the
        code for the first time).
     
     5. Make any necessary changes to the settings in your config file in /Code/<folder>.
@@ -80,17 +86,16 @@ import numpy as np
 import matplotlib.pyplot as plt    
 import sys     
 
-import functions.file_handling as fh 
-import functions.read_config as rc     
-import functions.run_ptrm as ptrm
-import functions.read_gampn as rgam
-import functions.read_asyrmo as rasy
-import functions.read_probamo as rprob
-import functions.structs as st
-import functions.graph_plotting as gr
-import functions.analyse_results as anyl
+import src.functions.file_handling as fh 
+import src.functions.read_config as rc     
+import src.functions.run_ptrm as ptrm
+import src.functions.read_gampn as rgam
+import src.functions.read_asyrmo as rasy
+import src.functions.read_probamo as rprob
+import src.functions.graph_plotting as gr
+import src.functions.analyse_results as anyl
 
-from classes.timer import Timer
+from src.classes.timer import Timer
 
 
 def print_div():

@@ -12,7 +12,7 @@ Functions for reading ASYRMO.OUT and processing contents.
 import numpy as np
 import os
 
-import functions.file_handling as fh
+import src.functions.file_handling as fh
 
 def read_asyrmo(file_tags, data_subfolder_path, output_data):
 

@@ -15,8 +15,8 @@ import matplotlib.colors as colors
 import numpy as np                              # for np.arrays
 import os
 
-from functions.spin_processing import spin_string_to_float, spin_float_to_string
-import functions.structs as st 
+from src.functions.spin_processing import spin_string_to_float, spin_float_to_string
+import src.functions.structs as st 
 
 def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, gs_spin_floats, data_subfolder_path):
     '''

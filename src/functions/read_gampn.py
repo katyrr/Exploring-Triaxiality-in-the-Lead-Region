@@ -10,8 +10,8 @@ Functions for reading GAMPN.OUT and processing contents.
 """
 
 import os
-import functions.file_handling as fh
-import functions.run_ptrm as ptrm
+import src.functions.file_handling as fh
+import src.functions.run_ptrm as ptrm
 
 def read_gampn(num_points, data_subfolder_path, data_points, output_data, ptrm_inputs):
     '''

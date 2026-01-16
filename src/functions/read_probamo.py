@@ -10,11 +10,10 @@ Functions for reading PROBAMO.OUT and processing contents.
 """
 
 import numpy as np
-from functions.spin_processing import spin_string_to_float
 import os
 
-import functions.structs as st
-import functions.file_handling as fh
+from src.functions.spin_processing import spin_string_to_float
+import src.functions.file_handling as fh
 
 
 def read_probamo(num_points, data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, print_details):

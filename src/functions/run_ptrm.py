@@ -14,10 +14,10 @@ import numpy as np
 import subprocess
 import math
 
-import functions.file_handling as fh
-import functions.structs as st
+import src.functions.file_handling as fh
+import src.functions.structs as st
 
-from functions.read_gampn import get_sp_level, get_info
+from src.functions.read_gampn import get_sp_level, get_info
 
 
 def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, data_points, first_run=False):
