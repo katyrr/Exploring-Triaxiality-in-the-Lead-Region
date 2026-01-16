@@ -15,37 +15,45 @@
 *** set your operating system as MacOS (for Mac) or 64bit (for Windows/Linux)
 OS MacOS 
 
-
 *** set how many cores to parallelise over
 num_cores 8
-
 
 *** set figure resolution
 figure_res 150 *** dpi
 
 
-*** set how much detail to print (0 for only the essentials, or 1 for more detail)
-print_details 0
-
-
 ************** experimental results *******************************************
 
-*** ground state magnetic dipole moment and spin:
-gs_mu 1.01 ********** μN [Physics Letters B 786 (2018) 355–363]
-gs_spin 1/2 *** (+) **** [Physics Letters B 786 (2018) 355–363]
+*** ground state properties (magnetic dipole moment, spin, and energy):
+* comment out any missing data with "*"
+
+gs_mu 1.01 ******** μN [Physics Letters B 786 (2018) 355–363]
+gs_spin 1/2 *** (+) ** [Physics Letters B 786 (2018) 355–363]
+gs_energy 0.0 * units keV
 
 
-********* excited states (absolute energies):
 
-*jp_1/2+ 0 ***** [Physical Review C 106 (2022) 064324]
+*** energy levels:
+* format: jp_spin± value * units keV
+* or input as a list: jp_spin± value1,value2,value3,etc
+
+jp_1/2+ 0 ***** [Physical Review C 106 (2022) 064324]
 jp_3/2+ 17 **** [Physical Review C 106 (2022) 064324]
 jp_9/2+ 498 *** [Physical Review C 106 (2022) 064324]
 jp_13/2+ 515 ** [Physical Review C 106 (2022) 064324]
 
 
-******* excited states (energy gaps):
 
-gap_9_13 20 ** [Physical Review C 106 (2022) 064324]
+
+
+
+*** energy gaps between specific calculated levels 
+*** (hard to set on the first run, but useful for fiddling later 
+*** - make sure it's also included in the list of graphs to plot (below))
+
+engap_9.3_13.1 20 ** [Physical Review C 106 (2022) 064324]
+
+
 
 
 
@@ -54,6 +62,12 @@ gap_9_13 20 ** [Physical Review C 106 (2022) 064324]
 mu_tol 0.2 *** mu_N
 abs_en_tol 50 *** keV
 gap_en_tol 20 **** keV
+
+**********************************************************************************************
+
+
+
+
 
 
 
@@ -72,9 +86,9 @@ plot_delta 0
 plot_fermi_energies_mev 0
 plot_fermi_energies_hw 0
 
-plot_gs_mag_moments 0
+plot_gs_mag_moments 1
 plot_gs_quad_moments 0
-plot_gs_spin_floats 1
+plot_gs_spin_floats 0
 
 plot_spin_1/2_energies 0
 plot_spin_3/2_energies 0
@@ -90,9 +104,16 @@ plot_spin_3/2_mag_moments 0
 plot_rms 0
 
 plot_all_energies 0
-plot_shifted_energies 0
+plot_shifted_energies 1
 
-plot_engap_9.3_13.1 0
+plot_engap_9.3_13.1 1
+
+
+**********************************************************************************************
+
+
+
+
 
 
 ************** deformation parameters - range to run over *********************
@@ -127,23 +148,28 @@ plot_engap_9.3_13.1 0
 
 * single 0.19 35 ***** eps gamma
 
-gamma 0.12 0,60,0.5 *** eps min_gamma,max_gamma,step
-* eps 0.001,0.3,0.001 35 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
+* gamma 0.13 0,60,0.5 *** eps min_gamma,max_gamma,step
+eps 0.001,0.3,0.005 35 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 * mesh 0.5,10 ********* max_eps,outer_points ** 
         
 
+**********************************************************************************************
 
 
+
+
+
+
+******************************* other input options *******************************************
 
 *********** BASIC  ***********
 
 par + *** the parity calculated in gampn and displayed in probamo
 
-nucleus Au179 **** remember to update this in the main.py code as well!
+nucleus Au179 
 Z 79
 A 197
 *** therefore N = 100
-
 
 
 

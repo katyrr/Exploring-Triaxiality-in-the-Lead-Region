@@ -1,7 +1,7 @@
 ********** config file ******* 28/04/25 ******* Pt177 *************
 *
 * the code reads each line, except blank lines and comments starting with "*"
-* each line is split into words with a blank space delimiter " "
+* each line is split into words with delimiter " "
 * the first word is the variable name
 * the second word is the variable value
 * the third word and beyond are ignored (except for the deformation parameters)
@@ -20,9 +20,6 @@ num_cores 8
 
 *** set figure resolution
 figure_res 150 *** dpi
-
-*** set how much detail to print (0 for only the essentials, or 1 for more detail)
-print_details 0
 
 
 ***************************** experimental results *******************************************

@@ -11,8 +11,6 @@ To-do:
 - test numerically vs pre-cleanup results
 - write unit tests for individual funcs
 - make a constants file for magic numbers
-- move main to root
-
 
 
 HOW TO USE:

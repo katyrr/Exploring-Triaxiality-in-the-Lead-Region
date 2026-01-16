@@ -24,11 +24,6 @@ num_cores 8
 figure_res 150 *** dpi
 
 
-*** set how much detail to print (0 for only the essentials, or 1 for more detail)
-print_details 0
-
-
-
 
 ***************************** experimental results *******************************************
 
@@ -62,7 +57,7 @@ gap_en_tol 0 **** keV
 
 ****************************** graph plotting options ****************************************
 
-mark_spin 1 ******* (1 or 0) highlight region of correct ground state spin in green
+mark_spin 0 ******* (1 or 0) highlight region of correct ground state spin in green
 mark_exp 1 ******** (1 or 0) draw experimental value lines
 mark_exp_tol 1 **** (1 or 0) draw a shaded region around experimental value to indicate tolerance
 mark_points 1 ******* (1 or 0) plot data points
@@ -75,7 +70,7 @@ plot_delta 0
 plot_fermi_energies_mev 0
 plot_fermi_energies_hw 0
 
-plot_gs_mag_moments 0
+plot_gs_mag_moments 1
 plot_gs_quad_moments 0
 plot_gs_spin_floats 1
 
@@ -137,10 +132,10 @@ plot_engap_9.3_13.1 0
 
 * single 0.001 20 ***** eps gamma
 
-gamma 0.001 0,60,0.5 *** eps min_gamma,max_gamma,step
+* gamma 0.001 0,60,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.001,0.13,0.001 20 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
-* mesh 0.5,40 ********* max_eps,outer_points ** 
+mesh 0.5,40 ********* max_eps,outer_points ** 
         
 
 
@@ -161,7 +156,7 @@ A 207
 
 
 cutoff 5000.0 *** energy cutoff in keV for printing trans prob and elec/mag moments
-gsfac 1 ****** scaling factor applied to free internal spin g-factor (g_s)
+gsfac 0.7 ****** scaling factor applied to free internal spin g-factor (g_s)
 e2plus 0 **** 0.1,10,0.1 *** 4.085 *** 0.803 ****** 4.085 * 0.1,1.5,0.1 *** 0 ***** for calculating MoI (fixes value of the first E(2+)/MeV), enter 0 to calculate with Grodzins relation
 
 

@@ -24,10 +24,6 @@ num_cores 8
 figure_res 150 *** dpi
 
 
-*** set how much detail to print (0 for only the essentials, or 1 for more detail)
-print_details 0
-
-
 ***************************** experimental results *******************************************
 
 *** ground state properties (magnetic dipole moment, spin, and energy):
