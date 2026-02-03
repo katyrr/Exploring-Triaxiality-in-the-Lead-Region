@@ -64,7 +64,7 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     if ptrm_inputs['nucleus'] not in data_subfolder_path:
         print(f"WARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
         print(f"\tappear in the name of the data subfolder ({os.path.basename(data_subfolder_path)}).")
-        print("\tDid you make a typo?")
+        print("\tDid you make a typo?\n")
     
 #--------------------------------------------------------------------------------------------------
 
@@ -236,11 +236,11 @@ def process_inputs(data_points, ptrm_inputs):
     elif ptrm_inputs["Z"]%2 == 0: 
         ptrm_inputs["nneupr"] = "-1" 
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
-        print("Odd NEUTRONS")                 
+        print("Odd NEUTRONS\n")                 
     elif ptrm_inputs["N"]%2 == 0:
         ptrm_inputs["nneupr"] = "1"
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
-        print("Odd PROTONS")
+        print("Odd PROTONS\n")
     else:
         raise RuntimeError("Check inputs of A and Z.")
     

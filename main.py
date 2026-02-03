@@ -152,14 +152,14 @@ def main():
     else:
         code_settings["display_figures"] = False
 
-    fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
-    
     code_settings["num_points"] = len(data_points["eps"])
     print("Number of data points = ", code_settings["num_points"])
     print("Deformation range:")
     print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
     print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
 
+    fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
+    
     print_div()
 
     #%%   

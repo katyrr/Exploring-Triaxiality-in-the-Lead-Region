@@ -30,6 +30,13 @@ def test_point():
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "Total runtime" in point_out
 
+    # check some numerical outputs for consistency with previous runs
+    assert "Energies of Spin 1/2 States / keV                           184.9 ± 0.0" in point_out
+    assert "Energies of Spin 3/2 States / keV                           230.4 ± 0.0" in point_out
+    assert "Energies of Spin 5/2 States / keV                           0.0   ± 0.0" in point_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               -0.4  ± 0.0" in point_out
+    assert "Ground State Electric Quadrupole Moment / $eb$              2.6   ± 0.0" in point_out
+
 def test_gamma_range():
 
     gamma_res = subprocess.run(

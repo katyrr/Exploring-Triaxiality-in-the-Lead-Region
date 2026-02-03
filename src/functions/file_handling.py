@@ -168,15 +168,14 @@ def setup_directory(folder, num_batches, OS):
 
         permissions = oct(os.stat(path_to_program).st_mode)[-3:]
         if permissions != "775":
-            print(f"{i} does not have execute permissions")
-            print("attempting to turn on execute permissions")
+            print(f"{i} does not have execute permissions... attempting to turn on")
             os.chmod(path_to_program, 0o775)
 
             permissions = oct(os.stat(path_to_program).st_mode)[-3:]
             if permissions != "775":
                 raise RuntimeError("Failed to turn on execute permissions: please do manually")
             else:
-                print(f"successfully turned on execute permissions for {i}")
+                print(f"\tSuccessfully turned on execute permissions for {i}")
                 
 
               
