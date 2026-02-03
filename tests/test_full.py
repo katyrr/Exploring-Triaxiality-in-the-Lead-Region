@@ -51,6 +51,11 @@ def test_gamma_range():
     assert not "not found" in gamma_out
     assert "eps = [0.280, 0.280]" in gamma_out
     assert "gamma = [16.0, 34.0]" in gamma_out
+    assert "Number of data points =  37" in gamma_out
+    assert "Name: Pt177" in gamma_out
+    assert "A: 177" in gamma_out
+    assert "Z: 78" in gamma_out
+    assert "N: 99" in gamma_out
 
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in gamma_out
@@ -59,6 +64,13 @@ def test_gamma_range():
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "Total runtime" in gamma_out
+
+    # check some numerical outputs for consistency with previous runs
+    assert "Energies of Spin 1/2 States / keV                           88.2  ± 8.4" in gamma_out
+    assert "Energies of Spin 3/2 States / keV                           156.8 ± 12.6" in gamma_out
+    assert "Energies of Spin 5/2 States / keV                           0.4   ± 0.3" in gamma_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               -0.3  ± 0.1" in gamma_out
+    assert "Ground State Electric Quadrupole Moment / $eb$              2.7   ± 0.0" in gamma_out
 
 def test_eps_range():
 
