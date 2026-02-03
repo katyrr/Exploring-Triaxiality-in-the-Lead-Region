@@ -11,9 +11,12 @@ Functions for reading config file and processing contents.
 
 import numpy as np
 import math
+import os
+
 import src.functions.structs as st
 import src.functions.file_handling as fh
 from src.functions.spin_processing import spin_string_to_float
+
 
 #--------------------------------------------------------------------------------------------------
 
@@ -57,6 +60,11 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     read_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     process_inputs(data_points, ptrm_inputs)
+
+    if ptrm_inputs['nucleus'] not in data_subfolder_path:
+        print(f"WARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
+        print(f"\tappear in the name of the data subfolder ({os.path.basename(data_subfolder_path)}).")
+        print("\tDid you make a typo?")
     
 #--------------------------------------------------------------------------------------------------
 
@@ -208,7 +216,7 @@ def process_inputs(data_points, ptrm_inputs):
     None (dictionaries are edited in-place)
 
     '''
-
+    
     data_points["gamma_radians"] = [n*np.pi/180 for n in data_points["gamma_degrees"]]
 
     ptrm_inputs["nantj"] = ptrm_inputs["nantj"].replace(",", " ")
@@ -217,16 +225,22 @@ def process_inputs(data_points, ptrm_inputs):
 
     ptrm_inputs["N"] = ptrm_inputs["A"]-ptrm_inputs["Z"]
 
+    print(f"\nNUCLEUS DATA:")
+    print(f"\tName: {ptrm_inputs['nucleus']}")
+    print(f"\tA: {ptrm_inputs['A']}")
+    print(f"\tZ: {ptrm_inputs['Z']}")
+    print(f"\tN: {ptrm_inputs['N']}")
+
     if ptrm_inputs["A"]%2 == 0:
         raise ValueError("Input nucleus is even-A. Only odd-mass nuclei accepted.")
     elif ptrm_inputs["Z"]%2 == 0: 
         ptrm_inputs["nneupr"] = "-1" 
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
-        print("\nOdd NEUTRONS")                 
+        print("Odd NEUTRONS")                 
     elif ptrm_inputs["N"]%2 == 0:
         ptrm_inputs["nneupr"] = "1"
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
-        print("\nOdd PROTONS")
+        print("Odd PROTONS")
     else:
         raise RuntimeError("Check inputs of A and Z.")
     

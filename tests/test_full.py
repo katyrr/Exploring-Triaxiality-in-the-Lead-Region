@@ -11,11 +11,17 @@ def test_point():
         check=True,
     )
     point_out = point_res.stdout
-    # check the correct config file was used for the tets:
+
+    # check the correct config file was used for the test:
     assert not "not found" in point_out
     assert "eps = [0.260, 0.260]" in point_out
     assert "gamma = [24.0, 24.0]" in point_out
-
+    assert "Number of data points =  1" in point_out
+    assert "Name: Pt177" in point_out
+    assert "A: 177" in point_out
+    assert "Z: 78" in point_out
+    assert "N: 99" in point_out
+	
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in point_out
     assert "Returned from asyrmo" in point_out
@@ -57,7 +63,7 @@ def test_eps_range():
     )
     eps_out = eps_res.stdout
 
-    # check the correct config file was used for the tets:
+    # check the correct config file was used for the test:
     assert not "not found" in eps_out
     assert "eps = [0.001, 0.301]" in eps_out
     assert "gamma = [35.0, 35.0]" in eps_out
@@ -84,7 +90,7 @@ def test_mesh():
     )
     mesh_out = mesh_res.stdout
 
-    # check the correct config file was used for the tets:
+    # check the correct config file was used for the test:
     assert not "not found" in mesh_out
     assert "eps = [0.001, 0.500]" in mesh_out
     assert "gamma = [0.0, 60.0]" in mesh_out

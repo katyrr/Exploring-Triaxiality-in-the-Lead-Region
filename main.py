@@ -189,7 +189,7 @@ def main():
     run_program("gampn")
     sub_timer.stop()
 
-    print(f"\n***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    print(f"***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     # set up arrays to store data 
     data_points["asyrmo_orbitals"] = []
