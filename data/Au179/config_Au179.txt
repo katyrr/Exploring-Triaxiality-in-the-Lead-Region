@@ -168,7 +168,7 @@ par + *** the parity calculated in gampn and displayed in probamo
 
 nucleus Au179 
 Z 79
-A 197
+A 179
 *** therefore N = 100
 
 
