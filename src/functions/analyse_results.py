@@ -125,11 +125,11 @@ def check_agreement(verbose, data_points, num_comparisons):
         
     
     else:
-        print("\nPoints with agreement = {max_agreement}:")
+        print(f"\nPoints with agreement = {max_agreement}:")
         
         i = len(unique_values)-1
         
-        print("\n\tAgreement = {unique_values[i]}:")
+        print(f"\n\tAgreement = {unique_values[i]}:")
     
         lower = sum(counts[0:i])
         upper = sum(counts[0:i+1])

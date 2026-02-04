@@ -21,6 +21,7 @@ def test_point():
     assert "A: 177" in point_out
     assert "Z: 78" in point_out
     assert "N: 99" in point_out
+    assert "Odd Neutrons" in point_out
 	
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in point_out
@@ -56,6 +57,7 @@ def test_gamma_range():
     assert "A: 177" in gamma_out
     assert "Z: 78" in gamma_out
     assert "N: 99" in gamma_out
+    assert "Odd Neutrons" in gamma_out
 
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in gamma_out
@@ -86,6 +88,12 @@ def test_eps_range():
     assert not "not found" in eps_out
     assert "eps = [0.001, 0.301]" in eps_out
     assert "gamma = [35.0, 35.0]" in eps_out
+    assert "Number of data points =  61" in eps_out
+    assert "Name: Au179" in eps_out
+    assert "A: 179" in eps_out
+    assert "Z: 79" in eps_out
+    assert "N: 100" in eps_out
+    assert "Odd Protons" in eps_out
 
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in eps_out
@@ -96,8 +104,11 @@ def test_eps_range():
     assert "Total runtime" in eps_out
 
     # check some numerical outputs for consistency with previous runs
-    assert "Energies of Spin 3/2 States / keV                           19.4  ± 1.2" in eps_out
-    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               2.0   ± 0.3" in eps_out
+    assert "Energies of Spin 1/2 States / keV                           9.3   ± 2.8" in eps_out
+    assert "Energies of Spin 3/2 States / keV                           20.6  ± 1.3" in eps_out
+    assert "Energies of Spin 5/2 States / keV                           136.6 ± 3.4" in eps_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               2.0   ± 0." in eps_out
+    assert "Ground State Electric Quadrupole Moment / $eb$              -0.6  ± 0.2" in eps_out
 
 def test_mesh():
 
@@ -113,6 +124,12 @@ def test_mesh():
     assert not "not found" in mesh_out
     assert "eps = [0.001, 0.500]" in mesh_out
     assert "gamma = [0.0, 60.0]" in mesh_out
+    assert "Number of data points =  55" in mesh_out
+    assert "Name: Pt177" in mesh_out
+    assert "A: 177" in mesh_out
+    assert "Z: 78" in mesh_out
+    assert "N: 99" in mesh_out
+    assert "Odd Neutrons" in mesh_out
 
     # check that all steps were started (suggesting no errors in prior stages)
     assert "Returned from gampn" in mesh_out
@@ -121,3 +138,10 @@ def test_mesh():
 
     # check that the end of the script was reached (suggesting no runtime errors)
     assert "Total runtime" in mesh_out
+
+    # check some numerical outputs for consistency with previous runs
+    assert "Energies of Spin 1/2 States / keV                           204.7 ± 26.2" in mesh_out
+    assert "Energies of Spin 3/2 States / keV                           217.1 ± 22.6" in mesh_out
+    assert "Energies of Spin 5/2 States / keV                           132.4 ± 21.8" in mesh_out
+    assert "Ground State Magnetic Dipole Moment / $μ_{N}$               0.0   ± 0.1" in mesh_out
+    assert "Ground State Electric Quadrupole Moment / $eb$              0.3   ± 0.6" in mesh_out

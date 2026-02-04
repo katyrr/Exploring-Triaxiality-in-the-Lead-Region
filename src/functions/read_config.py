@@ -58,13 +58,9 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     config_lines = fh.read_file(config_path)
 
     read_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
-    validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
+    validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot, data_subfolder_path)
     process_inputs(data_points, ptrm_inputs)
 
-    if ptrm_inputs['nucleus'] not in data_subfolder_path:
-        print(f"WARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
-        print(f"\tappear in the name of the data subfolder ({os.path.basename(data_subfolder_path)}).")
-        print("\tDid you make a typo?\n")
     
 #--------------------------------------------------------------------------------------------------
 
@@ -142,7 +138,7 @@ def read_lines(lines, code_settings, ptrm_inputs, data_points, experimental_data
         # print(f"{name}: \t {split_string[1:]}")
 
 
-def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot):
+def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot, data_subfolder_path):
     '''
     Some inputs can only take certain values (e.g. OS = "MacOS" or "64bit").
     This function checks that those inputs have a valid value.
@@ -189,7 +185,14 @@ def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, 
 
             if not all_inputs[name] in allowed_values:
                 raise ValueError(f"Invalid input: \t {name} = {all_inputs[name]}.\nPlease choose from allowed values: {str(allowed_values)}")
-            
+    
+    if str(ptrm_inputs["A"]) not in ptrm_inputs["nucleus"]:
+        raise ValueError(f"The input value of A ({ptrm_inputs["A"]}) does not match the value in the name of the nucleus ({ptrm_inputs["nucleus"]}). Please fix the incorrect one in the config file.")
+
+    if ptrm_inputs['nucleus'] not in data_subfolder_path:
+        print(f"WARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
+        print(f"\tappear in the name of the data subfolder ({os.path.basename(data_subfolder_path)}).")
+        print("\tDid you make a typo?\n")
 
 def process_inputs(data_points, ptrm_inputs):
     '''
@@ -225,7 +228,7 @@ def process_inputs(data_points, ptrm_inputs):
 
     ptrm_inputs["N"] = ptrm_inputs["A"]-ptrm_inputs["Z"]
 
-    print(f"\nNUCLEUS DATA:")
+    print(f"\nNucleus Data:")
     print(f"\tName: {ptrm_inputs['nucleus']}")
     print(f"\tA: {ptrm_inputs['A']}")
     print(f"\tZ: {ptrm_inputs['Z']}")
@@ -236,11 +239,11 @@ def process_inputs(data_points, ptrm_inputs):
     elif ptrm_inputs["Z"]%2 == 0: 
         ptrm_inputs["nneupr"] = "-1" 
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["N"]/2)
-        print("Odd NEUTRONS\n")                 
+        print("\tOdd Neutrons\n")                 
     elif ptrm_inputs["N"]%2 == 0:
         ptrm_inputs["nneupr"] = "1"
         ptrm_inputs["fermi_level"] = math.ceil(ptrm_inputs["Z"]/2)
-        print("Odd PROTONS\n")
+        print("\tOdd Protons\n")
     else:
         raise RuntimeError("Check inputs of A and Z.")
     
