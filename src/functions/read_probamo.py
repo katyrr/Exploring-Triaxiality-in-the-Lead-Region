@@ -13,10 +13,13 @@ import numpy as np
 import os
 
 from src.functions.spin_processing import spin_string_to_float
+from src.functions.parse_args import args
+
 import src.functions.file_handling as fh
 
 
-def read_probamo(num_points, data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, print_details):
+
+def read_probamo(num_points, data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs):
     '''
     For each file:
         
@@ -67,7 +70,7 @@ def read_probamo(num_points, data_subfolder_path, data_points, output_data, expe
         data_points["property_data"].append(file_data)
     
     #output_data = output_data_copy | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
-    restructured_output_data = {**output_data, **restructure_data(data_points["property_data"], ptrm_inputs["ispin"], print_details)}
+    restructured_output_data = {**output_data, **restructure_data(data_points["property_data"], ptrm_inputs["ispin"])}
 
     # get energy gap between third 9/2 and first 13/2 states
     for i in experimental_data:
@@ -455,7 +458,7 @@ def missing_data(file_data, inputs):
     return file_data
             
 
-def restructure_data(old_data, ispin, verbose):
+def restructure_data(old_data, ispin):
     """
     Take input data structured as a list of dictionaries. 
     
@@ -474,10 +477,6 @@ def restructure_data(old_data, ispin, verbose):
         
     ispin : string
         The value of the asyrmo input ISPIN, from config.
-        
-    verbose : bool
-        True to print high detail messages to console.
-        False to print only essential information to console.
 
     Returns
     -------
@@ -517,7 +516,7 @@ def restructure_data(old_data, ispin, verbose):
             new_data["x1_mag_moments"].append(old_data[d]["x1_mag_moments"])
             new_data["x1_quad_moments"].append(old_data[d]["x1_quad_moments"])
         except(KeyError):
-            if verbose: 
+            if args.verbose: 
                 print("Could not find any states with first excited spin in file " + str(d))
             new_data["x1_energies"].append(np.NaN)
             new_data["x1_mag_moments"].append(np.NaN)
@@ -528,7 +527,7 @@ def restructure_data(old_data, ispin, verbose):
             new_data["x2_mag_moments"].append(old_data[d]["x2_mag_moments"])
             new_data["x2_quad_moments"].append(old_data[d]["x2_quad_moments"])
         except(KeyError):
-            if verbose: 
+            if args.verbose: 
                 print("Could not find any states with second excited spin in file " + str(d))
             new_data["x2_energies"].append(np.NaN)
             new_data["x2_mag_moments"].append(np.NaN)
@@ -539,7 +538,7 @@ def restructure_data(old_data, ispin, verbose):
             new_data["x3_quad_moments"].append(old_data[d]["x3_quad_moments"])
             new_data["x3_energies"].append(old_data[d]["x3_energies"])
         except(KeyError):
-            if verbose: 
+            if args.verbose: 
                 print("Could not find any states with third excited spin in file " + str(d))
             new_data["x3_energies"].append(np.NaN)
             new_data["x3_mag_moments"].append(np.NaN)

@@ -12,6 +12,8 @@ Functions for locating/creating/reading/writing files and folders.
 import os
 import shutil
 
+from src.functions.parse_args import args
+
 def read_file(path):
     """
     A function to open a file, then read and return its full contents. 
@@ -83,6 +85,8 @@ def locate_data_subfolder(argv):
         raise ValueError("missing argument: name of folder containing config file")
 
     folder_name = argv[1]
+
+    #folder_name = args.data_subfolder
 
     rel_path = os.path.join("data", folder_name)
     abs_path = os.path.abspath(rel_path)

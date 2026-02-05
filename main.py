@@ -93,6 +93,7 @@ import src.functions.graph_plotting as gr
 import src.functions.analyse_results as anyl
 
 from src.classes.timer import Timer
+from src.functions.parse_args import args
 
 
 def print_div():
@@ -116,12 +117,6 @@ def main():
 
     print_div()
     data_subfolder_path = fh.locate_data_subfolder(sys.argv)
-
-    if "-v" in sys.argv or "--verbose" in sys.argv: 
-        verbose = True
-    else: 
-        verbose = False
-    
     
     #%%
     ''' 2. READ CONFIG FILE -----------------------------------------------------------------------
@@ -145,11 +140,7 @@ def main():
     # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
 
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
-    if "-d" in sys.argv or "--display-figures" in sys.argv:
-        print("DEBUG: display figs")
-        code_settings["display_figures"] = True
-    else:
-        code_settings["display_figures"] = False
+    code_settings["display_figures"] = args.display_figures
 
     code_settings["num_points"] = len(data_points["eps"])
     print("Number of data points = ", code_settings["num_points"])
@@ -247,7 +238,7 @@ def main():
     print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
     print_div()
     
-    restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs, verbose)
+    restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs)
     
 
     ''' 6. PLOT GRAPHS ----------------------------------------------------------------------------
@@ -361,18 +352,18 @@ def main():
     '''
     
     print_div()
-    anyl.check_agreement(verbose, data_points, num_comparisons)
+    anyl.check_agreement(data_points, num_comparisons)
     anyl.plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
     
     print_div()
     print("\nMean and standard error in the mean:")
-    if not verbose:
+    if not args.verbose:
         print("[only printing lowest energy state of each spin; for all states use -v or --verbose]\n")
     report_means=["spin_1/2_energies", "spin_3/2_energies", "spin_5/2_energies", "spin_7/2_energies", "spin_9/2_energies", "spin_11/2_energies", "spin_13/2_energies",
                   "gs_mag_moments", "spin_1/2_mag_moments", "spin_3/2_mag_moments", "spin_5/2_mag_moments", "spin_7/2_mag_moments", "spin_9/2_mag_moments", "spin_11/2_mag_moments", "spin_13/2_mag_moments",
                   "gs_quad_moments", "spin_1/2_quad_moments", "spin_3/2_quad_moments", "spin_5/2_quad_moments", "spin_7/2_quad_moments", "spin_9/2_quad_moments", "spin_11/2_quad_moments", "spin_13/2_quad_moments"]
     for i in report_means:
-        anyl.report_mean(data_to_plot[i], verbose)
+        anyl.report_mean(data_to_plot[i])
 
     print_div()
     sub_timer.stop()

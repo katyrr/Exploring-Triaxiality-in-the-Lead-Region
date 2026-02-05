@@ -14,8 +14,10 @@ import numpy as np
 import src.functions.structs as st
 import src.functions.graph_plotting as gr
 
+from src.functions.parse_args import args
 
-def report_mean(prop, verbose):
+
+def report_mean(prop):
     '''
     Calculate the mean, standard deviation, and standard error in the mean
     of the input property.
@@ -29,11 +31,7 @@ def report_mean(prop, verbose):
     ----------
     prop : PropertyData objetc
         The property for which the mean/stdv/sterr will be calculated
-        
-    verbose : bool
-        Whether to print lots of info (i.e. all energy levels if more than one, and stdv as well as sterr)
-        or just the basics (i.e the lowest energy level, and only stdv)
-
+    
     Returns
     -------
     None.
@@ -55,7 +53,7 @@ def report_mean(prop, verbose):
         mean = [mean]
         stdv = [stdv]
         
-    if verbose:
+    if args.verbose:
         itr = len(mean)
         print(f"\n{prop.axis_label}:")
         print("\t# \tmean \t± \tsterr \t(stdv)")
@@ -63,7 +61,7 @@ def report_mean(prop, verbose):
         itr = 1
     
     for i in range(itr): 
-        if verbose:
+        if args.verbose:
             #print("\t", i+1, "\t %.1f ± %.1f \t (%.1f) " % (mean[i], sterr[i], stdv[i]))
             print(f"\t{i+1}\t{mean[i]:<5.1f}\t± \t{sterr[i]:<5.1f}\t({stdv[i]:^5.1f})")
         else:
@@ -71,7 +69,7 @@ def report_mean(prop, verbose):
             print(f"{prop.axis_label:<60}{mean[i]:<5.1f} ± {sterr[i]:<5.1f}")
 
 
-def check_agreement(verbose, data_points, num_comparisons):
+def check_agreement(data_points, num_comparisons):
     """
     A function to check how well data points agreed with experimental values,
     and which data point(s) had the highest agreement.
@@ -91,7 +89,7 @@ def check_agreement(verbose, data_points, num_comparisons):
     unique_values, counts = np.unique(data_points["agreed"], return_counts=True)
     
     print("\n\n***** Agreement of each data point with experimental data: *****")
-    if verbose:
+    if args.verbose:
         print(data_points["agreed"])
         
         print(dict(zip(unique_values, counts)))
