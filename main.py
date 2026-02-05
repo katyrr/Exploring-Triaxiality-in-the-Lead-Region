@@ -7,8 +7,7 @@ Created on Fri Feb  7 10:54:23 2025
 
 
 To-do:
-- clean up docs
-- test numerically vs pre-cleanup results
+- clean up docs 
 - write unit tests for individual funcs
 - make a constants file for magic numbers
 

@@ -13,8 +13,9 @@ import time
 
 class Timer():
     """
-    A class that acts as a timer/stopwatch. 
-    Prints warnings to console in the event of unexpected behaviour (program does not crash).
+    A stopwatch for timing how long it takes to execute a portion of code.
+    In the event of unexpected behaviour, the program does not crash, 
+    but warnings are printed to console and timer data may not be available.
 
     Attributes
     ----------
@@ -22,10 +23,10 @@ class Timer():
         A record of whether the timer is currently running.
         
     start_time : float
-        The time at which the timer was constructed.
+        The time at which the .start() method was most recently called.
         
     end_time : float
-        The time at which end_timer() was called.
+        The time at which end_timer() was most recently called.
         
     Methods
     -------
@@ -34,12 +35,16 @@ class Timer():
         
     start():
         Starts the timer.
+        Fails (prints warning) when is_running==True.
         
     stop():
-        Ends the timer.
+        Stops the timer.
+        Fails (prints warning) when is_running==False.
         
-    get_lapsed_time():
-        Returns the timeframe (in seconds) most recently recorded on the timer.
+    time_elapsed = get_lapsed_time():
+        Returns the time interval (in seconds) most recently recorded on the timer.
+        Fails (returns None and prints warning) when is_running==True.
+        Fails (returns None and prints warning) start_time or end_time are None.
     
     """
     
@@ -69,7 +74,8 @@ class Timer():
             return None
         if self.start_time is None or self.end_time is None:
             print("WARNING: Could not get lapsed time (recorded start and/or end time are None).")
+            return None
         
-        total_time = self.end_time - self.start_time
-        return total_time
+        time_elapsed = self.end_time - self.start_time
+        return time_elapsed
     
