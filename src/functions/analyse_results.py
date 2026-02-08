@@ -150,7 +150,7 @@ def plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, gs_
     agreement.experimental_data = np.NaN
     agreement.error_tolerance = np.NaN
 
-    agreement.plot = 0
+    # agreement.plot = 0
 
     if ptrm_inputs["deformation_input"] == "mesh" and agreement.plot: 
         

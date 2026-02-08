@@ -19,7 +19,7 @@ import src.functions.file_handling as fh
 
 
 
-def read_probamo(num_points, data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs):
+def read_probamo(num_points, data_subfolder_path, data_points, output_data, ptrm_inputs):
     '''
     For each file:
         
@@ -69,8 +69,11 @@ def read_probamo(num_points, data_subfolder_path, data_points, output_data, expe
         file_data = missing_data(file_data, ptrm_inputs)
         data_points["property_data"].append(file_data)
     
+    return output_data
+
+def process_data(output_data, data_points, experimental_data, ispin):
     #output_data = output_data_copy | rprob.restructure_data(data_points["property_data"], ptrm_inputs["ispin"], code_settings["print_details"])
-    restructured_output_data = {**output_data, **restructure_data(data_points["property_data"], ptrm_inputs["ispin"])}
+    restructured_output_data = {**output_data, **restructure_data(data_points["property_data"], ispin)}
 
     # get energy gap between third 9/2 and first 13/2 states
     for i in experimental_data:

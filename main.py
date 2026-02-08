@@ -122,9 +122,10 @@ def main():
     data_subfolder_path = fh.locate_data_subfolder()
     
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
-    rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
+    rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, 
+                   data_points, experimental_data, graphs_to_plot)
     
-    plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
+    plt.rcParams['figure.dpi'] = code_settings["figure_res"]
     code_settings["display_figures"] = args.display_figures
 
     fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
@@ -137,19 +138,16 @@ def main():
 
 
     #%%   
-    ''' 3. RUN GAMPN ------------------------------------------------------------------------------
+    ''' 2. RUN GAMPN ------------------------------------------------------------------------------
 
     - Write the input .DAT files for the gampn code.
-    - Calculate batch settings
-    - Configure a script writer.
+    - Calculate batch settings and configure a script writer.
     - Run the batches. The .OUT files are generated in the 'outputs' directory folder.
-    - Read the output files for the fermi level index, energy, and parity, so that new sets 
-      of orbitals can be calculated dynamically.
-    - Re-run gampn with the new set of orbitals, so that the strong-coupling basis 
-      can be maximised (to 15 orbitals) when calculating matrix elements.
-    - No need to re-read the outputs, because the properties we read earlier are 
-      not affected, and the recalculated matrix elements will be passed to the next
-      program automatically.
+    - Read the output files and store results in arrays within dictionaries. Data includes info 
+      about the fermi level, and dynamically calculated orbital sets for the strong-coupling basis.
+    - Re-run gampn with the new set of orbitals. There is no need to re-read the outputs, 
+      because the properties we read earlier are not affected, and the recalculated matrix 
+      elements will be passed to the next program automatically.
 
     '''
 
@@ -162,33 +160,31 @@ def main():
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
-
     print(f"***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    # set up arrays to store data 
     data_points["asyrmo_orbitals"] = []
     output_data = {"fermi_parities": [0]*code_settings["num_points"], 
                    "fermi_energies_hw": [0]*code_settings["num_points"], 
                    "fermi_energies_mev": [0]*code_settings["num_points"], 
                    "fermi_indices": [0]*code_settings["num_points"]}
-    
     rgam.read_gampn(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
 
     ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points)
-
     sub_timer.start()
     run_program("gampn")
     sub_timer.stop()
     print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    #%%
-    ''' 4. RUN ASYRMO -----------------------------------------------------------------------------
 
-    - Use the existing list of file tags to write a .DAT file for each data point.
-    - Use the existing script writer to write and run asyrmo; dividing up the batches (as for gampn). 
-    - Read the output files and check for the "NO DECOUPLING PARAMETERS CALCULATED" error.
-    - Record the value of the DELTA parameter.
-    - Check for the "SORRY I FOUND NO SOLUTIONS" error, and exclude those files from future analysis.
+
+    #%%
+    ''' 3. RUN ASYRMO -----------------------------------------------------------------------------
+
+    - Write the input .DAT files for the asyrmo code.
+    - Use the existing script writer to write and run asyrmo. 
+    - Read the output files, record the DELTA parameter, and check for errors: 
+        - "NO DECOUPLING PARAMETERS CALCULATED" error (fatal)
+        - "SORRY I FOUND NO SOLUTIONS" error (exclude those files from further analysis)
 
     '''
 
@@ -197,19 +193,22 @@ def main():
     sub_timer.start()
     run_program("asyrmo")
     sub_timer.stop()
-
     print(f"***** Returned from asyrmo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
     output_data["delta"] = []
-
     rasy.read_asyrmo(data_points["file_tags"], data_subfolder_path, output_data)
 
-    #%%
-    ''' 5. RUN PROBAMO ----------------------------------------------------------------------------
 
-    - Use the existing list of file tags to write a .DAT file for each data point.
-    - Use the existing script writer to write and run probamo; dividing up the batches as for gampn. 
-    - Read the probamo output files and store energy level data (with magnetic dipole and electric quadrupole moments)
+
+    #%%
+    ''' 4. RUN PROBAMO ----------------------------------------------------------------------------
+
+    - Write the input .DAT files for the probamo code.
+    - Use the existing script writer to write and run probamo. 
+    - Read the output files, and record energy level data, with magnetic dipole and electric 
+      quadrupole moments. 
+    - Restructure output data from dict of arrays to array of dicts, with bad data points masked, 
+      and gaps filled with np.NaN.
 
     '''
 
@@ -218,18 +217,17 @@ def main():
     sub_timer.start()
     run_program("probamo")
     sub_timer.stop()
-
     print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+    
     print_div()
-    
-    restructured_output_data = rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, experimental_data, ptrm_inputs)
-    
+    rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
+    restructured_output_data = rprob.process_data(output_data, data_points, experimental_data, ptrm_inputs["ispin"])
 
-    ''' 6. PLOT GRAPHS ----------------------------------------------------------------------------
+
+
+    ''' 5. PLOT GRAPHS ----------------------------------------------------------------------------
 
     - Convert data into PropertyData class instances, for easy plotting later
-
-
     - Set a subtitle containing the values of E2PLUS and GSFAC input, if requested.
     - Set which graphs should be plotted (from config, or overwritten below). 
       Any not listed are False by default.
@@ -237,17 +235,14 @@ def main():
     - If deformation was input as a mesh, plot filled contours in polar coordinates.
     - If only one of eps/gamma/e2plus is varied, plot line graphs.
         
-        
     '''
 
     data_to_plot = gr.prepare_data_to_plot(experimental_data, data_points["file_tags"], restructured_output_data)
 
     #!!! set graph subtitle:
+    subtitle = ''
     if code_settings["include_subtitle"]:
         subtitle = r'$E(2^+)$ = ' + str(ptrm_inputs["current_e2plus"]) + '; gsfac = ' + str(ptrm_inputs["gsfac"])
-    else:
-        subtitle = ''
-        
         
     # set which graphs to plot:
     for i in graphs_to_plot:
@@ -322,11 +317,10 @@ def main():
             
             gr.plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, data_to_plot["gs_spin_floats"], data_subfolder_path)
             
-            
-        
-
+    print_div()
+    
     #%%
-    ''' 7. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT ---------------------------------------
+    ''' 6. ASSESS AGREEMENT OF CALCULATIONS WITH EXPERIMENT ---------------------------------------
 
     - Print information about the best agreement and its location.
     - Plot a graph to show data point agreement across all data points.
@@ -335,11 +329,13 @@ def main():
 
     '''
     
-    print_div()
     anyl.check_agreement(data_points, num_comparisons)
-    anyl.plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
     
+    plot_agreement = False
+    if plot_agreement:
+        anyl.plot_agreement(data_points, num_comparisons, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
     print_div()
+
     print("\nMean and standard error in the mean:")
     if not args.verbose:
         print("[only printing lowest energy state of each spin; for all states use -v or --verbose]\n")
@@ -349,12 +345,14 @@ def main():
     for i in report_means:
         anyl.report_mean(data_to_plot[i])
 
-    print_div()
     sub_timer.stop()
     main_timer.stop()
+    print_div()
     print("Finished plotting graphs in time = %.2f seconds" % (sub_timer.get_lapsed_time()))
     print("Total runtime = %.2f seconds" % (main_timer.get_lapsed_time()))
     print_div()
+
+    return
 
 
 if __name__ == "__main__":
