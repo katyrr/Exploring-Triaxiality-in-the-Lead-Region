@@ -15,6 +15,8 @@ import os
 
 import src.functions.structs as st
 import src.functions.file_handling as fh
+import src.functions.run_ptrm as ptrm
+
 from src.functions.spin_processing import spin_string_to_float
 
 
@@ -60,6 +62,13 @@ def read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, ex
     read_lines(config_lines, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
     validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot, data_subfolder_path)
     process_inputs(data_points, ptrm_inputs)
+
+    code_settings["num_points"] = len(data_points["eps"])
+    print("Number of data points = ", code_settings["num_points"])
+    print("Deformation range:")
+    print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
+    print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
+
 
     
 #--------------------------------------------------------------------------------------------------
@@ -246,6 +255,13 @@ def process_inputs(data_points, ptrm_inputs):
         print("\tOdd Protons\n")
     else:
         raise RuntimeError("Check inputs of A and Z.")
+    
+    ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(
+        ptrm_inputs["fermi_level"]//2, 
+        ptrm_inputs["num_orbs"], 
+        ptrm_inputs["par"]
+    )
+    
     
     
 #--------------------------------------------------------------------------------------------------

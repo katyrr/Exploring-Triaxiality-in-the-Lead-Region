@@ -97,7 +97,7 @@ from src.functions.parse_args import args
 
 
 def print_div():
-    # Use to help organise console output into easy-to-read sections
+    # For organising console output into easy-to-read sections
     print("========================================================================================") 
 
 
@@ -107,8 +107,11 @@ def main():
     #%% 
     ''' 1. SET UP ---------------------------------------------------------------------------------
 
-    - Create timers (one to time the whole program, and one to time small sections).
-    - Read command line arguments and locate/create data subfolder.
+    - Create two timers (one to time the whole program, and one to time small sections).
+    - Locate/create data subfolder, where inputs/outputs will be stored, and the ptrm will be run.
+    - Read config file and sort contents into dictionaries.
+    - Set figure resolution and display settings.
+    - Ensure the data subfolder has the required directories and structure.
     
     '''
 
@@ -116,41 +119,22 @@ def main():
     main_timer.start()
 
     print_div()
-    data_subfolder_path = fh.locate_data_subfolder(sys.argv)
+    data_subfolder_path = fh.locate_data_subfolder()
     
-    #%%
-    ''' 2. READ CONFIG FILE -----------------------------------------------------------------------
-
-    - Create empty dictionaries for storing input settings and data.
-    - Read the config file and save settings in dictionaries.
-    - Generate the orbitals input for gampn (e.g. "+4 19 20 21 22").
-    - Set figure resolution.
-    - Create any missing directory subfolders.
-    - Count the number of data points being calculated.
-    - Print some reports to the console.
-
-    ''' 
-
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
     rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot)
-
-    ptrm_inputs["current_orbitals"] = ptrm.write_orbitals(ptrm_inputs["fermi_level"]//2, ptrm_inputs["num_orbs"], ptrm_inputs["par"])
-    # (useful for debugging) hard coded versions of the above:
-    # inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
-    # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
-
+    
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]  # set figure resolution
     code_settings["display_figures"] = args.display_figures
-
-    code_settings["num_points"] = len(data_points["eps"])
-    print("Number of data points = ", code_settings["num_points"])
-    print("Deformation range:")
-    print(f"\teps = [{data_points["eps"][0]:.3f}, {data_points["eps"][-1]:.3f}]")
-    print(f"\tgamma = [{data_points["gamma_degrees"][0]:.1f}, {data_points["gamma_degrees"][-1]:.1f}] degrees")
 
     fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
     
     print_div()
+
+    # (useful for debugging) hard coded versions gampn input orbitals:
+    # inputs["current_orbitals"] = "-15 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38" 
+    # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
+
 
     #%%   
     ''' 3. RUN GAMPN ------------------------------------------------------------------------------

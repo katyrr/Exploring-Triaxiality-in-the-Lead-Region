@@ -58,7 +58,7 @@ def write_file(path, text):
         f.write(text)
 
 
-def locate_data_subfolder(argv):
+def locate_data_subfolder():
     '''
     Use given command line argument to locate the data subfolder to be used for calculations.
     Typically named for the nucleus being studied, e.g. Pt177, but can be given any name.
@@ -81,12 +81,7 @@ def locate_data_subfolder(argv):
     ValueError if there is no command line input.
 
     '''
-    if len(argv) <= 1:
-        raise ValueError("missing argument: name of folder containing config file")
-
-    folder_name = argv[1]
-
-    #folder_name = args.data_subfolder
+    folder_name = args.data_subfolder
 
     rel_path = os.path.join("data", folder_name)
     abs_path = os.path.abspath(rel_path)
