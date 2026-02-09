@@ -31,98 +31,103 @@ The /Code/tests folder contains pytest unit tests, which can be run with "uv run
 ## HOW TO USE FOR THE FIRST TIME: 
 
 1. Download the repository from GitHub: 
-        git clone https://github.com/katyrr/Exploring-Triaxiality-in-the-Lead-Region
-        cd Exploring-Triaxiality-in-the-Lead-Region
+   ```
+   git clone https://github.com/katyrr/Exploring-Triaxiality-in-the-Lead-Region
+   cd Exploring-Triaxiality-in-the-Lead-Region
+   ```
 
-    Optional:
-    If you have uv installed, you can then run:
-        uv venv
-        uv sync
-    
-    There is no need to "activate" the venv before running. 
-    Using uv is optional, but might reduce the risk of version errors.
+   Optional:
+   If you have uv installed, you can then run:
+   ```
+   uv venv
+   uv sync
+   ```
 
-2. Check that your current working directory is /Code. 
-    If you run 'ls' you should see 'main.py' in the list of files.
+   There is no need to "activate" the venv before running. 
+   Using uv is optional, but might reduce the risk of version errors.
+
+2. Check that your current working directory is `/Code`. 
+   If you run `ls` you should see `main.py` in the list of files.
 
 3. Do a test run of the code:
-        uv run main.py example_folder
+   `uv run main.py example_folder`
 
-    or (without uv):
-        python main.py example_folder
+   or (without uv):
+   `python main.py example_folder`
     
-    or (depending on your OS and python version): 
-        Python3 main.py example_folder
+   or (depending on your OS and python version): 
+   `Python3 main.py example_folder`
 
-    (a) It will automatically generate a folder called 'example_folder' in the 
-        directory /Code/data where all the input files, output files, binaries, figures, 
-        and helper scripts will be stored. You can give this folder any name (typically it
-        might be the name of the nucleus you're studying, e.g. Pt177).
+   (a) It will automatically generate a folder called `example_folder` in the 
+       directory `/Code/data` where all the input files, output files, binaries, figures, 
+       and helper scripts will be stored. You can give this folder any name (typically it
+       might be the name of the nucleus you're studying, e.g. Pt177).
 
-    (b) It will automatically generate a config.txt file in example_folder, from 
-        the template at /Code/static/config_template.txt.
+   (b) It will automatically generate a config.txt file in `example_folder`, from 
+       the template at `/Code/static/config_template.txt`.
 
-        You may wish to edit the template beforehand, to configure settings such as your
-        operating system, how many CPU cores you want to utilise, your desired figure 
-        resolution and formatting, which graphs you want plotted by default, and which nucleus 
-        to calculate for. 
-        
-        The default is 177Pt at (ε, γ) = (0.26, 24º), on MacOS with 8 cores.
+       You may wish to edit the template beforehand, to configure settings such as your
+       operating system, how many CPU cores you want to utilise, your desired figure 
+       resolution and formatting, which graphs you want plotted by default, and which nucleus 
+       to calculate for. 
+      
+       The default is 177Pt at (ε, γ) = (0.26, 24º), on MacOS with 8 cores.
 
-        The template will be used whenever you run the code in a new data folder for the 
-        first time, so you may find it convenient to adjust your default settings now!
+       The template will be used whenever you run the code in a new data folder for the 
+       first time, so you may find it convenient to adjust your default settings now!
 
-    (c) It will attempt to enable 'execute' permissions on the ptrm codes, which are stored
-        in /Code/src/ptrm/MacOS/MO or /Code/src/ptrm/64bit/MO. Depending on your operating 
-        system, it may or may not be successful. If it doesn't work, it will throw an error, 
-        and you will have to enable these permissions manually:
-    
-        On Mac: navigate to the /Code/src/ptrm/MacOS/MO folder in Terminal, and then 
-        use the commands "chmod 775 gampn", "chmod 775 asyrmo", "chmod 775 probamo". 
-        Then use "ls -ltr" to see that the permissions (in the leftmost column) now 
-        have 'x's (execute). You might also have to grant permission in Settings 
-        (after attempting to run for the first time, the permission request will appear in Privacy).
-    
-        On Windows: navigate to the /Code/src/ptrm/64bit/MO folder in PowerShell, and then 
-        use the commands "Unblock-File -Path GAMPN.exe", "Unblock-File -Path ASYRMO.exe", 
-        "Unblock-File -Path PROBAMO.exe".
+   (c) It will attempt to enable 'execute' permissions on the ptrm codes, which are stored
+       in `/Code/src/ptrm/MacOS/MO` or `/Code/src/ptrm/64bit/MO`. Depending on your operating 
+       system, it may or may not be successful. If it doesn't work, it will throw an error, 
+       and you will have to enable these permissions manually:
+   
+       On Mac: navigate to the `/Code/src/ptrm/MacOS/MO` folder in Terminal, and then 
+       use the commands `chmod 775 gampn`, `chmod 775 asyrmo`, `chmod 775 probamo`. 
+       Then use `ls -ltr` to see that the permissions (in the leftmost column) now 
+       have `x`s (execute). You might also have to grant permission in Settings 
+       (after attempting to run for the first time, the permission request will appear in Privacy).
+   
+       On Windows: navigate to the `/Code/src/ptrm/64bit/MO` folder in PowerShell, and then 
+       use the commands `Unblock-File -Path GAMPN.exe`, `Unblock-File -Path ASYRMO.exe`, 
+       `Unblock-File -Path PROBAMO.exe`.
 
-    (d) It will print progress and key results to the command line, and you can find more
-        detailed results in the example_folder/outputs, and figures in 
-        example_folder/figures.
+   (d) It will print progress and key results to the command line, and you can find more
+       detailed results in the `example_folder/outputs`, and figures in 
+       `example_folder/figures`.
 
-        Optional:
-        You can reroute the stdout to a text file with:
-            touch path/to/saved_stdout.txt                             # creates the file
-            uv run main.py example_folder > path/to/saved_stdout.txt   # sends stdout to the file
+       Optional:
+       You can reroute the stdout to a text file with:
+       ```
+       touch path/to/saved_stdout.txt                             # creates the file
+       uv run main.py example_folder > path/to/saved_stdout.txt   # sends stdout to the file
+       ```
 
 
 
 ## HOW TO USE AFTER THE FIRST TIME: 
 
 1. (a) If you just want to make some small adjustments to the config, you can edit the (existing)
-        config file in /Code/data/example_folder, and move to step 2.
+       config file in `/Code/data/example_folder`, and move to step 2.
     
-    (b) If you want to start a new folder (e.g. to calculate for a new nucleus), you can either 
-        manually create a new folder in /Code/data, copy a config file from the template (or elsewhere), 
-        and make the desired changes before moving to step 2. 
+   (b) If you want to start a new folder (e.g. to calculate for a new nucleus), you can either 
+       manually create a new folder in `/Code/data`, copy a config file from the template (or elsewhere), and make the desired changes before moving to step 2. 
 
-        Or you can skip straight to step 2 and let the code automatically generate a new folder 
-        and config from the template.
+       Or you can skip straight to step 2 and let the code automatically generate a new folder 
+       and config from the template.
     
-    (i.e. if example_folder already exists with a config file, it will use that. 
+    (i.e. if `example_folder` already exists with a config file, it will use that. 
     If it doesn't already exist, it will make one.)
 
-2. Run the codes with command: "uv run python src/main.py example_folder"
-                                or "python src/main.py example_folder" 
-                                or "Python3 src/main.py example_folder" 
+2. Run the codes with command: `uv run python src/main.py example_folder`
+                            or `python src/main.py example_folder`
+                            or `Python3 src/main.py example_folder`
     
     Optional command line arguments:
 
-    "--display-figures" or "-d":
+    `--display-figures` or `-d`:
         display figures on the screen as they are plotted
         (whether or not this option is used, the figures will be saved in the "figures" folder)
 
-    "--verbose" or "-v":
+    `--verbose` or `-v`:
         print more detailed information in stdout
      
