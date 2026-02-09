@@ -24,10 +24,6 @@ num_cores 8
 figure_res 150 *** dpi
 
 
-*** set how much detail to print (0 for only the essentials, or 1 for more detail)
-print_details 0
-
-
 ***************************** experimental results *******************************************
 
 *** ground state properties (magnetic dipole moment, spin, and energy):
@@ -141,9 +137,9 @@ plot_engap_9.3_13.1 0
 *
 ***********************************************************************************************
 
-* single 0.26 24 ***** eps gamma
+single 0.26 24 ***** eps gamma
 
-gamma 0.28 16,34,0.5 *** eps min_gamma,max_gamma,step
+* gamma 0.28 16,34,0.5 *** eps min_gamma,max_gamma,step
 * eps 0.25,0.35,0.001 22 *** 0.12,0.14,0.001 0 *** 0.001,0.1,0.001 0 *** min_eps,max_eps,step gamma
 
 * mesh 0.5,40 ********* max_eps,outer_points ** 
