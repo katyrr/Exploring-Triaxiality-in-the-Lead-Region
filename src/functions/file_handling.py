@@ -87,7 +87,7 @@ def locate_data_subfolder():
     abs_path = os.path.abspath(rel_path)
 
     if not os.path.isdir(abs_path):
-        print(f"folder not found at: {abs_path}, creating new folder")
+        print(f"folder not found at: {abs_path} \ncreating new folder...")
         os.mkdir(abs_path)
     
     return abs_path
@@ -117,7 +117,7 @@ def locate_config(folder_path):
     if not os.path.isfile(config_path):
         template_rel_path = os.path.join("static", "config_template.txt")
         template_abs_path = os.path.abspath(template_rel_path)
-        print(f"config file not found, generating new from template at: {template_abs_path}")
+        print(f"config file not found \ngenerating new from template at: {template_abs_path}")
         shutil.copy(template_abs_path, config_path)
 
     return config_path
@@ -167,7 +167,7 @@ def setup_directory(folder, num_batches, OS):
 
         permissions = oct(os.stat(path_to_program).st_mode)[-3:]
         if permissions != "775":
-            print(f"{i} does not have execute permissions... attempting to turn on")
+            print(f"\n{i} does not have execute permissions... attempting to turn on")
             os.chmod(path_to_program, 0o775)
 
             permissions = oct(os.stat(path_to_program).st_mode)[-3:]
@@ -182,7 +182,8 @@ def setup_directory(folder, num_batches, OS):
     for i in range(1, num_batches+1):
         batch_folder = os.path.join("run", f"batch{i}")
         required_folders.append(batch_folder)
-        
+    
+    print("")
     for i in required_folders:
         path_to_i = os.path.join(folder, i)
         abs_path_to_i = os.path.abspath(path_to_i)

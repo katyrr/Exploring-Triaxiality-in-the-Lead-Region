@@ -199,7 +199,7 @@ def validate_inputs(code_settings, ptrm_inputs, data_points, experimental_data, 
         raise ValueError(f"The input value of A ({ptrm_inputs["A"]}) does not match the value in the name of the nucleus ({ptrm_inputs["nucleus"]}). Please fix the incorrect one in the config file.")
 
     if ptrm_inputs['nucleus'] not in data_subfolder_path:
-        print(f"WARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
+        print(f"\nWARNING: the name of the nucleus being studied ({ptrm_inputs['nucleus']}) does NOT")
         print(f"\tappear in the name of the data subfolder ({os.path.basename(data_subfolder_path)}).")
         print("\tDid you make a typo?\n")
 

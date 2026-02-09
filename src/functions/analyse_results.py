@@ -76,6 +76,9 @@ def check_agreement(data_points, num_comparisons):
     
 
     """
+
+    if num_comparisons==0:
+        return
     
     sorted_indices = np.argsort(data_points["agreed"])
     sorted_eps = [data_points["eps"][i] for i in sorted_indices]
