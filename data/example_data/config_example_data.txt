@@ -90,12 +90,12 @@ plot_spin_9/2_energies 0
 plot_spin_11/2_energies 0
 plot_spin_13/2_energies 0
 
-plot_spin_1/2_mag_moments 0
+plot_spin_1/2_mag_moments 1
 plot_spin_3/2_mag_moments 0
 
 plot_rms 0
 
-plot_all_energies 0
+plot_all_energies 1
 plot_shifted_energies 0
 
 plot_engap_9.3_13.1 0

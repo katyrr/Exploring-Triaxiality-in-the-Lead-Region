@@ -14,11 +14,12 @@ import matplotlib.tri as tri                    # for manual triangulation befor
 import matplotlib.colors as colors
 import numpy as np                              # for np.arrays
 import os
+import datetime
 
 from src.functions.spin_processing import spin_string_to_float, spin_float_to_string
 import src.functions.structs as st 
 
-def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, gs_spin_floats, data_subfolder_path):
+def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, gs_spin_floats, fig_path):
     '''
     - Draw a green box around regions that have the correct ground state spin, if requested.
     - Plot a red line to indicate the experimental value, if available.
@@ -58,15 +59,14 @@ def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_
         ax.set_yticks(prop.cbar_ticks)
         ax.set_yticklabels(prop.cbar_tick_labels)
     
-
-    file_path = os.path.join(data_subfolder_path, "figures")
-    plt.savefig(file_path)
+    
+    plt.savefig(fig_path, bbox_inches = 'tight')
 
     if code_settings["display_figures"]:
         plt.show()
 
 
-def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_floats, subtitle, data_subfolder_path):
+def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_floats, subtitle, fig_path):
     """
     - Draw a contour line to indicate the perimeter of the region where 
         the ground state spin was correctly reproduced, if requested.
@@ -91,8 +91,8 @@ def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_float
     
     format_fig('polar', ax, legend_handles, '%(current_graph)s of %(nucleus)s' % ptrm_inputs, subtitle)
 
-    file_path = os.path.join(data_subfolder_path, "figures")
-    plt.savefig(file_path)
+    plt.savefig(fig_path, bbox_inches = 'tight')
+
 
     if code_settings["display_figures"]:
         plt.show()

@@ -1,4 +1,4 @@
-pwd
+
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g16.0_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g16.0_p0.170_Pt177.OUT)
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g16.5_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g16.5_p0.170_Pt177.OUT)
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g17.0_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g17.0_p0.170_Pt177.OUT)
@@ -19,5 +19,3 @@ pwd
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g24.5_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g24.5_p0.170_Pt177.OUT)
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g25.0_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g25.0_p0.170_Pt177.OUT)
 (cd /Users/katyrr/Downloads/MSci_Project/Code/data/example_data/Run/Batch1;/Users/katyrr/Downloads/MSci_Project/Code/src/ptrm/MacOS/MO/probamo < ../../Inputs/PROB_e0.280_g25.5_p0.170_Pt177.DAT; cp PROBAMO.out ../../Outputs/PROB_e0.280_g25.5_p0.170_Pt177.OUT)
-
-echo message from terminal: finished running probamo batch 1

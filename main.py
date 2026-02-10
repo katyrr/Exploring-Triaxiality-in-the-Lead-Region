@@ -119,6 +119,8 @@ To-do:
 import numpy as np                                  
 import matplotlib.pyplot as plt    
 import sys     
+import os
+import datetime
 
 import src.functions.file_handling as fh 
 import src.functions.read_config as rc     
@@ -151,11 +153,12 @@ def main():
     - Ensure the data subfolder has the required directories and structure.
     
     '''
-
+    timestamp = '{:%Y-%m-%d %H;%M;%S}'.format(datetime.datetime.now())
     main_timer, sub_timer = Timer(), Timer()
     main_timer.start()
 
     print_div()
+    print(f"STARTING at {timestamp}")
     data_subfolder_path = fh.locate_data_subfolder()
     
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
@@ -330,6 +333,7 @@ def main():
     num_comparisons = 0 
 
     print_div()
+    
     # start plotting graphs:
     for i in data_to_plot:
         
@@ -341,9 +345,12 @@ def main():
         ptrm_inputs["current_graph"] = prop.title # makes several later inputs more efficient
         print("plotting graph: %(current_graph)s" % ptrm_inputs) 
         
+        file_name = f"{timestamp} {ptrm_inputs["current_graph"].replace("/", "_")}"
+        fig_path = os.path.join(data_subfolder_path, "figures", file_name)
+
         if ptrm_inputs["deformation_input"] == "mesh":  
             
-            gr.plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, data_subfolder_path)
+            gr.plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, data_to_plot["gs_spin_floats"], subtitle, fig_path)
             if np.isfinite(prop.experimental_data).all() and code_settings["mark_exp"]: 
                 num_comparisons += 1
     
@@ -352,7 +359,7 @@ def main():
             or ptrm_inputs["deformation_input"] == "eps"
             or len(data_points["e2plus"]) > 1):
             
-            gr.plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, data_to_plot["gs_spin_floats"], data_subfolder_path)
+            gr.plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_data, subtitle, data_to_plot["gs_spin_floats"], fig_path)
             
     print_div()
     
