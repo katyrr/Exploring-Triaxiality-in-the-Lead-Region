@@ -11,7 +11,6 @@ To-do:
 - write unit tests for individual funcs
 - make a constants file for magic numbers
 - add subtitle option to CLAs
-- make sure figures are saved to folder
 
 
 ================================= HOW TO USE FOR THE FIRST TIME: =================================
@@ -135,6 +134,7 @@ from src.classes.timer import Timer
 from src.functions.parse_args import args
 
 
+
 def print_div():
     # For organising console output into easy-to-read sections
     print("========================================================================================") 
@@ -166,6 +166,7 @@ def main():
                    data_points, experimental_data, graphs_to_plot)
     
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]
+    plt.rcParams.update({'figure.autolayout': True})
     code_settings["display_figures"] = args.display_figures
 
     fh.setup_directory(data_subfolder_path, code_settings["num_cores"], code_settings["OS"])
