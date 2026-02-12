@@ -11,6 +11,7 @@ To-do:
 - write unit tests for individual funcs
 - make a constants file for magic numbers
 - add subtitle option to CLAs
+- something weird going on in line graphs
 
 
 ================================= HOW TO USE FOR THE FIRST TIME: =================================
@@ -153,7 +154,9 @@ def main():
     - Ensure the data subfolder has the required directories and structure.
     
     '''
+
     timestamp = '{:%Y-%m-%d %H;%M;%S}'.format(datetime.datetime.now())
+    
     main_timer, sub_timer = Timer(), Timer()
     main_timer.start()
 
@@ -163,7 +166,7 @@ def main():
     
     code_settings, ptrm_inputs, data_points, experimental_data, graphs_to_plot = {}, {}, {}, {}, {}
     rc.read_config(data_subfolder_path, code_settings, ptrm_inputs, 
-                   data_points, experimental_data, graphs_to_plot)
+                data_points, experimental_data, graphs_to_plot)
     
     plt.rcParams['figure.dpi'] = code_settings["figure_res"]
     plt.rcParams.update({'figure.autolayout': True})
@@ -178,91 +181,130 @@ def main():
     # inputs["current_orbitals"] = fn.write_orbitals(28, inputs["num_orbs"], inputs["par"])
 
 
-    #%%   
-    ''' 2. RUN GAMPN ------------------------------------------------------------------------------
+    if not args.replot:
+        # if the --replot flag is used, don't recalculate, just skip straight to plotting results 
+        # using the existing output files
 
-    - Write the input .DAT files for the gampn code.
-    - Calculate batch settings and configure a script writer.
-    - Run the batches. The .OUT files are generated in the 'outputs' directory folder.
-    - Read the output files and store results in arrays within dictionaries. Data includes info 
-      about the fermi level, and dynamically calculated orbital sets for the strong-coupling basis.
-    - Re-run gampn with the new set of orbitals. There is no need to re-read the outputs, 
-      because the properties we read earlier are not affected, and the recalculated matrix 
-      elements will be passed to the next program automatically.
+        #%%   
+        ''' 2. RUN GAMPN ------------------------------------------------------------------------------
 
-    '''
+        - Write the input .DAT files for the gampn code.
+        - Calculate batch settings and configure a script writer.
+        - Run the batches. The .OUT files are generated in the 'outputs' directory folder.
+        - Read the output files and store results in arrays within dictionaries. Data includes info 
+        about the fermi level, and dynamically calculated orbital sets for the strong-coupling basis.
+        - Re-run gampn with the new set of orbitals. There is no need to re-read the outputs, 
+        because the properties we read earlier are not affected, and the recalculated matrix 
+        elements will be passed to the next program automatically.
 
-    data_points["file_tags"] = []
-    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points, first_run=True)
-    
-    batch_settings = ptrm.get_batch_settings(code_settings["num_cores"], code_settings["num_points"])
-    run_program = ptrm.configure_script_writer(data_subfolder_path, code_settings["OS"], batch_settings, data_points["file_tags"])
-    
-    sub_timer.start()
-    run_program("gampn")
-    sub_timer.stop()
-    print(f"***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+        '''
 
-    data_points["asyrmo_orbitals"] = []
-    output_data = {"fermi_parities": [0]*code_settings["num_points"], 
-                   "fermi_energies_hw": [0]*code_settings["num_points"], 
-                   "fermi_energies_mev": [0]*code_settings["num_points"], 
-                   "fermi_indices": [0]*code_settings["num_points"]}
-    rgam.read_gampn(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
+        data_points["file_tags"] = []
+        ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points, first_run=True)
+        
+        batch_settings = ptrm.get_batch_settings(code_settings["num_cores"], code_settings["num_points"])
+        run_program = ptrm.configure_script_writer(data_subfolder_path, code_settings["OS"], batch_settings, data_points["file_tags"])
+        
+        sub_timer.start()
+        run_program("gampn")
+        sub_timer.stop()
+        print(f"***** Returned from gampn (first run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points)
-    sub_timer.start()
-    run_program("gampn")
-    sub_timer.stop()
-    print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+        data_points["asyrmo_orbitals"] = []
+        output_data = {"fermi_parities": [0]*code_settings["num_points"], 
+                    "fermi_energies_hw": [0]*code_settings["num_points"], 
+                    "fermi_energies_mev": [0]*code_settings["num_points"], 
+                    "fermi_indices": [0]*code_settings["num_points"]}
+        rgam.read_gampn(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
 
-
-
-    #%%
-    ''' 3. RUN ASYRMO -----------------------------------------------------------------------------
-
-    - Write the input .DAT files for the asyrmo code.
-    - Use the existing script writer to write and run asyrmo. 
-    - Read the output files, record the DELTA parameter, and check for errors: 
-        - "NO DECOUPLING PARAMETERS CALCULATED" error (fatal)
-        - "SORRY I FOUND NO SOLUTIONS" error (exclude those files from further analysis)
-
-    '''
-
-    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "asyrmo", ptrm_inputs, data_points)
-    
-    sub_timer.start()
-    run_program("asyrmo")
-    sub_timer.stop()
-    print(f"***** Returned from asyrmo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
-
-    output_data["delta"] = []
-    rasy.read_asyrmo(data_points["file_tags"], data_subfolder_path, output_data)
+        ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "gampn", ptrm_inputs, data_points)
+        sub_timer.start()
+        run_program("gampn")
+        sub_timer.stop()
+        print(f"***** Returned from gampn (second run) after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
 
 
-    #%%
-    ''' 4. RUN PROBAMO ----------------------------------------------------------------------------
+        #%%
+        ''' 3. RUN ASYRMO -----------------------------------------------------------------------------
 
-    - Write the input .DAT files for the probamo code.
-    - Use the existing script writer to write and run probamo. 
-    - Read the output files, and record energy level data, with magnetic dipole and electric 
-      quadrupole moments. 
-    - Restructure output data from dict of arrays to array of dicts, with bad data points masked, 
-      and gaps filled with np.NaN.
+        - Write the input .DAT files for the asyrmo code.
+        - Use the existing script writer to write and run asyrmo. 
+        - Read the output files, record the DELTA parameter, and check for errors: 
+            - "NO DECOUPLING PARAMETERS CALCULATED" error (fatal)
+            - "SORRY I FOUND NO SOLUTIONS" error (exclude those files from further analysis)
 
-    '''
+        '''
 
-    ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "probamo", ptrm_inputs, data_points)
+        ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "asyrmo", ptrm_inputs, data_points)
+        
+        sub_timer.start()
+        run_program("asyrmo")
+        sub_timer.stop()
+        print(f"***** Returned from asyrmo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
 
-    sub_timer.start()
-    run_program("probamo")
-    sub_timer.stop()
-    print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
-    
-    print_div()
-    rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
-    restructured_output_data = rprob.process_data(output_data, data_points, experimental_data, ptrm_inputs["ispin"])
+        output_data["delta"] = []
+        rasy.read_asyrmo(data_points["file_tags"], data_subfolder_path, output_data)
+
+
+
+        #%%
+        ''' 4. RUN PROBAMO ----------------------------------------------------------------------------
+
+        - Write the input .DAT files for the probamo code.
+        - Use the existing script writer to write and run probamo. 
+        - Read the output files, and record energy level data, with magnetic dipole and electric 
+        quadrupole moments. 
+        - Restructure output data from dict of arrays to array of dicts, with bad data points masked, 
+        and gaps filled with np.NaN.
+
+        '''
+
+        ptrm.write_input_files(code_settings["num_points"], data_subfolder_path, "probamo", ptrm_inputs, data_points)
+
+        sub_timer.start()
+        run_program("probamo")
+        sub_timer.stop()
+        print(f"***** Returned from probamo after {sub_timer.get_lapsed_time():.2f} seconds. *****\n")
+        
+        print_div()
+        rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
+        restructured_output_data = rprob.process_data(output_data, data_points, experimental_data, ptrm_inputs["ispin"])
+
+    else:
+
+        print(f"Re-plotting data from last calculation...")
+
+        sub_timer.start()
+
+        data_points["asyrmo_orbitals"] = []
+        data_points["file_tags"] = []
+        output_data = {
+            "fermi_parities": [0]*code_settings["num_points"], 
+            "fermi_energies_hw": [0]*code_settings["num_points"], 
+            "fermi_energies_mev": [0]*code_settings["num_points"], 
+            "fermi_indices": [0]*code_settings["num_points"],
+        }
+
+        ptrm.get_file_tags(code_settings["num_points"], data_points, ptrm_inputs)
+
+        for i in graphs_to_plot:
+            if graphs_to_plot[i] and i in output_data:
+            
+                rgam.read_gampn(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
+                break
+
+        output_data["delta"] = []
+        
+        rasy.read_asyrmo(data_points["file_tags"], data_subfolder_path, output_data)
+        rprob.read_probamo(code_settings["num_points"], data_subfolder_path, data_points, output_data, ptrm_inputs)
+        
+        sub_timer.stop()
+        print(f"Finished reading data in {sub_timer.get_lapsed_time():.2f} seconds")
+
+        restructured_output_data = rprob.process_data(output_data, data_points, experimental_data, ptrm_inputs["ispin"])
+
+
 
 
 
@@ -278,7 +320,7 @@ def main():
         
     '''
 
-    data_to_plot = gr.prepare_data_to_plot(experimental_data, data_points["file_tags"], restructured_output_data)
+    data_to_plot = gr.prepare_data_to_plot(experimental_data, code_settings["num_points"], restructured_output_data)
 
     #!!! set graph subtitle:
     subtitle = ''

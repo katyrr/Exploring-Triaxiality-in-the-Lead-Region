@@ -28,6 +28,8 @@ def plot_line_graph(prop, ptrm_inputs, data_points, code_settings, experimental_
     # set which paramters are varied and which are constant
     var_sym, var, fix_sym, fix = assign_parameters(ptrm_inputs, data_points)
     
+
+    # plot main graph
     _, ax = plt.subplots() 
     
     legend_handles = []
@@ -98,7 +100,7 @@ def plot_mesh_graph(prop, data_points, code_settings, ptrm_inputs, gs_spin_float
         plt.show()
 
 
-def prepare_data_to_plot(experimental_data, file_tags, restructured_output_data):
+def prepare_data_to_plot(experimental_data, num_points, restructured_output_data):
     ''' 6. PREPARE TO PLOT GRAPHS 
 
     - Record each data set in an instance of class PropertyData.
@@ -130,7 +132,7 @@ def prepare_data_to_plot(experimental_data, file_tags, restructured_output_data)
         data_to_plot[i] = calculate_format_data(data_to_plot[i], i, experimental_data)
         
 
-    data_to_plot["all_energies"] = collate_energy_data(data_to_plot, len(file_tags), 
+    data_to_plot["all_energies"] = collate_energy_data(data_to_plot, num_points, 
                                                         experimental_data["gs_spin_string"], experimental_data)
 
     # recalculate all energies relative to the spin entered into fn.collate_energy_data() above

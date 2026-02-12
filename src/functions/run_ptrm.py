@@ -20,6 +20,18 @@ import src.functions.structs as st
 from src.functions.read_gampn import get_sp_level, get_info
 
 
+def get_file_tags(num_points, data_points, ptrm_inputs):
+
+    for i in range(num_points):
+
+            if data_points["e2plus"][i] == 0:
+                # if the value of e2plus has been input as 0, calculate dynamically
+                data_points["e2plus"][i] = est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
+
+            file_tag = set_current(i, ptrm_inputs, data_points, set_deformations=True, set_e2plus=True, create_file_tag=True)
+            data_points["file_tags"].append(file_tag)
+
+
 def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, data_points, first_run=False):
     '''
     Create .DAT input files for each data point, specialised to the requested program.
@@ -62,14 +74,7 @@ def write_input_files(num_points, data_subfolder_path, program, ptrm_inputs, dat
 
     if first_run:
 
-        for i in range(num_points):
-
-            if data_points["e2plus"][i] == 0:
-                # if the value of e2plus has been input as 0, calculate dynamically
-                data_points["e2plus"][i] = est_e2plus(data_points["eps"][i], ptrm_inputs["A"])
-
-            file_tag = set_current(i, ptrm_inputs, data_points, set_deformations=True, set_e2plus=True, create_file_tag=True)
-            data_points["file_tags"].append(file_tag)
+        get_file_tags(num_points, data_points, ptrm_inputs)
 
 
     for i in range(num_points):
