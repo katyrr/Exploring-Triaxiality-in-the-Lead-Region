@@ -125,9 +125,16 @@ The `/Code/tests` folder contains pytest unit tests, which can be run with "uv r
     Optional command line arguments:
 
     `--display-figures` or `-d`:
-        display figures on the screen as they are plotted  
+        Display figures on the screen as they are plotted. 
         (whether or not this option is used, the figures will be saved in the "figures" folder)
 
     `--verbose` or `-v`:
-        print more detailed information in stdout
+        Print more detailed information in stdout.
+
+    `--replot` or `-rp`:
+        Don't recalculate results, just replot graphs using most recent (existing) output files.
+        
+        This can be useful in large data sets, when you want some graphs that you didn't request to be plotted the first time (in the config file), or perhaps to change the formatting of the graphs.
+
+        This option can't be used if no output files are found.
      
