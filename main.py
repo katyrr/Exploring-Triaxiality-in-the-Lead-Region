@@ -12,6 +12,7 @@ To-do:
 - make a constants file for magic numbers
 - add subtitle option to CLAs
 - something weird going on in line graphs
+- use sys.exit instead of raise 
 
 
 ================================= HOW TO USE FOR THE FIRST TIME: =================================
